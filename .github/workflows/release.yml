@@ -1,0 +1,90 @@
+name: Build & Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APKs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make Gradlew Executable
+        run: chmod +x gradlew
+
+      - name: Setup Signing Key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > keystore_jalf.jks
+            echo "keystore.file=../keystore_jalf.jks" > local.properties
+            echo "keystore.password=$KEYSTORE_PASSWORD" >> local.properties
+            echo "keystore.key.alias=$KEY_ALIAS" >> local.properties
+            echo "keystore.key.password=$KEY_PASSWORD" >> local.properties
+            echo "Signing configuration successfully configured!"
+          else
+            echo "No signing key secret found. Skipping signing setup..."
+          fi
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: app/build/outputs/apk/release/*.apk
+
+      - name: Rename Release APK
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd app/build/outputs/apk/release/
+          mv *.apk JalNotifier-${{ github.ref_name }}.apk
+
+      - name: Import GPG Key
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Generate Checksums & Sign
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd app/build/outputs/apk/
+          sha256sum release/*.apk > ../../../../SHA256SUMS
+          cd ../../../..
+          gpg --batch --yes --armor --detach-sign SHA256SUMS
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app/build/outputs/apk/release/JalNotifier-${{ github.ref_name }}.apk
+            SHA256SUMS
+            SHA256SUMS.asc
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}

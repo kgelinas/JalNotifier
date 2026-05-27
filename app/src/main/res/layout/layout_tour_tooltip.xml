@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/tour_card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="24dp"
+    android:layout_marginEnd="24dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="20dp"
+    app:cardElevation="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <!-- Step indicator -->
+        <TextView
+            android:id="@+id/tv_tour_step"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:textAppearance="?attr/textAppearanceLabelMedium"
+            android:textColor="?attr/colorPrimary"
+            android:text="Step 1 of 6" />
+
+        <!-- Title -->
+        <TextView
+            android:id="@+id/tv_tour_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:textStyle="bold"
+            android:text="Welcome" />
+
+        <!-- Body -->
+        <TextView
+            android:id="@+id/tv_tour_body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:lineSpacingMultiplier="1.4"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?android:attr/textColorSecondary"
+            android:text="Description text goes here." />
+
+        <!-- Progress dots -->
+        <LinearLayout
+            android:id="@+id/tour_dots_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:orientation="horizontal"
+            android:layout_marginBottom="20dp"
+            android:gravity="center" />
+
+        <!-- Action row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <!-- Skip -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_tour_skip"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tour_skip" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <!-- Back -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_tour_back"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:text="@string/tour_back"
+                android:visibility="gone" />
+
+            <!-- Next / Done -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_tour_next"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/tour_next" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

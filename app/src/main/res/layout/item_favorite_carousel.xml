@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardElevation="0dp"
+    app:cardCornerRadius="12dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="90dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <!-- Left Tone: Avatar Section -->
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceVariant"
+            android:padding="12dp">
+
+            <FrameLayout
+                android:id="@+id/fav_avatar_container"
+                android:layout_width="66dp"
+                android:layout_height="66dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/fav_avatar"
+                    android:layout_width="66dp"
+                    android:layout_height="66dp"
+                    android:background="@drawable/circle_black_bg"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                    tools:src="@mipmap/ic_launcher" />
+
+                <View
+                    android:id="@+id/fav_online_indicator"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="top|end"
+                    android:background="@drawable/online_dot"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <FrameLayout
+                    android:id="@+id/fav_sex_icon_container"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="bottom|end"
+                    android:background="@drawable/circle_background"
+                    android:padding="2dp">
+                    <ImageView
+                        android:id="@+id/fav_sex_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_gravity="center"
+                        android:scaleType="centerInside" />
+                </FrameLayout>
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- Right Tone: Text Section -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?attr/colorSurface"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/fav_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toStartOf="@id/fav_badges"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toTopOf="@id/fav_details"
+                app:layout_constraintVertical_chainStyle="packed"
+                tools:text="Samantha123" />
+
+            <LinearLayout
+                android:id="@+id/fav_badges"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <ImageView
+                    android:id="@+id/fav_badge_star"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_star_filled"
+                    app:tint="@color/badge_tint"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <ImageView
+                    android:id="@+id/fav_badge_bell"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@drawable/ic_notifications_active"
+                    app:tint="@color/badge_tint"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <ImageView
+                    android:id="@+id/fav_badge_bookmark"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@drawable/ic_bookmark"
+                    app:tint="@color/badge_tint"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <ImageView
+                    android:id="@+id/fav_badge_certified"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="4dp"
+                    android:src="@drawable/ic_verified_24"
+                    android:background="@drawable/circle_white_bg"
+                    android:padding="1dp"
+                    app:tint="@color/certified_green"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <LinearLayout
+                    android:id="@+id/fav_privileges"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/fav_details"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?android:attr/textColorSecondary"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fav_name"
+                app:layout_constraintBottom_toTopOf="@id/fav_last_connection"
+                tools:text="28 ans • Montréal" />
+
+            <TextView
+                android:id="@+id/fav_last_connection"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?android:attr/textColorSecondary"
+                android:textStyle="italic"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fav_details"
+                app:layout_constraintBottom_toBottomOf="parent"
+                tools:text="Actif : cet après-midi"
+                tools:visibility="visible" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

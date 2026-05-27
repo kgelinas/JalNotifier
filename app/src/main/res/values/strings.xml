@@ -1,0 +1,519 @@
+<resources>
+    <string name="tab_actives">Active</string>
+    <string name="tab_new">New</string>
+    <string name="tab_archived">Archived</string>
+    <string name="app_locked">Application Locked</string>
+    <string name="auth_required_to_unlock">Authentication required to continue</string>
+    <string name="action_unlock">Unlock</string>
+    <string name="filter_online">Online</string>
+    <string name="filter_sex">Sex</string>
+    <string name="filter_contact_all">Contact: All</string>
+    <string name="recent_activity">Recent Activity</string>
+    <string name="no_recent_activity">No recent activity.</string>
+    <string name="send_greeting">Send Greeting</string>
+    <string name="show_more_messages">Show more messages</string>
+    
+    <string name="app_name">JALNotifier</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="photo_indicator_format">%1$d/%2$d</string>
+    <string name="profile_details_format">%1$s • %2$s • %3$s</string>
+    <string name="profile_details_format_no_city">%1$s • %2$s</string>
+    <string name="profile_details_format_no_gender">%1$s • %2$s</string>
+    <string name="profile_details_format_only_age">%1$s</string>
+    <string name="failed_to_load_profile">Failed to load profile</string>
+    <string name="no_user_id_provided">No user ID provided</string>
+    <string name="added_to_bookmarks">Added to bookmarks</string>
+    <string name="removed_from_bookmarks">Removed from bookmarks</string>
+    <string name="error_network">Network error, please try again</string>
+    <string name="poke_sent_success">Greeting sent!</string>
+    <string name="error_server">Server error, please try again</string>
+    <string name="tab_chats">Chats</string>
+    <string name="profile_section_about">About</string>
+    <string name="profile_section_videos">Videos</string>
+    <string name="profile_section_interests">Goals &amp; Fantasies</string>
+    <string name="action_login">Login</string>
+    <string name="login_title">Login</string>
+    <string name="hint_username">Username</string>
+    <string name="hint_password">Password</string>
+    <string name="hint_message">Message</string>
+    <string name="content_description_attach_photo">Attach Photo</string>
+    <string name="content_description_toggle_ephemeral">Toggle Ephemeral</string>
+    <string name="content_description_quick_responses">Quick Responses</string>
+    <string name="online">Online</string>
+    <string name="offline">Offline</string>
+    <string name="appear_offline">Appear Offline</string>
+    
+    <string name="settings_cloud_sync">Backup</string>
+    <string name="btn_google_signin">Sign in with Google</string>
+    <string name="btn_google_signout">Sign Out</string>
+    <string name="btn_backup">Backup</string>
+    <string name="btn_restore">Restore</string>
+    <string name="last_backup_format">Last backup: %1$s</string>
+    <string name="signed_in_as_format">Signed in as: %1$s</string>
+    <string name="backup_success">Backup successful!</string>
+    <string name="restore_success">Restore successful! Restarting app...</string>
+    <string name="sync_failed">Sync failed: %1$s</string>
+    <string name="default_web_client_id">1027228694729-jk2teu15kqcv4qg5p2sb1imjmh7v2a09.apps.googleusercontent.com</string>
+    
+    <string name="filter_chats_status_title">Filter by status</string>
+    <string name="filter_chats_status_all">Status: All</string>
+    <string name="filter_chats_status_read">Status: Read</string>
+    <string name="filter_chats_status_unread">Status: Unread</string>
+    <string name="filter_chats_status_received">Status: Received</string>
+    <string name="filter_chats_status_delivered">Status: Delivered</string>
+    <string name="profile_last_status">Last Status</string>
+    <string name="convo_other_suspended">This account is temporarily suspended</string>
+    <string name="settings_blur_nsfw">Blur NSFW Photos</string>
+    <string name="settings_blur_nsfw_desc">Blurs suggestive photos by default for discretion</string>
+    <string name="settings_auto_offline">Auto Offline</string>
+    <string name="settings_auto_offline_desc">Sets your status to offline after a period of inactivity.</string>
+    <string name="auto_offline_disabled">Disabled</string>
+    <string name="auto_offline_30m">30 minutes</string>
+    <string name="auto_offline_1h">1 hour</string>
+    <string name="auto_offline_2h">2 hours</string>
+    <string name="auto_offline_4h">4 hours</string>
+    <string name="auto_offline_8h">8 hours</string>
+    <string name="auto_offline_12h">12 hours</string>
+    <string name="settings_background_notifications">Background Notifications</string>
+    <string name="settings_background_notifications_desc">Continue receiving notifications even when session is inactive.</string>
+
+    <!-- Search -->
+    <string name="search_results">Search Results</string>
+    <string name="saved_searches">Saved Searches</string>
+    <string name="profile_searched">Profile Searched</string>
+    <string name="sex">Sex</string>
+    <string name="desiring_to_meet">Desiring to meet</string>
+    <string name="orientation">Orientation</string>
+    <string name="relational_config">Relational Configuration</string>
+    <string name="goal_on_jalf">Goal on JALF</string>
+    <string name="physical_criteria">Physical Criteria</string>
+    <string name="characteristics">Characteristics</string>
+    <string name="age">Age</string>
+    <string name="age_min">Age min</string>
+    <string name="age_max">Age max</string>
+    <string name="weight">Weight</string>
+    <string name="height">Height</string>
+    <string name="ethnicity">Ethnicity</string>
+    <string name="smoker">Smoker</string>
+    <string name="zodiac_sign">Zodiac Sign</string>
+    <string name="location_fantasies">Location &amp; Fantasies</string>
+    <string name="my_position">My Position</string>
+    <string name="country">Country</string>
+    <string name="province_state">Province/State</string>
+    <string name="region">Region</string>
+    <string name="add_location">Add Location</string>
+    <string name="availability">Availability</string>
+    <string name="fantasies">Fantasies</string>
+    <string name="reset">Reset</string>
+    <string name="select_fantasies">Select Fantasies</string>
+    <string name="no_fantasies_selected">No fantasies selected</string>
+    <string name="search_options">Search Options</string>
+    <string name="has_webcam">Has Webcam</string>
+    <string name="desires_today">Desires to hook up today</string>
+    <string name="sort_by">Sort by</string>
+    <string name="last_visit_date">Last visit date</string>
+    <string name="registration_date">Registration date</string>
+    <string name="same_fantasies">Same fantasies</string>
+    <string name="location">Location</string>
+    <string name="search">Search</string>
+    <string name="tab_simple_search">Simple</string>
+    <string name="tab_advanced_search">Advanced</string>
+    <string name="pseudo_optional">Pseudo (optional)</string>
+    <string name="has_photo">Has a photo</string>
+    <string name="my_region">My region</string>
+
+    <!-- Notifications -->
+    <string name="someone">Someone</string>
+    <string name="new_message">New message</string>
+    <string name="sent_notification">sent a notification</string>
+    <string name="added_favorite">added you as a favorite</string>
+    <string name="added_new_photo">added a new photo</string>
+    <string name="sent_poke">sent a greeting</string>
+    <string name="would_recreate_photo">would like to recreate one of your photos</string>
+    <string name="liked_photo">liked your photo</string>
+    <string name="visited_profile">visited your profile</string>
+    <string name="visited_profile_outgoing">visited their profile</string>
+    <string name="event_notifications">Event Notifications</string>
+    <string name="new_event">New Event</string>
+    <string name="user_online_title">User Online!</string>
+    <string name="user_online_message">%1$s is now online.</string>
+    <string name="chat_notifications">Chat Notifications</string>
+
+    <!-- Feedback & Errors -->
+    <string name="select_country_error">Select at least one country</string>
+    <string name="select_country_first">Please select a country first</string>
+    <string name="location_already_added">This location is already added</string>
+    <string name="search_failed">Search failed</string>
+    <string name="no_results_found">No results found</string>
+    <string name="search_loaded">Search \'%1$s\' loaded</string>
+    <string name="location_permission_denied">Location permission denied</string>
+    <string name="cannot_get_location">Unable to get current location</string>
+    <string name="geocoding_failed">Geocoding failed</string>
+
+    <string name="filter_contact">Contact: %1$s</string>
+    <string name="sex_filter_label">Sex</string>
+    <string name="sex_filter_label_count">Sex (%1$d)</string>
+    <string name="fantasies_selected_count">%1$d selected: %2$s</string>
+
+    <string name="filter_contact_type_title">Contact Type</string>
+    <string name="filter_contact_type_all">All</string>
+    <string name="filter_contact_type_contacts">Favorites</string>
+    <string name="filter_contact_type_notified">Followed</string>
+    <string name="filter_contact_type_bookmarks">Bookmarks</string>
+
+    <string name="read_receipts">Read Receipts</string>
+    <string name="nsfw_blur">Blur NSFW photos</string>
+    <string name="geolocation">Geolocation</string>
+    <string name="settings">Settings</string>
+    <string name="logout">Logout</string>
+
+    <string name="nav_chats">Chats</string>
+    <string name="nav_events">Events</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_contacts">Contacts</string>
+    <string name="logout_confirm_title">Logout</string>
+    <string name="save_search_title">Save Search</string>
+    <string name="delete">Delete</string>
+    <string name="rename">Rename</string>
+    <string name="items_selected">%1$d selected</string>
+    <string name="delete_conversations_title">Delete Conversations</string>
+
+    <string name="logout_message">Are you sure you want to logout?</string>
+    <string name="delete_search_message">Delete the search \'%1$s\'?</string>
+    <string name="delete_conversations_message">Are you sure you want to delete %1$d conversations?</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="load">Load</string>
+    <string name="search_name_hint">Search name</string>
+
+
+    <string name="sex_all">All</string>
+    <string name="sex_male">Male</string>
+    <string name="sex_female">Female</string>
+    <string name="sex_couple">Couple</string>
+    <string name="sex_travesti">Travesti</string>
+    <string name="sex_trans">Trans</string>
+    <string name="sex_couple_f">Couple F</string>
+    <string name="sex_couple_h">Couple H</string>
+
+
+
+
+
+
+
+
+
+
+    <string name="biometric_login_title">Biometric Login</string>
+    <string name="biometric_login_desc">Authenticate to connect as %1$s</string>
+    <string name="login_input_required">Please enter both username and password.</string>
+    <string name="login_status_authenticating">Authenticating...</string>
+    <string name="login_status_capturing">Capturing session...</string>
+    <string name="login_status_discovering">Discovering User ID...</string>
+    <string name="login_failed_suid">Login failed: SUID missing.</string>
+    <string name="login_failed_user_id">User ID not found.</string>
+    <string name="login_failed_prefix">Login failed</string>
+    <string name="error_network_prefix">Network error</string>
+    <string name="profile_fetch_error">Profile fetch error</string>
+
+    <string name="typing_indicator_suffix"> (typing...)</string>
+    <string name="typing_indicator_full">%1$s is typing...</string>
+    <string name="error_blocked_by_user">User has blocked you</string>
+    <string name="error_cannot_reply">Unable to reply</string>
+    <string name="error_convo_not_initialized">Conversation not initialized yet</string>
+    <string name="hint_enter_message_queue">Enter a message to queue</string>
+    <string name="message_queued">Message queued for when user is online</string>
+    <string name="failed_to_queue">Failed to queue message</string>
+    <string name="failed_to_send">Failed to send</string>
+    <string name="error_sending">Error sending</string>
+
+    <string name="status">Status</string>
+    <string name="registered_since">Registered since</string>
+    <string name="last_connection">Last connection</string>
+    <string name="alcohol">Alcohol</string>
+    <string name="drugs">Drugs</string>
+    <string name="occupation">Occupation</string>
+    <string name="common_points">Common points</string>
+    <string name="action_block">Block user</string>
+    <string name="action_unblock">Unblock user</string>
+    <string name="error_block_failed">Block failed</string>
+    <string name="error_unblock_failed">Unblock failed</string>
+    <string name="user_blocked">User blocked</string>
+    <string name="user_unblocked">User unblocked</string>
+    <string name="error_block_server">Server error while blocking</string>
+    <string name="error_unblock_server">Server error while unblocking</string>
+    <string name="rating_dressed">DRESSED</string>
+    <string name="rating_naked">NAKED OR NEARLY</string>
+    <string name="rating_sexual">SEXUAL</string>
+    <string name="rating_bdsm_soft">BDSM-SOFT</string>
+    <string name="rating_trav_trans">TRAV-TRANS</string>
+    <string name="rating_private_only">PRIVATE ONLY</string>
+    <string name="rating_irrelevant">NOT RELEVANT</string>
+    <string name="rating_face_only">FACE ONLY</string>
+    <string name="rating_msg_only">MSG ONLY</string>
+    <string name="rating_forum_only">FORUM ONLY</string>
+
+    <string name="settings_no_quick_responses">No quick responses configured.</string>
+    <string name="settings_qr_label_hint">Short Label (e.g., hello)</string>
+    <string name="settings_qr_msg_hint">Full Message (Use {name} for variable)</string>
+    <string name="settings_add_qr_title">Add Quick Response</string>
+    <string name="settings_edit_qr_title">Edit Quick Response</string>
+    <string name="add">Add</string>
+    <string name="time_now">now</string>
+    <string name="time_ago_m">%1$dm ago</string>
+    <string name="time_ago_h">%1$dh ago</string>
+    <string name="time_ago_d">%1$dd ago</string>
+    <string name="time_yesterday">Yesterday %1$s</string>
+    <string name="hint_pending">Pending...</string>
+    <string name="profile_view_recent_activity">View recent activity</string>
+    <string name="settings_security_biometrics">Security &amp; Biometrics</string>
+    <string name="settings_security_biometric_auth">Biometric Authentication</string>
+    <string name="settings_security_biometric_login">Biometric Login</string>
+    <string name="settings_security_biometric_login_desc">Allow filling your credentials and logging in via biometrics at the launch of the login screen.</string>
+    <string name="settings_security_app_lock">App Lock</string>
+    <string name="settings_security_app_lock_desc">Locks access to the application until you authenticate.</string>
+    <string name="settings_auto_backup">Automatic backup</string>
+    <string name="settings_auto_backup_desc">Back up your settings once a day in the background.</string>
+    <string name="settings_imperial_units">Imperial Units</string>
+    <string name="settings_read_receipts">Read receipts</string>
+    <string name="settings_read_receipts_desc">Send a read receipt when you open a conversation</string>
+    <string name="settings_geolocation">Geolocation</string>
+    <string name="settings_geolocation_desc">Enable geolocation on JALF (synchronizes your position)</string>
+    <string name="settings_general_title">General Settings</string>
+    <string name="settings_category_title">Categories</string>
+    <string name="settings_nav_notifications">Notifications</string>
+    <string name="settings_nav_intelligence">Intelligence Configuration</string>
+    <string name="settings_nav_cloud">Backup</string>
+    <string name="settings_display_title">Display</string>
+    <string name="settings_imperial_units_desc">Show height in feet and weight in lbs</string>
+    <string name="settings_quick_responses_title">Quick Responses</string>
+    <string name="settings_add_quick_response">Add Quick Response</string>
+    <string name="profile_action_poke">Poke</string>
+    <string name="profile_action_message">Message</string>
+    <string name="settings_security_confirm_access">Confirm Access</string>
+    <string name="settings_security_auth_reason">Please authenticate to enable biometric login</string>
+    <string name="settings_security_auth_enabled">Biometric login enabled</string>
+    <string name="settings_security_auth_failed">Authentication failed</string>
+    <string name="settings_cloud_signin_failed">Sign-in failed: %s</string>
+    <string name="settings_cloud_restore_title">Restore from Drive</string>
+    <string name="settings_cloud_restore_msg">This will overwrite your local settings and searches. Continue?</string>
+    <string name="settings_cloud_last_backup">Last backup: %s</string>
+    <string name="settings_cloud_no_backup">No previous backup found</string>
+
+    <!-- Local JSON export/import -->
+    <string name="backup_section_local">Local File</string>
+    <string name="backup_export_json">Export as JSON</string>
+    <string name="backup_export_json_desc">Save a backup file to any location on your device</string>
+    <string name="backup_import_json">Import from JSON</string>
+    <string name="backup_import_json_desc">Restore settings from a previously exported file</string>
+    <string name="backup_export_success">Backup exported successfully</string>
+    <string name="backup_export_failed">Export failed: %1$s</string>
+    <string name="backup_import_confirm_title">Restore from File</string>
+    <string name="backup_import_confirm_msg">This will overwrite your current settings with the contents of the selected file. Continue?</string>
+    <string name="backup_import_success">Settings restored from file</string>
+    <string name="backup_import_failed">Import failed: %1$s</string>
+    <string name="backup_section_drive">Google Drive</string>
+    <string name="settings_intelligence_title">Intelligence Options</string>
+    <string name="settings_intelligence_api_config">API Configuration</string>
+    <string name="settings_intelligence_provider">AI Provider</string>
+    <string name="settings_intelligence_token">API Access Token</string>
+    <string name="settings_intelligence_model">Language Model</string>
+    <string name="settings_intelligence_props">Assistant Properties</string>
+    <string name="settings_intelligence_lang">Assistant Language</string>
+    <string name="settings_intelligence_persona">Personal Preference / Persona</string>
+    <string name="settings_intelligence_expand">Expand editor</string>
+    <string name="settings_language">App Language</string>
+    <string name="gemini_status_introduction">AI Introduction...</string>
+    <string name="gemini_status_reply">AI Reply...</string>
+    <string name="gemini_status_targeted">AI Targeted Response...</string>
+    <string name="gemini_error_no_token">Please configure an AI Provider Token first.</string>
+    <string name="gemini_error_api_failure">AI API failure</string>
+    <string name="gemini_error_api_error">AI API error</string>
+    <string name="gemini_error_blocked">AI response blocked or parsing failed</string>
+    <string name="gemini_error_exception">Exception calling AI API</string>
+    <string name="gemini_menu_introduction">Introduction</string>
+    <string name="gemini_menu_reply">Reply</string>
+    <string name="error_fetching_profile_ai">Failed to fetch profile for AI</string>
+    <string name="error_parsing_profile">Error parsing profile</string>
+    <string name="error_fetching_profile">Error fetching profile</string>
+    <string name="error_failed_to_send_photo">Failed to send photo</string>
+    <string name="error_sending_photo_code">Error sending photo</string>
+    <string name="settings_quick_responses_none">No quick responses configured in Settings</string>
+    <string name="quick_responses_title">Quick Responses</string>
+    <string name="error_failed_to_archive">Failed to archive</string>
+    <string name="error_archive_code">Archive error</string>
+    <string name="status_archived">Archived</string>
+    <string name="error_failed_to_delete">Failed to delete</string>
+    <string name="error_delete_code">Delete error</string>
+    <string name="status_deleted">Deleted</string>
+    <string name="error_failed_to_start_convo">Failed to start conversation</string>
+    <string name="error_starting_convo_code">Error starting conversation</string>
+    <string name="error_fetching_video">Error fetching video</string>
+    <string name="error_playing_video">Error playing video</string>
+    <string name="settings_notification_title">Notifications</string>
+    <string name="settings_notification_by_sex">Notification by Sexes</string>
+    <string name="settings_notification_sex_header">Sex</string>
+    <string name="notif_type_messages">Messages</string>
+    <string name="notif_type_visits">Visits</string>
+    <string name="notif_type_pokes">Pokes &amp; Greetings</string>
+    <string name="notif_type_favorites">Added to Favorites</string>
+    <string name="notif_type_photos">Photos &amp; Likes</string>
+    <string name="settings_notification_by_contact_type">Notification by Contact Types</string>
+    <string name="filter_contact_type_others">Others (Non-contacts)</string>
+    <string name="sse_listening">Listening for real-time events…</string>
+    <string name="sse_service_name">Jalf SSE Service</string>
+    <string name="sse_service_description">Keeps the app connected to Jalf for instant notifications</string>
+    <string name="sse_status_connected">Connected — receiving real-time events</string>
+    <string name="sse_status_reconnecting">Reconnecting…</string>
+    <string name="status_typing">is typing...</string>
+    <string name="event_visit_title">Profile Visit</string>
+    <string name="event_visit_message">visited your profile</string>
+    <string name="event_login_title">Login</string>
+    <string name="event_join_title">Sign up</string>
+    <string name="event_online_message">is now online</string>
+    <string name="event_join_message">just joined</string>
+    <string name="online_notifications">Online Notifications</string>
+    <string name="reply_failed_prefix">Failed to send: %1$s</string>
+    <string name="action_reply">Reply</string>
+    <string name="action_mark_as_read">Mark as Read</string>
+    <string name="no_image_to_display">No image to display</string>
+    <string name="failed_to_download_image">Failed to download image</string>
+    <string name="image_saved_to_gallery">Image saved to gallery</string>
+    <string name="sync_never">Never</string>
+    <string name="sync_backup_success">Backup success!</string>
+    <string name="sync_backup_failed_prefix">Backup failed</string>
+    <string name="sync_restore_success">Restore success!</string>
+    <string name="sync_restore_failed_prefix">Restore failed</string>
+    <string name="vip_required_search">This feature requires a VIP account.</string>
+
+    <!-- User Status -->
+    <string name="profile_sheet_status_hint">Set a status...</string>
+    <string name="status_update_success">Status updated</string>
+    <string name="status_delete_success">Status deleted</string>
+    <string name="status_update_error">Failed to update status</string>
+    <string name="status_delete_confirm_title">Delete Status</string>
+    <string name="status_delete_confirm_msg">Are you sure you want to delete your status?</string>
+    <string name="status_edit_title">Update Status</string>
+    <string name="settings_security_auto_privacy_title">Automatic Privacy</string>
+    <string name="settings_security_auto_offline_title">Auto Appear Offline</string>
+    <string name="settings_security_auto_offline_desc">Automatically trigger Appear Offline (Ghost Mode) on the server after you leave the app for a set duration. Returning to the app automatically restores your online presence.</string>
+    <string name="settings_security_auto_offline_disabled">Disabled</string>
+    <string name="settings_security_auto_offline_5m">5 minutes</string>
+    <string name="settings_security_auto_offline_15m">15 minutes</string>
+    <string name="settings_security_auto_offline_30m">30 minutes</string>
+    <string name="settings_security_auto_offline_hour">%1$d hour</string>
+    <string name="settings_security_auto_offline_hours">%1$d hours</string>
+    <string name="sort_favorites_default">Sort: Default</string>
+    <string name="sort_favorites_timedesc">Recently active</string>
+    <string name="sort_favorites_timeasc">Inactive longest</string>
+    <string name="vip_required_sort">Sorting by last connection requires a VIP or Pro account.</string>
+    <string name="last_active_format">Active: %1$s</string>
+    <string name="search_reset_success">Search criteria reset</string>
+
+    <!-- ─── First-Time Tour ─────────────────────────────────────── -->
+    <string name="tour_skip">Skip</string>
+    <string name="tour_back">Back</string>
+    <string name="tour_next">Next</string>
+    <string name="tour_done">Done</string>
+    <string name="tour_step_counter">Step %1$d of %2$d</string>
+
+    <string name="tour_notif_title">A word about the ongoing notification 🔔</string>
+    <string name="tour_notif_body">You may notice a persistent notification in your status bar. This keeps the real-time connection alive so you receive messages, visits, and events instantly — even when the app is in the background.
+
+Without it, Android would put the service to sleep and you would miss notifications. It is low-priority and silent, so it will never buzz you.</string>
+
+    <string name="tour_step1_title">Welcome to JALNotifier 👋</string>
+    <string name="tour_step1_body">Stay connected to JALF — your messages, events, and contacts are all in one place. Navigate between tabs using the bar below.</string>
+    <string name="tour_step1_body_tablet">Stay connected to JALF — your messages, events, and contacts are all in one place. Navigate between tabs using the sidebar on the left.</string>
+
+    <string name="tour_step2_title">Your Profile</string>
+    <string name="tour_step2_body">Tap your avatar to see your profile details, toggle status, and access settings.</string>
+
+    <string name="tour_step3_title">Events &amp; Visits</string>
+    <string name="tour_step3_body">See who viewed your profile, liked your photo, or sent you a greeting — all in real time on the Events tab.</string>
+
+    <string name="tour_step4_title">Notification Settings</string>
+    <string name="tour_step4_body">Tap Settings in this profile sheet to customize your notification preferences (filtering by sex and contact types).</string>
+
+    <string name="tour_step5_title">Filter by Sex &amp; Contact Type 🔔</string>
+    <string name="tour_step5_body">In Notifications → By Sexes: choose which genders can notify you for each event type.\n\nIn Notifications → By Contact Types: get alerts only for your Favorites, Bookmarks, or Followed Users — per event type (Messages, Visits, Pokes, Favorites, Photos).</string>
+
+    <string name="tour_step6_title">Auto Ghost Mode 👻</string>
+    <string name="tour_step6_body">Go to Settings → Security &amp; Biometrics → Auto Appear Offline. Set a timer (5 min, 15 min, 30 min, or up to 12 hours). JALNotifier will automatically switch you to Ghost Mode after that period of inactivity — and restore your presence when you return.</string>
+
+    <string name="tour_step7_title">Quick Responses ⚡</string>
+    <string name="tour_step7_body">Create custom message templates in Settings under the Quick Responses section. When chatting, swipe a template to send it instantly or long-press to edit it, saving you time when replying on the go.</string>
+
+    <string name="tour_chat_title">Messages &amp; Chats</string>
+    <string name="tour_chat_body">View and respond to all your JALF messages in real time.</string>
+
+    <string name="tour_search_title">Unified Search</string>
+    <string name="tour_search_body">Find members easily using filters for age, location, status, and physical characteristics.</string>
+
+    <string name="tour_contacts_title">Favorites, Bookmarks &amp; Followed</string>
+    <string name="tour_contacts_body">Keep track of your Favorites, Bookmarks, and Followed contacts in one list.</string>
+
+    <string name="settings_reset_tour">Reset App Tour</string>
+    <string name="settings_reset_tour_desc">Replay the onboarding tour on next launch</string>
+    <string name="tour_reset_done">Tour will replay on next launch</string>
+    <string name="filter_events_direction_all">All</string>
+    <string name="filter_events_direction_incoming">Incoming</string>
+    <string name="filter_events_direction_outgoing">Outgoing</string>
+    <string name="filter_events_direction_title">Event Direction</string>
+    <string name="sent_poke_outgoing">Sent a greeting</string>
+    <string name="action_favorite">Favorite</string>
+    <string name="action_bookmark">Bookmark</string>
+    <string name="action_notify">Follow</string>
+
+    <string name="tour_ghost_title">Ghost Mode 👻</string>
+    <string name="tour_ghost_body">Toggle Appear Offline to browse JALF privately without showing your online presence.</string>
+    <string name="tour_receipts_title">Read Receipts 📨</string>
+    <string name="tour_receipts_body">Toggle whether other users can see when you have read their messages.</string>
+    <string name="tour_nsfw_title">Blur NSFW 🔞</string>
+    <string name="tour_nsfw_body">Instantly toggle the blur filter on/off for suggestive profile photos.</string>
+    <string name="tour_geo_title">Geolocation 📍</string>
+    <string name="tour_geo_body">Toggle sharing your current location to update search result distances.</string>
+    <string name="tour_logout_title">Logout 🚪</string>
+    <string name="tour_logout_body">Tap here to sign out of your JALF account safely.</string>
+
+    <string name="settings_ai_unlock_steps">You are now %1$d steps away from unlocking AI settings.</string>
+    <string name="settings_ai_unlocked">AI Settings unlocked! 🚀</string>
+    <string name="settings_ai_already_unlocked">AI settings are already unlocked.</string>
+
+    <string name="widget_title">JALF Contacts</string>
+    <string name="widget_updating">Updating…</string>
+    <string name="widget_updated_time">Updated: %1$s</string>
+    <string name="widget_empty_text">No contacts online</string>
+    <string name="widget_not_logged_in">Please log in to JALF</string>
+
+    <string name="permissions_title">Permissions Setup</string>
+    <string name="permissions_subtitle">Enable these permissions to ensure JalNotifier works correctly in the background.</string>
+    <string name="permissions_notif_title">Real-time Notifications 🔔</string>
+    <string name="permissions_notif_desc">Receive instant alerts for new messages, profile visits, and pokes from JALF members.</string>
+    <string name="permissions_loc_title">Distance &amp; Geolocation 📍</string>
+    <string name="permissions_loc_desc">Update your profile distance and refine local member searches relative to your location.</string>
+    <string name="permissions_battery_title">Unrestricted Background 🔋</string>
+    <string name="permissions_battery_desc">Ignore battery optimization to keep background sync and real-time connections active when the app is minimized.</string>
+    <string name="permissions_btn_grant">Grant</string>
+    <string name="permissions_btn_granted">Granted ✓</string>
+    <string name="permissions_btn_continue">Continue</string>
+
+    <!-- Widget Settings Strings -->
+    <string name="settings_widget_title">Widget Settings</string>
+    <string name="settings_widget_desc">Customize background refresh and contact filters</string>
+    <string name="settings_widget_refresh_title">Auto-Refresh Interval</string>
+    <string name="settings_widget_refresh_desc">Choose how often the widget updates in the background.</string>
+    <string name="settings_widget_refresh_manual">Manual Only</string>
+    <string name="settings_widget_refresh_15m">15 Minutes</string>
+    <string name="settings_widget_refresh_30m">30 Minutes</string>
+    <string name="settings_widget_refresh_1h">1 Hour</string>
+    <string name="settings_widget_refresh_2h">2 Hours</string>
+    <string name="settings_widget_filter_online_title">Show Online Only</string>
+    <string name="settings_widget_filter_groups_title">Contact Groups to Show</string>
+    <string name="settings_widget_filter_sex_title">Show Genders</string>
+    <string name="settings_widget_filter_all">All</string>
+    <string name="settings_widget_sort_title">Sort Order</string>
+    <string name="settings_widget_sort_desc">Choose the order of contacts displayed in the widget.</string>
+</resources>

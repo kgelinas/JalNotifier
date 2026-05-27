@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="?attr/colorSurface"
+    android:padding="16dp">
+
+    <!-- Bottom Sheet handle pill -->
+    <View
+        android:layout_width="32dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/circle_background"
+        android:backgroundTint="?attr/colorOnSurfaceVariant"
+        android:alpha="0.4" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Photo"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Simple dropdown for Albums. A better approach is often a horizontal RecyclerView of chips, but Spinner works well for Android. Alternatively, we can use an Exposed Dropdown Menu if we want modern Material 3, but Spinner is simpler inside a bottom sheet for now. Let's use Material Exposed Dropdown. -->
+
+    <com.google.android.material.textfield.TextInputLayout
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Album"
+        android:layout_marginBottom="16dp">
+
+        <AutoCompleteTextView
+            android:id="@+id/spinner_albums"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="none"
+            tools:text="Album public" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Loading Indicator -->
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/progress_photos"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_margin="32dp"
+        android:indeterminate="true"
+        android:visibility="gone" />
+
+    <!-- Grid for photos -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recycler_picker_photos"
+        android:layout_width="match_parent"
+        android:layout_height="450dp"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        android:nestedScrollingEnabled="true" />
+
+</LinearLayout>

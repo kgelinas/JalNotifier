@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Chats View -->
+    <LinearLayout
+        android:id="@+id/chats_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout_chats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:tabGravity="fill"
+            app:tabMode="fixed"
+            app:tabIndicatorColor="@color/tab_selected_color"
+            app:tabSelectedTextColor="@color/tab_selected_color"
+            app:tabTextColor="#808080" />
+
+        <!-- Compact Filter Bar -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_status_filter_chats"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_chats_status_all"
+
+                    app:chipIcon="@drawable/ic_bookmark"
+                    android:layout_marginEnd="8dp"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_online_filter_chats"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_online"
+
+                    app:chipIcon="@drawable/ic_online_24"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_sex_filter_chats"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_sex"
+
+                    app:chipIcon="@drawable/ic_sex_filter_24" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_chats"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </LinearLayout>
+
+    <!-- Favorites View -->
+    <LinearLayout
+        android:id="@+id/favorites_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_contact_filter"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_contact_all"
+
+                    app:chipIcon="@drawable/ic_bookmark"
+                    android:layout_marginEnd="8dp"/>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="24dp"
+                    android:background="#40808080"
+                    android:layout_marginEnd="8dp"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_sex_filter_favorites"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_sex"
+
+                    app:chipIcon="@drawable/ic_sex_filter_24"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_online_filter_favorites"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_online"
+                    app:chipIcon="@drawable/ic_online_24"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_sort_favorites"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sort_favorites_default"
+                    app:chipIcon="@drawable/ic_sort_24" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh_favorites"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_favorites"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </LinearLayout>
+
+    <!-- Events View -->
+    <LinearLayout
+        android:id="@+id/events_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none">
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="8dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_direction_filter_events"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_events_direction_incoming"
+                    app:chipIcon="@drawable/ic_sort_24"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_sex_filter_events"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_sex"
+
+                    app:chipIcon="@drawable/ic_sex_filter_24"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/btn_online_filter_events"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/filter_online"
+                    app:chipIcon="@drawable/ic_online_24" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh_events"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_events"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="16dp" />
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </LinearLayout>
+
+    <!-- Search View -->
+    <LinearLayout
+        android:id="@+id/search_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Unified Search Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="16dp"
+            android:gravity="center_vertical"
+            android:background="?attr/colorSurface">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/search"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:id="@+id/container_switch_advanced"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <ImageView
+                    android:id="@+id/img_vip_lock"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_lock_24"
+                    app:tint="?attr/colorError"
+                    android:visibility="gone" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switch_advanced_search"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/tab_advanced_search"
+                    android:checked="false" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <include
+            android:id="@+id/include_unified_search"
+            layout="@layout/view_unified_search"
+            android:visibility="visible" />
+    </LinearLayout>
+
+</merge>
+

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/bg_widget"
+    android:padding="12dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="8dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/widget_title"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/widget_last_updated"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/widget_title"
+            android:text="@string/widget_updating"
+            android:textSize="11sp"
+            android:textColor="#B0A8B9"
+            android:layout_marginTop="2dp" />
+
+        <ImageButton
+            android:id="@+id/btn_widget_settings"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_toStartOf="@id/btn_widget_refresh"
+            android:layout_centerVertical="true"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_settings_24"
+            android:contentDescription="@string/settings_widget_title"
+            android:tint="#FFFFFF"
+            android:padding="6dp"
+            android:scaleType="fitCenter"
+            android:layout_marginEnd="8dp" />
+
+        <ImageButton
+            android:id="@+id/btn_widget_refresh"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_refresh_24"
+            android:contentDescription="@string/settings_reset_tour"
+            android:tint="#FFFFFF"
+            android:padding="6dp"
+            android:scaleType="fitCenter" />
+    </RelativeLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#2C2738"
+        android:layout_marginBottom="6dp" />
+
+    <!-- FrameLayout for List & Empty View -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- List View -->
+        <ListView
+            android:id="@+id/widget_contacts_list"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="0dp" />
+
+        <!-- Empty View -->
+        <TextView
+            android:id="@+id/widget_contacts_empty"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="@string/widget_empty_text"
+            android:textSize="14sp"
+            android:textColor="#B0A8B9"
+            android:visibility="gone" />
+    </FrameLayout>
+
+</LinearLayout>

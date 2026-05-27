@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="4dp"
+    app:cardElevation="0dp"
+    app:cardCornerRadius="12dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="82dp"
+        android:orientation="horizontal"
+        android:baselineAligned="false">
+
+        <CheckBox
+            android:id="@+id/chat_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <!-- Left Tone: Avatar Section -->
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceVariant"
+            android:padding="12dp">
+
+            <FrameLayout
+                android:id="@+id/chat_avatar_container"
+                android:layout_width="58dp"
+                android:layout_height="58dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/chat_avatar"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:background="@drawable/circle_black_bg"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+                    tools:src="@mipmap/ic_launcher" />
+
+                <View
+                    android:id="@+id/chat_online_indicator"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_gravity="top|end"
+                    android:background="@drawable/online_dot"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <FrameLayout
+                    android:id="@+id/chat_sex_icon_container"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="bottom|end"
+                    android:background="@drawable/circle_background"
+                    android:padding="2dp"
+                    android:elevation="4dp">
+                    <ImageView
+                        android:id="@+id/chat_sex_icon"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_gravity="center"
+                        android:scaleType="centerInside" />
+                </FrameLayout>
+            </FrameLayout>
+        </FrameLayout>
+
+        <!-- Right Tone: Text Section -->
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?attr/colorSurface"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/chat_unread_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="18dp"
+                android:minHeight="18dp"
+                android:background="@drawable/unread_dot"
+                android:backgroundTint="?attr/colorPrimary"
+                android:gravity="center"
+                android:paddingHorizontal="4dp"
+                android:textColor="?attr/colorOnPrimary"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                tools:text="2"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/chat_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:textAppearance="?attr/textAppearanceBodyLarge"
+                android:textStyle="bold"
+                app:layout_constraintBottom_toTopOf="@id/chat_message"
+                app:layout_constraintEnd_toStartOf="@id/chat_time"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintVertical_chainStyle="packed"
+                tools:text="Cocktailrouge" />
+
+            <TextView
+                android:id="@+id/chat_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
+                android:textColor="?android:attr/textColorSecondary"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/chat_name"
+                app:layout_constraintBottom_toBottomOf="@id/chat_name"
+                app:layout_constraintStart_toEndOf="@id/chat_name"
+                app:layout_constraintHorizontal_bias="1.0"
+                tools:text="2h ago" />
+
+            <ImageView
+                android:id="@+id/chat_ephemeral_icon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_lock_24"
+                android:visibility="gone"
+                app:tint="?attr/colorSecondary"
+                app:layout_constraintEnd_toStartOf="@id/chat_time"
+                app:layout_constraintTop_toTopOf="@id/chat_time"
+                app:layout_constraintBottom_toBottomOf="@id/chat_time"
+                tools:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/chat_read_indicator"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginTop="4dp"
+                android:src="@drawable/ic_read_receipt"
+                android:alpha="1.0"
+                app:tint="?attr/colorSecondary"
+                android:visibility="gone"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/chat_time"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/chat_message"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?android:attr/textColorSecondary"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/chat_unread_count"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/chat_name"
+                app:layout_goneMarginEnd="0dp"
+                tools:text="Bonsoir 😊\nVotre profil est pas mal aussi..." />
+
+            <ImageView
+                android:id="@+id/chat_pin_icon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/ic_pin"
+                android:visibility="gone"
+                app:tint="?attr/colorSecondary"
+                app:layout_constraintEnd_toStartOf="@id/chat_time"
+                app:layout_constraintTop_toTopOf="@id/chat_time"
+                app:layout_constraintBottom_toBottomOf="@id/chat_time"
+                tools:visibility="visible" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -1,0 +1,523 @@
+<resources>
+    <string name="tab_actives">Actives</string>
+    <string name="tab_new">Nouvelles</string>
+    <string name="tab_archived">Archivées</string>
+    <string name="app_locked">Application Verrouillée</string>
+    <string name="auth_required_to_unlock">Authentification requise pour continuer</string>
+    <string name="action_unlock">Déverrouiller</string>
+    <string name="filter_online">En ligne</string>
+    <string name="filter_sex">Sexe</string>
+    <string name="filter_contact_all">Contact: Tous</string>
+    <string name="recent_activity">Activité récente</string>
+    <string name="no_recent_activity">Aucune activité récente.</string>
+    <string name="send_greeting">Envoyer une salutation</string>
+    <string name="show_more_messages">Afficher plus de messages</string>
+
+    <string name="app_name">JALNotifier</string>
+    <string name="navigation_drawer_open">Ouvrir le tiroir de navigation</string>
+    <string name="navigation_drawer_close">Fermer le tiroir de navigation</string>
+    <string name="photo_indicator_format">%1$d/%2$d</string>
+    <string name="profile_details_format">%1$s • %2$s • %3$s</string>
+    <string name="profile_details_format_no_city">%1$s • %2$s</string>
+    <string name="profile_details_format_no_gender">%1$s • %2$s</string>
+    <string name="profile_details_format_only_age">%1$s</string>
+    <string name="failed_to_load_profile">Échec du chargement du profil</string>
+    <string name="no_user_id_provided">Aucun ID utilisateur fourni</string>
+    <string name="added_to_bookmarks">Ajouté aux sauvegardes</string>
+    <string name="removed_from_bookmarks">Retiré des sauvegardes</string>
+    <string name="error_network">Erreur réseau, veuillez réessayer</string>
+    <string name="poke_sent_success">Salutation envoyée !</string>
+    <string name="error_server">Erreur serveur, veuillez réessayer</string>
+    <string name="tab_chats">Conversations</string>
+    <string name="profile_section_about">À propos</string>
+    <string name="profile_section_videos">Vidéos</string>
+    <string name="profile_section_interests">Objectifs &amp; Fantasmes</string>
+    <string name="action_login">Connexion</string>
+    <string name="login_title">Connexion</string>
+    <string name="hint_username">Nom d\'utilisateur</string>
+    <string name="hint_password">Mot de passe</string>
+    <string name="hint_message">Message</string>
+    <string name="content_description_attach_photo">Joindre une photo</string>
+    <string name="content_description_toggle_ephemeral">Basculer éphémère</string>
+    <string name="content_description_quick_responses">Réponses rapides</string>
+    <string name="online">En ligne</string>
+    <string name="offline">Hors ligne</string>
+    <string name="appear_offline">Paraître hors-ligne</string>
+
+    <string name="settings_cloud_sync">Sauvegarde</string>
+    <string name="btn_google_signin">Se connecter avec Google</string>
+    <string name="btn_google_signout">Déconnexion</string>
+    <string name="btn_backup">Sauvegarder</string>
+    <string name="btn_restore">Restaurer</string>
+    <string name="last_backup_format">Dernière sauvegarde : %1$s</string>
+    <string name="signed_in_as_format">Connecté en tant que : %1$s</string>
+    <string name="backup_success">Sauvegarde réussie !</string>
+    <string name="restore_success">Restauration réussie ! L\'application va redémarrer.</string>
+    <string name="sync_failed">Échec de la synchronisation : %1$s</string>
+    <string name="default_web_client_id" translatable="false">1027228694729-jk2teu15kqcv4qg5p2sb1imjmh7v2a09.apps.googleusercontent.com</string>
+
+    <string name="filter_chats_status_title">Filtrer par statut</string>
+    <string name="filter_chats_status_all">Status: Tous</string>
+    <string name="filter_chats_status_read">Status: Lus</string>
+    <string name="filter_chats_status_unread">Status: Non lus</string>
+    <string name="filter_chats_status_received">Status: Reçus</string>
+    <string name="filter_chats_status_delivered">Status: Délivrés</string>
+    <string name="profile_last_status">Dernier statut</string>
+    <string name="convo_other_suspended">Ce compte est temporairement suspendu</string>
+    <string name="settings_blur_nsfw">Flouter les photos NSFW</string>
+    <string name="settings_blur_nsfw_desc">Floute les photos suggestives par défaut pour plus de discrétion</string>
+    <string name="settings_auto_offline">Déconnexion automatique</string>
+    <string name="settings_auto_offline_desc">Définit votre statut comme hors ligne après une période d\'inactivité.</string>
+    <string name="auto_offline_disabled">Désactivé</string>
+    <string name="auto_offline_30m">30 minutes</string>
+    <string name="auto_offline_1h">1 heure</string>
+    <string name="auto_offline_2h">2 heures</string>
+    <string name="auto_offline_4h">4 heures</string>
+    <string name="auto_offline_8h">8 heures</string>
+    <string name="auto_offline_12h">12 heures</string>
+    <string name="settings_background_notifications">Notifications en arrière-plan</string>
+    <string name="settings_background_notifications_desc">Continuer à recevoir des notifications par intervalle même lorsque la session est inactive.</string>
+
+    <!-- Search -->
+    <string name="search_results">Résultats de recherche</string>
+    <string name="saved_searches">Recherches sauvegardées</string>
+    <string name="profile_searched">Profil recherché</string>
+    <string name="sex">Sexe</string>
+    <string name="desiring_to_meet">Désirant rencontrer</string>
+    <string name="orientation">Orientation</string>
+    <string name="relational_config">Configuration relationnelle</string>
+    <string name="goal_on_jalf">But sur JALF</string>
+    <string name="physical_criteria">Critères physiques</string>
+    <string name="characteristics">Caractéristiques</string>
+    <string name="age">Âge</string>
+    <string name="age_min">Âge min</string>
+    <string name="age_max">Âge max</string>
+    <string name="weight">Poids</string>
+    <string name="height">Grandeur</string>
+    <string name="ethnicity">Ethnie</string>
+    <string name="smoker">Fumeur</string>
+    <string name="zodiac_sign">Signe astrologique</string>
+    <string name="location_fantasies">Localisation &amp; Fantasmes</string>
+    <string name="my_position">Ma position</string>
+    <string name="country">Pays</string>
+    <string name="province_state">Province/État</string>
+    <string name="region">Région</string>
+    <string name="add_location">Ajouter localisation</string>
+    <string name="availability">Disponibilité</string>
+    <string name="fantasies">Fantasmes</string>
+    <string name="reset">Réinitialiser</string>
+    <string name="select_fantasies">Sélectionner des fantasmes</string>
+    <string name="no_fantasies_selected">Aucun fantasme sélectionné</string>
+    <string name="search_options">Options de recherche</string>
+    <string name="has_webcam">Possédant une Webcam</string>
+    <string name="desires_today">Désire baiser aujourd\'hui</string>
+    <string name="sort_by">Trier par</string>
+    <string name="last_visit_date">Date de dernière visite</string>
+    <string name="registration_date">Date d\'inscription</string>
+    <string name="same_fantasies">Mêmes fantasmes</string>
+    <string name="search">Chercher</string>
+    <string name="tab_simple_search">Simple</string>
+    <string name="tab_advanced_search">Avancée</string>
+    <string name="pseudo_optional">Pseudo (optionnel)</string>
+    <string name="location">Localisation</string>
+    <string name="has_photo">A une photo</string>
+    <string name="my_region">Ma région</string>
+
+    <!-- Notifications -->
+    <string name="someone">Quelqu\'un</string>
+    <string name="new_message">Nouveau message</string>
+    <string name="sent_notification">a envoyé une notification</string>
+    <string name="added_favorite">vous a ajouté en favori</string>
+    <string name="added_new_photo">a ajouté une nouvelle photo</string>
+    <string name="sent_poke">vous a salué</string>
+    <string name="would_recreate_photo">souhaiterait recréer ce qu\'il y a sur cette photo</string>
+    <string name="liked_photo">a aimé votre photo</string>
+    <string name="visited_profile">a visité votre profil</string>
+    <string name="visited_profile_outgoing">a visité son profil</string>
+    <string name="event_notifications">Notifications d\'événements</string>
+    <string name="new_event">Nouvel événement</string>
+    <string name="user_online_title">Utilisateur en ligne !</string>
+    <string name="user_online_message">%1$s est maintenant en ligne.</string>
+    <string name="chat_notifications">Notifications de chat</string>
+
+    <!-- Feedback & Errors -->
+    <string name="select_country_error">Sélectionnez au moins un pays</string>
+    <string name="select_country_first">Veuillez d\'abord sélectionner un pays</string>
+    <string name="location_already_added">Cette localisation est déjà ajoutée</string>
+    <string name="search_failed">Échec de la recherche</string>
+    <string name="no_results_found">Aucun résultat trouvé</string>
+    <string name="search_loaded">Recherche \'%1$s\' chargée</string>
+    <string name="location_permission_denied">Permission de localisation refusée</string>
+    <string name="cannot_get_location">Impossible d\'obtenir la position actuelle</string>
+    <string name="geocoding_failed">Géocodage échoué</string>
+
+    <string name="filter_contact">Contact : %1$s</string>
+    <string name="sex_filter_label">Sexe</string>
+    <string name="sex_filter_label_count">Sexe (%1$d)</string>
+    <string name="fantasies_selected_count">%1$d sélectionné(s) : %2$s</string>
+
+    <string name="filter_contact_type_title">Type de contact</string>
+    <string name="filter_contact_type_all">Tous</string>
+    <string name="filter_contact_type_contacts">Favoris</string>
+    <string name="filter_contact_type_notified">Suivis</string>
+    <string name="filter_contact_type_bookmarks">Sauvegardes</string>
+
+    <string name="read_receipts">Confirmation de lecture</string>
+    <string name="nsfw_blur">Flouter les photos NSFW</string>
+    <string name="geolocation">Géolocalisation</string>
+    <string name="settings">Paramètres</string>
+    <string name="logout">Déconnexion</string>
+
+    <string name="nav_chats">Conversations</string>
+    <string name="nav_events">Événements</string>
+    <string name="nav_search">Recherche</string>
+    <string name="nav_contacts">Contacts</string>
+    <string name="logout_confirm_title">Déconnexion</string>
+    <string name="save_search_title">Sauvegarder la recherche</string>
+    <string name="delete">Supprimer</string>
+    <string name="rename">Renommer</string>
+    <string name="items_selected">%1$d sélectionné(s)</string>
+    <string name="delete_conversations_title">Supprimer les conversations</string>
+
+    <string name="logout_message">Voulez-vous vraiment vous déconnecter ?</string>
+    <string name="delete_search_message">Supprimer la recherche \'%1$s\' ?</string>
+    <string name="delete_conversations_message">Voulez-vous vraiment supprimer %1$d conversation(s) ?</string>
+    <string name="cancel">Annuler</string>
+    <string name="save">Sauvegarder</string>
+    <string name="load">Charger</string>
+    <string name="search_name_hint">Nom de la recherche</string>
+
+
+    <string name="sex_all">Tous</string>
+    <string name="sex_male">Homme</string>
+    <string name="sex_female">Femme</string>
+    <string name="sex_couple">Couple</string>
+    <string name="sex_travesti">Travesti</string>
+    <string name="sex_trans">Trans</string>
+    <string name="sex_couple_f">Couple F</string>
+    <string name="sex_couple_h">Couple H</string>
+
+
+
+
+
+
+
+
+
+
+    <string name="biometric_login_title">Connexion biométrique</string>
+    <string name="biometric_login_desc">S\'authentifier pour se connecter en tant que %1$s</string>
+    <string name="login_input_required">Veuillez entrer le nom d\'utilisateur et le mot de passe.</string>
+    <string name="login_status_authenticating">Authentification...</string>
+    <string name="login_status_capturing">Capture de la session...</string>
+    <string name="login_status_discovering">Découverte de l\'ID utilisateur...</string>
+    <string name="login_failed_suid">Échec de la connexion : SUID manquant.</string>
+    <string name="login_failed_user_id">ID utilisateur non trouvé.</string>
+    <string name="login_failed_prefix">Échec de la connexion</string>
+    <string name="error_network_prefix">Erreur réseau</string>
+    <string name="profile_fetch_error">Erreur de récupération du profil</string>
+
+    <string name="typing_indicator_suffix"> (en train d\'écrire...)</string>
+    <string name="typing_indicator_full">%1$s est en train d\'écrire...</string>
+    <string name="error_blocked_by_user">L\'utilisateur vous a bloqué</string>
+    <string name="error_cannot_reply">Impossible de répondre</string>
+    <string name="error_convo_not_initialized">Conversation non initialisée</string>
+    <string name="hint_enter_message_queue">Entrez un message à mettre en file</string>
+    <string name="message_queued">Message mis en file pour quand l\'utilisateur sera en ligne</string>
+    <string name="failed_to_queue">Échec de la mise en file</string>
+    <string name="failed_to_send">Échec de l\'envoi</string>
+    <string name="error_sending">Erreur lors de l\'envoi</string>
+
+    <string name="status">Statut</string>
+    <string name="registered_since">Inscrit depuis</string>
+    <string name="last_connection">Dernière connexion</string>
+    <string name="alcohol">Alcool</string>
+    <string name="drugs">Drogue</string>
+    <string name="occupation">Occupation</string>
+    <string name="common_points">Points communs</string>
+    <string name="action_block">Bloquer l\'utilisateur</string>
+    <string name="action_unblock">Débloquer l\'utilisateur</string>
+    <string name="error_block_failed">Échec du blocage</string>
+    <string name="error_unblock_failed">Échec du déblocage</string>
+    <string name="user_blocked">Utilisateur bloqué</string>
+    <string name="user_unblocked">Utilisateur débloqué</string>
+    <string name="error_block_server">Erreur du serveur lors du blocage</string>
+    <string name="error_unblock_server">Erreur du serveur lors du déblocage</string>
+    <string name="rating_dressed">HABILLÉ</string>
+    <string name="rating_naked">NU OU PRESQUE</string>
+    <string name="rating_sexual">SEXUEL</string>
+    <string name="rating_bdsm_soft">BDSM-SOFT</string>
+    <string name="rating_trav_trans">TRAV-TRANS</string>
+    <string name="rating_private_only">PRIVÉ SEULEMENT</string>
+    <string name="rating_irrelevant">PAS-RAP</string>
+    <string name="rating_face_only">VISAGE SEULEMENT</string>
+    <string name="rating_msg_only">MSG SEULEMENT</string>
+    <string name="rating_forum_only">FORUM SEULEMENT</string>
+
+    <string name="settings_no_quick_responses">Aucune réponse rapide configurée.</string>
+    <string name="settings_qr_label_hint">Libellé court (ex: bonjour)</string>
+    <string name="settings_qr_msg_hint">Message complet (Utilisez {name} pour la variable)</string>
+    <string name="settings_add_qr_title">Ajouter une réponse rapide</string>
+    <string name="settings_edit_qr_title">Modifier la réponse rapide</string>
+    <string name="add">Ajouter</string>
+    <string name="time_now">maintenant</string>
+    <string name="time_ago_m">il y a %1$dm</string>
+    <string name="time_ago_h">il y a %1$dh</string>
+    <string name="time_ago_d">il y a %1$dd</string>
+    <string name="time_yesterday">Hier %1$s</string>
+    <string name="hint_pending">En attente...</string>
+    <string name="profile_view_recent_activity">Voir l\'activité récente</string>
+    <string name="settings_security_biometrics">Sécurité et Biométrie</string>
+    <string name="settings_security_biometric_auth">Authentification Biométrique</string>
+    <string name="settings_security_biometric_login">Connexion Biométrique</string>
+    <string name="settings_security_biometric_login_desc">Permet de remplir vos identifiants et de vous connecter via biométrie au lancement de l\'écran de connexion.</string>
+    <string name="settings_security_app_lock">Verrouillage de l\'application</string>
+    <string name="settings_security_app_lock_desc">Verrouille l\'accès à l\'application tant que vous ne vous êtes pas authentifié.</string>
+    <string name="settings_auto_backup">Sauvegarde automatique</string>
+    <string name="settings_auto_backup_desc">Sauvegarde vos paramètres une fois par jour en arrière-plan.</string>
+    <string name="settings_imperial_units">Unités impériales</string>
+    <string name="settings_read_receipts">Confirmations de lecture</string>
+    <string name="settings_read_receipts_desc">Envoyer un accusé de lecture quand vous ouvrez une conversation</string>
+    <string name="settings_geolocation">Géolocalisation</string>
+    <string name="settings_geolocation_desc">Activer la géolocalisation sur JALF (synchronise votre position)</string>
+    <string name="settings_general_title">Paramètres généraux</string>
+    <string name="settings_category_title">Catégories</string>
+    <string name="settings_nav_notifications">Notifications</string>
+    <string name="settings_nav_intelligence">Configuration de l\'intelligence</string>
+    <string name="settings_nav_cloud">Sauvegarde</string>
+    <string name="settings_display_title">Affichage</string>
+    <string name="settings_imperial_units_desc">Afficher la taille en pieds et le poids en lbs</string>
+    <string name="settings_quick_responses_title">Réponses rapides</string>
+    <string name="settings_add_quick_response">Ajouter une réponse rapide</string>
+    <string name="profile_action_poke">Saluer</string>
+    <string name="profile_action_message">Message</string>
+    <string name="settings_security_confirm_access">Confirmer l\'accès</string>
+    <string name="settings_security_auth_reason">Veuillez vous authentifier pour activer la connexion biométrique</string>
+    <string name="settings_security_auth_enabled">Connexion biométrique activée</string>
+    <string name="settings_security_auth_failed">Authentification échouée</string>
+    <string name="settings_cloud_signin_failed">Échec de la connexion : %s</string>
+    <string name="settings_cloud_restore_title">Restaurer depuis Drive</string>
+    <string name="settings_cloud_restore_msg">Cela écrasera vos paramètres et recherches locaux. Continuer ?</string>
+    <string name="settings_cloud_last_backup">Dernière sauvegarde : %s</string>
+    <string name="settings_cloud_no_backup">Aucune sauvegarde précédente trouvée</string>
+
+    <!-- Exportation/importation locale JSON -->
+    <string name="backup_section_local">Fichier local</string>
+    <string name="backup_export_json">Exporter en JSON</string>
+    <string name="backup_export_json_desc">Enregistrer un fichier de sauvegarde à n\'importe quel emplacement sur votre appareil</string>
+    <string name="backup_import_json">Importer depuis JSON</string>
+    <string name="backup_import_json_desc">Restaurer les paramètres à partir d\'un fichier exporté précédemment</string>
+    <string name="backup_export_success">Sauvegarde exportée avec succès</string>
+    <string name="backup_export_failed">Échec de l\'exportation : %1$s</string>
+    <string name="backup_import_confirm_title">Restaurer depuis un fichier</string>
+    <string name="backup_import_confirm_msg">Cela écrasera vos paramètres actuels avec le contenu du fichier sélectionné. Continuer ?</string>
+    <string name="backup_import_success">Paramètres restaurés depuis le fichier</string>
+    <string name="backup_import_failed">Échec de l\'importation : %1$s</string>
+    <string name="backup_section_drive">Google Drive</string>
+    <string name="settings_intelligence_title">Options d\'intelligence</string>
+    <string name="settings_intelligence_api_config">Configuration de l\'API</string>
+    <string name="settings_intelligence_provider">Fournisseur d\'IA</string>
+    <string name="settings_intelligence_token">Jeton d\'accès à l\'API</string>
+    <string name="settings_intelligence_model">Modèle de langage</string>
+    <string name="settings_intelligence_props">Propriétés de l\'assistant</string>
+    <string name="settings_intelligence_lang">Langue de l\'assistant</string>
+    <string name="settings_intelligence_persona">Préférence personnelle / Persona</string>
+    <string name="settings_intelligence_expand">Agrandir l\'éditeur</string>
+    <string name="settings_notification_title">Notifications</string>
+    <string name="settings_notification_by_sex">Notifications par Sexe</string>
+    <string name="settings_notification_sex_header">Sexe</string>
+    <string name="sse_listening">Surveillance des événements en temps réel…</string>
+    <string name="sse_service_name">Service de Notification JALF</string>
+    <string name="sse_service_description">Maintient l\'application connectée à Jalf pour des notifications instantanées</string>
+    <string name="sse_status_connected">Connecté — réception des événements en temps réel</string>
+    <string name="sse_status_reconnecting">Reconnexion en cours…</string>
+    <string name="status_typing">est en train d\'écrire...</string>
+    <string name="event_visit_title">Visite de profil</string>
+    <string name="event_visit_message">a visité votre profil</string>
+    <string name="event_login_title">Connexion</string>
+    <string name="event_join_title">Inscription</string>
+    <string name="event_online_message">est en ligne</string>
+    <string name="event_join_message">vient de s\'inscrire</string>
+    <string name="online_notifications">Notifications de connexion</string>
+    <string name="reply_failed_prefix">Échec de l\'envoi : %1$s</string>
+    <string name="action_reply">Répondre</string>
+    <string name="action_mark_as_read">Marquer comme lu</string>
+    <string name="settings_language">Langue de l\'application</string>
+    <string name="gemini_status_introduction">Introduction IA...</string>
+    <string name="gemini_status_reply">Réponse IA...</string>
+    <string name="gemini_status_targeted">Génération de réponse ciblée...</string>
+    <string name="gemini_error_no_token">Veuillez d\'abord configurer un jeton de fournisseur d\'IA.</string>
+    <string name="gemini_error_api_failure">Échec de l\'API IA</string>
+    <string name="gemini_error_api_error">Erreur de l\'API IA</string>
+    <string name="gemini_error_blocked">Réponse IA bloquée ou échec de l\'analyse</string>
+    <string name="gemini_error_exception">Exception lors de l\'appel à l\'API IA</string>
+    <string name="gemini_menu_introduction">Introduction</string>
+    <string name="gemini_menu_reply">Répondre</string>
+    <string name="error_fetching_profile_ai">Échec de la récupération du profil pour l\'IA</string>
+    <string name="error_parsing_profile">Erreur lors de l\'analyse du profil</string>
+    <string name="error_fetching_profile">Erreur lors de la récupération du profil</string>
+    <string name="error_failed_to_send_photo">Échec de l\'envoi de la photo</string>
+    <string name="error_sending_photo_code">Erreur d\'envoi de la photo</string>
+    <string name="settings_quick_responses_none">Aucune réponse rapide configurée dans les paramètres</string>
+    <string name="quick_responses_title">Réponses rapides</string>
+    <string name="error_failed_to_archive">Échec de l\'archivage</string>
+    <string name="error_archive_code">Erreur d\'archivage</string>
+    <string name="status_archived">Archivé</string>
+    <string name="error_failed_to_delete">Échec de la suppression</string>
+    <string name="error_delete_code">Erreur de suppression</string>
+    <string name="status_deleted">Supprimé</string>
+    <string name="error_failed_to_start_convo">Échec du démarrage de la conversation</string>
+    <string name="error_starting_convo_code">Erreur de démarrage de la conversation</string>
+    <string name="error_fetching_video">Erreur lors de la récupération de la vidéo</string>
+    <string name="error_playing_video">Erreur lors de la lecture de la vidéo</string>
+    <string name="no_image_to_display">Aucune image à afficher</string>
+    <string name="failed_to_download_image">Échec du téléchargement de l\'image</string>
+    <string name="image_saved_to_gallery">Image enregistrée dans la galerie</string>
+    <string name="sync_never">Jamais</string>
+    <string name="sync_backup_success">Sauvegarde réussie !</string>
+    <string name="sync_backup_failed_prefix">Échec de la sauvegarde</string>
+    <string name="sync_restore_success">Restauration réussie !</string>
+    <string name="sync_restore_failed_prefix">Échec de la restauration</string>
+    <string name="vip_required_search">Cette fonctionnalité nécessite un compte VIP.</string>
+
+    <!-- User Status -->
+    <string name="profile_sheet_status_hint">Définir un statut...</string>
+    <string name="status_update_success">Statut mis à jour</string>
+    <string name="status_delete_success">Statut supprimé</string>
+    <string name="status_update_error">Échec de la mise à jour du statut</string>
+    <string name="status_delete_confirm_title">Supprimer le statut</string>
+    <string name="status_delete_confirm_msg">Voulez-vous vraiment supprimer votre statut ?</string>
+    <string name="status_edit_title">Modifier le statut</string>
+    <string name="settings_security_auto_privacy_title">Confidentialité automatique</string>
+    <string name="settings_security_auto_offline_title">Invisible automatique</string>
+    <string name="settings_security_auto_offline_desc">Bascule automatiquement sur Invisible (Mode Fantôme) sur le serveur après avoir quitté l\'application pour une durée définie. Revenir dans l\'application restaure automatiquement votre présence en ligne.</string>
+    <string name="settings_security_auto_offline_disabled">Désactivé</string>
+    <string name="settings_security_auto_offline_5m">5 minutes</string>
+    <string name="settings_security_auto_offline_15m">15 minutes</string>
+    <string name="settings_security_auto_offline_30m">30 minutes</string>
+    <string name="settings_security_auto_offline_hour">%1$d heure</string>
+    <string name="settings_security_auto_offline_hours">%1$d heures</string>
+    <string name="sort_favorites_default">Trier : Défaut</string>
+    <string name="sort_favorites_timedesc">Activité récente</string>
+    <string name="sort_favorites_timeasc">Inactif depuis longtemps</string>
+    <string name="vip_required_sort">Le tri par dernière connexion nécessite un compte VIP ou Pro.</string>
+    <string name="last_active_format">Activité : %1$s</string>
+    <string name="search_reset_success">Critères de recherche réinitialisés</string>
+    <string name="notif_type_messages">Messages</string>
+    <string name="notif_type_visits">Visites</string>
+    <string name="notif_type_pokes">Pokes &amp; Salutations</string>
+    <string name="notif_type_favorites">Ajouté aux favoris</string>
+    <string name="notif_type_photos">Photos &amp; Likes</string>
+    <string name="settings_notification_by_contact_type">Notification par types de contact</string>
+    <string name="filter_contact_type_others">Autres (Non-contacts)</string>
+
+    <!-- ─── Visite guidée ─────────────────────────────────────── -->
+    <string name="tour_skip">Passer</string>
+    <string name="tour_back">Retour</string>
+    <string name="tour_next">Suivant</string>
+    <string name="tour_done">Terminer</string>
+    <string name="tour_step_counter">Étape %1$d sur %2$d</string>
+
+    <string name="tour_notif_title">Un mot sur la notification persistante 🔔</string>
+    <string name="tour_notif_body">Vous remarquerez peut-être une notification dans votre barre de statut. Elle maintient la connexion en temps réel active pour que vous receviez messages, visites et événements instantanément — même lorsque l’appli est en arrière-plan.
+
+Sans elle, Android mettrait le service en veille et vous rateriez des notifications. Elle est discrète et silencieuse — elle ne vous alertera jamais.</string>
+
+    <string name="tour_step1_title">Bienvenue dans JALNotifier 👋</string>
+    <string name="tour_step1_body">Restez connecté à JALF — vos messages, événements et contacts sont tous au même endroit. Naviguez entre les onglets via la barre en bas.</string>
+    <string name="tour_step1_body_tablet">Restez connecté à JALF — vos messages, événements et contacts sont tous au même endroit. Naviguez entre les onglets via la barre latérale sur la gauche.</string>
+
+    <string name="tour_step2_title">Votre profil</string>
+    <string name="tour_step2_body">Appuyez sur votre avatar pour voir les détails de votre profil, changer de statut et accéder aux paramètres.</string>
+
+    <string name="tour_step3_title">Événements et visites</string>
+    <string name="tour_step3_body">Voyez qui a visité votre profil, aimé votre photo ou vous a envoyé une salutation — en temps réel dans l\'onglet Événements.</string>
+
+    <string name="tour_step4_title">Paramètres de notification</string>
+    <string name="tour_step4_body">Appuyez sur Paramètres dans cette fiche de profil pour personnaliser vos préférences de notification (filtrage par sexe et types de contact).</string>
+
+    <string name="tour_step5_title">Filtrer par sexe et type de contact 🔔</string>
+    <string name="tour_step5_body">Dans Notifications → Par sexe : choisissez quels genres peuvent vous notifier pour chaque type d\'événement.\n\nDans Notifications → Par types de contact : recevez des alertes uniquement pour vos Favoris, Sauvegardes ou Utilisateurs suivis — par type d\'événement (Messages, Visites, Pokes, Favoris, Photos).</string>
+
+    <string name="tour_step6_title">Mode Fantôme automatique 👻</string>
+    <string name="tour_step6_body">Allez dans Paramètres → Sécurité et biométrie → Apparaître hors ligne automatiquement. Définissez un minuteur (5 min, 15 min, 30 min ou jusqu\'à 12 heures). JALNotifier activera automatiquement le Mode Fantôme après cette période d\'inactivité — et restaurera votre présence à votre retour.</string>
+
+    <string name="tour_step7_title">Réponses rapides ⚡</string>
+    <string name="tour_step7_body">Créez des modèles de messages personnalisés dans les paramètres sous la section Réponses rapides. Lors d\'une discussion, balayez un modèle pour l\'envoyer instantanément ou appuyez longuement pour le modifier, ce qui vous fait gagner du temps lors de vos déplacements.</string>
+
+    <string name="tour_chat_title">Messages et discussions</string>
+    <string name="tour_chat_body">Consultez et répondez à tous vos messages JALF en temps réel.</string>
+
+    <string name="tour_search_title">Recherche unifiée</string>
+    <string name="tour_search_body">Trouvez facilement des membres grâce aux filtres d\'âge, de localisation, de statut et de caractéristiques physiques.</string>
+
+    <string name="tour_contacts_title">Favoris, Sauvegardes &amp; Suivis</string>
+    <string name="tour_contacts_body">Gardez une trace de vos Favoris, Sauvegardes et contacts Suivis dans une seule liste.</string>
+
+    <string name="settings_reset_tour">Réinitialiser la visite</string>
+    <string name="settings_reset_tour_desc">Rejouer la visite guidée au prochain lancement</string>
+    <string name="tour_reset_done">La visite sera rejouée au prochain lancement</string>
+    <string name="filter_events_direction_all">Tous</string>
+    <string name="filter_events_direction_incoming">Reçus</string>
+    <string name="filter_events_direction_outgoing">Envoyés</string>
+    <string name="filter_events_direction_title">Direction des événements</string>
+    <string name="sent_poke_outgoing">Salutation envoyée</string>
+    <string name="action_favorite">Favori</string>
+    <string name="action_bookmark">Sauvegarder</string>
+    <string name="action_notify">Suivre</string>
+
+    <string name="tour_ghost_title">Mode Fantôme 👻</string>
+    <string name="tour_ghost_body">Basculez sur Apparaître hors ligne pour naviguer sur JALF en privé sans afficher votre présence en ligne.</string>
+    <string name="tour_receipts_title">Accusés de réception 📨</string>
+    <string name="tour_receipts_body">Activez ou désactivez la possibilité pour les autres utilisateurs de voir quand vous avez lu leurs messages.</string>
+    <string name="tour_nsfw_title">Floutage NSFW 🔞</string>
+    <string name="tour_nsfw_body">Activez ou désactivez instantanément le filtre de floutage pour les photos de profil suggestives.</string>
+    <string name="tour_geo_title">Géolocalisation 📍</string>
+    <string name="tour_geo_body">Activez le partage de votre position actuelle pour mettre à jour les distances des résultats de recherche.</string>
+    <string name="tour_logout_title">Déconnexion 🚪</string>
+    <string name="tour_logout_body">Appuyez ici pour vous déconnecter de votre compte JALF en toute sécurité.</string>
+
+    <string name="settings_ai_unlock_steps">Vous êtes maintenant à %1$d étapes de déverrouiller les paramètres IA.</string>
+    <string name="settings_ai_unlocked">Paramètres IA déverrouillés ! 🚀</string>
+    <string name="settings_ai_already_unlocked">Les paramètres IA sont déjà déverrouillés.</string>
+
+    <string name="widget_title">Contacts JALF</string>
+    <string name="widget_updating">Mise à jour…</string>
+    <string name="widget_updated_time">Mis à jour : %1$s</string>
+    <string name="widget_empty_text">Aucun contact en ligne</string>
+    <string name="widget_not_logged_in">Veuillez vous connecter à JALF</string>
+
+    <string name="permissions_title">Configuration des permissions</string>
+    <string name="permissions_subtitle">Activez ces permissions pour assurer le bon fonctionnement de JalNotifier en arrière-plan.</string>
+    <string name="permissions_notif_title">Notifications en temps réel 🔔</string>
+    <string name="permissions_notif_desc">Recevez des alertes instantanées pour les nouveaux messages, les visites de profil et les salutations de membres JALF.</string>
+    <string name="permissions_loc_title">Distance &amp; Géolocalisation 📍</string>
+    <string name="permissions_loc_desc">Mettez à jour la distance de votre profil et affinez les recherches de membres locaux selon votre position.</string>
+    <string name="permissions_battery_title">Arrière-plan illimité 🔋</string>
+    <string name="permissions_battery_desc">Ignorez l\'optimisation de la batterie pour maintenir actives les connexions en arrière-plan lorsque l\'application est réduite.</string>
+    <string name="permissions_btn_grant">Autoriser</string>
+    <string name="permissions_btn_granted">Autorisé ✓</string>
+    <string name="permissions_btn_continue">Continuer</string>
+
+    <!-- Widget Settings Strings -->
+    <string name="settings_widget_title">Paramètres du Widget</string>
+    <string name="settings_widget_desc">Personnalisez la mise à jour et les filtres des contacts</string>
+    <string name="settings_widget_refresh_title">Intervalle de mise à jour</string>
+    <string name="settings_widget_refresh_desc">Choisissez la fréquence de mise à jour du widget en arrière-plan.</string>
+    <string name="settings_widget_refresh_manual">Manuel seulement</string>
+    <string name="settings_widget_refresh_15m">15 Minutes</string>
+    <string name="settings_widget_refresh_30m">30 Minutes</string>
+    <string name="settings_widget_refresh_1h">1 Heure</string>
+    <string name="settings_widget_refresh_2h">2 Heures</string>
+    <string name="settings_widget_filter_online_title">Afficher en ligne seulement</string>
+    <string name="settings_widget_filter_groups_title">Groupes de contacts à afficher</string>
+    <string name="settings_widget_filter_sex_title">Afficher les genres</string>
+    <string name="settings_widget_filter_all">Tous</string>
+    <string name="settings_widget_sort_title">Ordre de tri</string>
+    <string name="settings_widget_sort_desc">Choisissez l\'ordre d\'affichage des contacts dans le widget.</string>
+</resources>
+
+
+
+

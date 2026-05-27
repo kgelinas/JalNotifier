@@ -1,0 +1,624 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/unified_search_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scroll_view_unified"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Saved Searches (Moved to Top) -->
+            <TextView
+                android:id="@+id/tv_saved_searches_title_unified"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/saved_searches"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone" />
+            <HorizontalScrollView
+                android:id="@+id/scroll_saved_searches_unified"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                android:scrollbars="none">
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/cg_saved_searches_unified"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleLine="true"
+                    app:singleSelection="true"
+                    app:selectionRequired="false" />
+            </HorizontalScrollView>
+
+            <!-- Profile Searched Card (Always Visible) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/profile_searched"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Seek sex -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sex"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:layout_marginBottom="4dp" />
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/cg_seek_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        app:chipSpacingVertical="4dp"
+                        app:singleSelection="true" />
+
+                    <!-- Wanting to meet -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/desiring_to_meet"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:layout_marginBottom="4dp" />
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/cg_wanted_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        app:chipSpacingVertical="4dp"
+                        app:singleSelection="true" />
+
+                    <!-- Sexual orientation -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/orientation"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:layout_marginBottom="4dp" />
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/cg_orient_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        app:chipSpacingVertical="4dp"
+                        app:singleSelection="true" />
+
+                    <!-- Location (moved here, inside Profile Searched, always visible) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="12dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/location"
+                                android:textAppearance="?attr/textAppearanceTitleSmall"
+                                android:textStyle="bold" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_auto_locate_unified"
+                                style="@style/Widget.Material3.Button.TonalButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/my_position"
+                                app:icon="@drawable/ic_my_location_24" />
+                        </LinearLayout>
+
+                        <com.google.android.material.checkbox.MaterialCheckBox
+                            android:id="@+id/chk_my_region_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/my_region"
+                            android:layout_marginBottom="8dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_country_unified"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:hint="@string/country">
+                            <AutoCompleteTextView
+                                android:id="@+id/spinner_country_unified"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_province_unified"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:visibility="gone"
+                            android:hint="@string/province_state">
+                            <AutoCompleteTextView
+                                android:id="@+id/spinner_province_unified"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/til_region_unified"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:visibility="gone"
+                            android:hint="@string/region">
+                            <AutoCompleteTextView
+                                android:id="@+id/spinner_region_unified"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="none" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <!-- Multi-location support for Advanced -->
+                        <LinearLayout
+                            android:id="@+id/container_multi_location"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_add_location_unified"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/add_location"
+                                app:icon="@drawable/ic_bolt_24" />
+                            <com.google.android.material.chip.ChipGroup
+                                android:id="@+id/cg_selected_locations_unified"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                app:chipSpacingVertical="4dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Fantasies (moved here, toggled) -->
+                    <LinearLayout
+                        android:id="@+id/layout_fantasies_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="gone">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/fantasies"
+                                android:textAppearance="?attr/textAppearanceTitleSmall"
+                                android:textStyle="bold" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_clear_fantasies_unified"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:minWidth="0dp"
+                                android:minHeight="0dp"
+                                android:padding="4dp"
+                                android:text="@string/reset"
+                                android:visibility="gone" />
+                        </LinearLayout>
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pick_fantasies_unified"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/select_fantasies"
+                            app:icon="@drawable/ic_bolt_24" />
+                        <TextView
+                            android:id="@+id/tv_selected_fantasies_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/no_fantasies_selected"
+                            android:textAppearance="?attr/textAppearanceBodySmall"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <!-- Relational Configuration (moved here, toggled) -->
+                    <LinearLayout
+                        android:id="@+id/layout_relational_config_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp"
+                        android:visibility="gone">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/relational_config"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/cg_status_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:chipSpacingVertical="4dp"
+                            android:layout_marginBottom="12dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/goal_on_jalf"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/cg_relcher_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:chipSpacingVertical="4dp" />
+                    </LinearLayout>
+
+                    <!-- Username (Simple only but keeping in unified, always visible) -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_pseudo_unified"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:hint="@string/pseudo_optional">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_pseudo_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:imeOptions="actionSearch" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Availability (moved here, toggled) -->
+                    <LinearLayout
+                        android:id="@+id/layout_availability_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/availability"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/cg_avail_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Advanced Section (Toggled) -->
+            <LinearLayout
+                android:id="@+id/container_advanced_fields"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- Physical Criteria -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/physical_criteria"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Age -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="4dp">
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/age"
+                                android:textAppearance="?attr/textAppearanceTitleSmall"
+                                android:textStyle="bold" />
+                            <TextView
+                                android:id="@+id/tv_age_range_value_unified"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="?attr/textAppearanceBodyMedium"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:text="18 - 99" />
+                        </LinearLayout>
+                        <com.google.android.material.slider.RangeSlider
+                            android:id="@+id/slider_age_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="18"
+                            android:valueTo="99"
+                            android:stepSize="1.0"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Weight -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/weight"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="4dp" />
+                        <com.google.android.material.slider.RangeSlider
+                            android:id="@+id/slider_weight_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="0"
+                            android:valueTo="200"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Height -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/height"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="4dp" />
+                        <com.google.android.material.slider.RangeSlider
+                            android:id="@+id/slider_height_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:valueFrom="100"
+                            android:valueTo="250"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Ethnicity -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/ethnicity"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginTop="8dp"
+                            android:layout_marginBottom="8dp" />
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/cg_ethnic_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:chipSpacingVertical="4dp"
+                            app:singleSelection="true" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Characteristics -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="2dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/characteristics"
+                            android:textAppearance="?attr/textAppearanceTitleMedium"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Smoker -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/smoker"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/cg_smoker_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="12dp" />
+
+                        <!-- Zodiac Sign -->
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/zodiac_sign"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold"
+                            android:layout_marginBottom="8dp" />
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/cg_zodiac_unified"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <!-- Search Options -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/search_options"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/chk_online_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/filter_online" />
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/chk_photo_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/has_photo" />
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/chk_webcam_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/has_webcam" />
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/chk_speed_meeting_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/desires_today" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Sort By -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="2dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/sort_by"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="8dp" />
+                    <RadioGroup
+                        android:id="@+id/rg_orderby_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+                        <RadioButton
+                            android:id="@+id/rb_visit_unified"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/last_visit_date" />
+                        <RadioButton
+                            android:id="@+id/rb_reg_unified"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/registration_date" />
+                        <RadioButton
+                            android:id="@+id/rb_match_unified"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/same_fantasies" />
+                    </RadioGroup>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:elevation="8dp"
+        android:background="?attr/colorSurfaceVariant">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_reset_search_unified"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            app:icon="@drawable/ic_refresh_24"
+            app:iconGravity="textStart"
+            app:iconSize="24dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_save_search_unified"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            app:icon="@drawable/ic_save_24"
+            app:iconGravity="textStart"
+            app:iconSize="24dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_execute_unified"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:text="@string/search"
+            app:icon="@drawable/ic_search_24"
+            app:iconGravity="textStart"
+            android:textAppearance="?attr/textAppearanceTitleMedium" />
+    </LinearLayout>
+
+</LinearLayout>
