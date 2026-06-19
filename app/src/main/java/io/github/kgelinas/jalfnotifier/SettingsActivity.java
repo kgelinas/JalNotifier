@@ -87,6 +87,11 @@ public class SettingsActivity extends AppCompatActivity {
         boolean isAiUnlocked = AppPrefs.getInstance(this).getBoolean(ApiConstants.KEY_AI_UNLOCKED, false);
         binding.navIntelligence.setVisibility(isAiUnlocked ? View.VISIBLE : View.GONE);
 
+        try {
+            String currentVer = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            binding.tvSettingsVersion.setText("JALNotifier v" + currentVer);
+        } catch (Exception ignored) {}
+
         binding.tvSettingsVersion.setOnClickListener(v -> {
             boolean unlocked = AppPrefs.getInstance(this).getBoolean(ApiConstants.KEY_AI_UNLOCKED, false);
             if (unlocked) {
