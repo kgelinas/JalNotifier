@@ -516,4 +516,27 @@ Without it, Android would put the service to sleep and you would miss notificati
     <string name="settings_widget_filter_all">All</string>
     <string name="settings_widget_sort_title">Sort Order</string>
     <string name="settings_widget_sort_desc">Choose the order of contacts displayed in the widget.</string>
+
+    <!-- Update Strings -->
+    <string name="settings_check_updates">Check for Updates</string>
+    <string name="settings_check_updates_desc">Check if a new version is available on GitHub</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_available_title">Update Available</string>
+    <string name="update_available_message">A new version (%1$s) is available. Would you like to download and install it?</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_up_to_date">JALNotifier is up to date</string>
+    <string name="update_failed">Failed to check for updates: %1$s</string>
+    <string name="update_download_failed">Failed to download update: %1$s</string>
+    <string name="update_download_complete">Download complete. Starting installation…</string>
+    <string name="update_install_permission_title">Install Permission Required</string>
+    <string name="update_install_permission_message">To install the update, please enable the permission to install unknown apps for this application.</string>
+
+    <!-- Cleanup Conversations Strings -->
+    <string name="action_cleanup_threads">Clean up chats</string>
+    <string name="cleanup_scanning">Scanning conversations (%1$d/%2$d)…</string>
+    <string name="cleanup_dialog_title">Clean up chats</string>
+    <string name="cleanup_dialog_message">Select the conversation threads you want to delete (blocked or deleted users):</string>
+    <string name="cleanup_no_candidates">No blocked or deleted profile threads found.</string>
+    <string name="cleanup_purging">Purging conversations…</string>
+    <string name="cleanup_success">Successfully deleted %1$d conversation(s)</string>
 </resources>

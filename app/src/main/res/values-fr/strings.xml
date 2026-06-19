@@ -516,6 +516,29 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="settings_widget_filter_all">Tous</string>
     <string name="settings_widget_sort_title">Ordre de tri</string>
     <string name="settings_widget_sort_desc">Choisissez l\'ordre d\'affichage des contacts dans le widget.</string>
+
+    <!-- Update Strings -->
+    <string name="settings_check_updates">Rechercher des mises à jour</string>
+    <string name="settings_check_updates_desc">Vérifier si une nouvelle version est disponible sur GitHub</string>
+    <string name="update_checking">Recherche de mises à jour…</string>
+    <string name="update_available_title">Mise à jour disponible</string>
+    <string name="update_available_message">Une nouvelle version (%1$s) est disponible. Voulez-vous la télécharger et l\'installer ?</string>
+    <string name="update_downloading">Téléchargement de la mise à jour…</string>
+    <string name="update_up_to_date">JALNotifier est à jour</string>
+    <string name="update_failed">Échec de la recherche de mises à jour : %1$s</string>
+    <string name="update_download_failed">Échec du téléchargement de la mise à jour : %1$s</string>
+    <string name="update_download_complete">Téléchargement terminé. Lancement de l\'installation…</string>
+    <string name="update_install_permission_title">Autorisation requise</string>
+    <string name="update_install_permission_message">Pour installer la mise à jour, veuillez autoriser cette application à installer des applications de sources inconnues.</string>
+
+    <!-- Cleanup Conversations Strings -->
+    <string name="action_cleanup_threads">Nettoyer les conversations</string>
+    <string name="cleanup_scanning">Analyse des conversations (%1$d/%2$d)…</string>
+    <string name="cleanup_dialog_title">Nettoyer les conversations</string>
+    <string name="cleanup_dialog_message">Sélectionnez les conversations que vous souhaitez supprimer (utilisateurs bloqués ou supprimés) :</string>
+    <string name="cleanup_no_candidates">Aucune conversation avec des profils bloqués ou supprimés trouvée.</string>
+    <string name="cleanup_purging">Purge des conversations…</string>
+    <string name="cleanup_success">%1$d conversation(s) supprimée(s) avec succès</string>
 </resources>
 
 

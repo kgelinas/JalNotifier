@@ -56,7 +56,7 @@ Returns the full message history and metadata for a specific conversation thread
     "conversation_link": "/rest/users/USERID/conversations/CONVERSATIONID", // Canonical REST link to this conversation
     "ephemeral_mode": true, // If true, messages in this thread are automatically deleted after being read or after a timer
     "last_posted": "2024-04-20T12:00:00.000Z", // ISO timestamp of the most recent activity in the thread (message or system event)
-    "can_post": "yes", // "yes" if the user can send a reply, "no" otherwise
+    "can_post": "yes", // "yes" if the user can send a reply, or other values (e.g., "no", "deleted_user") indicating they cannot
     "messages_count": true, // (Unknown flag, usually true)
     "folder_link": "/rest/users/USERID/conversations/active", // REST link to the category this thread belongs to (active/new/archived)
     "read_until": "2024-04-20T11:50:00.000Z", // ISO timestamp indicating the last message YOU have read in this thread

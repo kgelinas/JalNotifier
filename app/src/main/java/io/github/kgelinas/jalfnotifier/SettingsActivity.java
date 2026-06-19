@@ -108,6 +108,9 @@ public class SettingsActivity extends AppCompatActivity {
         });
         binding.navCloud.setOnClickListener(v -> startActivity(new Intent(this, SettingsCloudActivity.class)));
         binding.navSecurity.setOnClickListener(v -> startActivity(new Intent(this, SettingsSecurityActivity.class)));
+        if (binding.navUpdates != null) {
+            binding.navUpdates.setOnClickListener(v -> UpdateManager.checkForUpdates(this, true));
+        }
 
         if (binding.navResetTour != null) {
             binding.navResetTour.setOnClickListener(v -> {

@@ -99,6 +99,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
+import android.widget.ProgressBar;
 
 import java.util.stream.Collectors;
 import java.util.function.Consumer;
@@ -723,6 +724,7 @@ public class MainActivity extends AppCompatActivity {
                 searchContainer.setVisibility(View.GONE);
                 fetchAllUnreadCounts();
                 refreshData();
+                invalidateOptionsMenu();
                 return true;
             } else if (id == R.id.nav_events) {
                 toolbar.setTitle(R.string.nav_events);
@@ -732,6 +734,7 @@ public class MainActivity extends AppCompatActivity {
                 favoritesContainer.setVisibility(View.GONE);
                 searchContainer.setVisibility(View.GONE);
                 fetchEvents();
+                invalidateOptionsMenu();
                 return true;
             } else if (id == R.id.nav_search) {
                 toolbar.setTitle(R.string.nav_search);
@@ -797,6 +800,7 @@ public class MainActivity extends AppCompatActivity {
         startPollingWorker();
         startLocationSyncWorker();
         fetchOwnProfile();
+        UpdateManager.checkForUpdates(this, false);
 
         getAppPrefs().getRaw()
                 .registerOnSharedPreferenceChangeListener(prefListener);
@@ -1076,6 +1080,9 @@ public class MainActivity extends AppCompatActivity {
                 .getBoolean(ApiConstants.KEY_BLUR_NSFW, true);
 
         runOnUiThread(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
             com.bumptech.glide.request.RequestOptions options = new com.bumptech.glide.request.RequestOptions()
                     .placeholder(R.drawable.ic_default_avatar)
                     .error(R.drawable.ic_default_avatar)
@@ -5147,6 +5154,10 @@ public class MainActivity extends AppCompatActivity {
             getMenuInflater().inflate(R.menu.menu_search, menu);
         } else {
             getMenuInflater().inflate(R.menu.main_menu, menu);
+            MenuItem cleanupItem = menu.findItem(R.id.action_cleanup_threads);
+            if (cleanupItem != null) {
+                cleanupItem.setVisible(bottomNav.getSelectedItemId() == R.id.nav_chats);
+            }
         }
         return true;
     }
@@ -5165,6 +5176,9 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_delete) {
             deleteSelected();
+            return true;
+        } else if (id == R.id.action_cleanup_threads) {
+            startConversationCleanup();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -5330,6 +5344,201 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 response.close();
+            }
+        });
+    }
+
+    private void startConversationCleanup() {
+        List<ChatAdapter.ChatItem> uniqueConversations = new ArrayList<>();
+        Set<String> links = new HashSet<>();
+        for (ChatAdapter.ChatItem item : allActiveItems) {
+            if (item.conversationLink != null && links.add(item.conversationLink)) {
+                uniqueConversations.add(item);
+            }
+        }
+        for (ChatAdapter.ChatItem item : allNewItems) {
+            if (item.conversationLink != null && links.add(item.conversationLink)) {
+                uniqueConversations.add(item);
+            }
+        }
+        for (ChatAdapter.ChatItem item : allArchivedItems) {
+            if (item.conversationLink != null && links.add(item.conversationLink)) {
+                uniqueConversations.add(item);
+            }
+        }
+
+        if (uniqueConversations.isEmpty()) {
+            Toast.makeText(this, R.string.cleanup_no_candidates, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        ProgressBar progressBar = new ProgressBar(this);
+        progressBar.setIndeterminate(true);
+        int padding = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, getResources().getDisplayMetrics()));
+        progressBar.setPadding(padding, padding, padding, padding);
+
+        AlertDialog scanDialog = new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.cleanup_dialog_title))
+                .setMessage(getString(R.string.cleanup_scanning, 0, uniqueConversations.size()))
+                .setView(progressBar)
+                .setCancelable(false)
+                .create();
+        scanDialog.show();
+
+        List<ChatAdapter.ChatItem> candidates = new ArrayList<>();
+        scanNext(0, uniqueConversations, candidates, scanDialog);
+    }
+
+    private void scanNext(final int index, final List<ChatAdapter.ChatItem> list, final List<ChatAdapter.ChatItem> candidates, final AlertDialog dialog) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (index >= list.size()) {
+            runOnUiThread(() -> {
+                dialog.dismiss();
+                showCleanupSelectionDialog(candidates);
+            });
+            return;
+        }
+
+        runOnUiThread(() -> dialog.setMessage(getString(R.string.cleanup_scanning, index + 1, list.size())));
+
+        ChatAdapter.ChatItem item = list.get(index);
+        SecurePrefs secure = SecurePrefs.get(this);
+        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        String suid = secure.getString(ApiConstants.KEY_SUID, "");
+
+        Request request = new Request.Builder()
+                .url(getAbsoluteUrl(item.conversationLink))
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                scanNext(index + 1, list, candidates, dialog);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try (Response r = response) {
+                    if (r.isSuccessful() && r.body() != null) {
+                        try {
+                            String body = NetworkUtils.responseToString(r);
+                            JSONObject json = new JSONObject(body);
+                            String canPost = json.optString("can_post", "yes");
+                            if (!"yes".equals(canPost)) {
+                                candidates.add(item);
+                            }
+                        } catch (Exception e) {
+                            Log.e("MainActivity", "Error parsing conversation details during cleanup scan", e);
+                        }
+                    }
+                }
+                scanNext(index + 1, list, candidates, dialog);
+            }
+        });
+    }
+
+    private void showCleanupSelectionDialog(final List<ChatAdapter.ChatItem> candidates) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (candidates.isEmpty()) {
+            Toast.makeText(this, R.string.cleanup_no_candidates, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final CharSequence[] names = new CharSequence[candidates.size()];
+        final boolean[] checked = new boolean[candidates.size()];
+        for (int i = 0; i < candidates.size(); i++) {
+            ChatAdapter.ChatItem item = candidates.get(i);
+            String name = item.name;
+            if (name == null || name.isEmpty()) {
+                name = getString(R.string.someone);
+            }
+            if (item.lastMessage != null && !item.lastMessage.isEmpty()) {
+                names[i] = name + " (" + item.lastMessage + ")";
+            } else {
+                names[i] = name;
+            }
+            checked[i] = true;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.cleanup_dialog_title)
+                .setMessage(R.string.cleanup_dialog_message)
+                .setMultiChoiceItems(names, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    List<ChatAdapter.ChatItem> toDelete = new ArrayList<>();
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i]) {
+                            toDelete.add(candidates.get(i));
+                        }
+                    }
+                    if (!toDelete.isEmpty()) {
+                        executeCleanupPurge(toDelete);
+                    }
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void executeCleanupPurge(final List<ChatAdapter.ChatItem> toDelete) {
+        ProgressBar progressBar = new ProgressBar(this);
+        progressBar.setIndeterminate(true);
+        int padding = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 24, getResources().getDisplayMetrics()));
+        progressBar.setPadding(padding, padding, padding, padding);
+
+        AlertDialog progressDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.cleanup_purging)
+                .setView(progressBar)
+                .setCancelable(false)
+                .create();
+        progressDialog.show();
+
+        deleteNext(0, toDelete, progressDialog);
+    }
+
+    private void deleteNext(final int index, final List<ChatAdapter.ChatItem> list, final AlertDialog progressDialog) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        if (index >= list.size()) {
+            runOnUiThread(() -> {
+                progressDialog.dismiss();
+                String msg = getString(R.string.cleanup_success, list.size());
+                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show();
+                refreshData();
+            });
+            return;
+        }
+
+        ChatAdapter.ChatItem item = list.get(index);
+        SecurePrefs secure = SecurePrefs.get(this);
+        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        String suid = secure.getString(ApiConstants.KEY_SUID, "");
+
+        Request request = new Request.Builder()
+                .url(getAbsoluteUrl(item.conversationLink))
+                .delete()
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                deleteNext(index + 1, list, progressDialog);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                response.close();
+                deleteNext(index + 1, list, progressDialog);
             }
         });
     }

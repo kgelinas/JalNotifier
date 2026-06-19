@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-    <!-- Redundant items removed to avoid duplicate icons on toolbar -->
+    <item
+        android:id="@+id/action_cleanup_threads"
+        android:title="@string/action_cleanup_threads"
+        app:showAsAction="never" />
 </menu>

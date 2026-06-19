@@ -773,6 +773,9 @@ public class ProfileFragment extends Fragment {
     }
 
     private void addPhotoItem(String url, String ratingLink) {
+        if (getContext() == null || !isAdded()) {
+            return;
+        }
         if (url == null || url.isEmpty())
             return;
 
@@ -817,6 +820,9 @@ public class ProfileFragment extends Fragment {
     }
 
     private String getRatingLabel(String ratingLink) {
+        if (getContext() == null || !isAdded()) {
+            return "";
+        }
         if (ratingLink == null)
             return "";
         if (ratingLink.endsWith("/1"))
@@ -1580,7 +1586,11 @@ public class ProfileFragment extends Fragment {
 
     private int[] resolveChipColors(int type) {
         android.util.TypedValue tv = new android.util.TypedValue();
-        android.content.res.Resources.Theme theme = requireContext().getTheme();
+        android.content.Context context = getContext();
+        if (context == null) {
+            return new int[]{0, 0};
+        }
+        android.content.res.Resources.Theme theme = context.getTheme();
         int bgAttr, fgAttr;
         if (type == CHIP_TYPE_FANTASY) {
             bgAttr = com.google.android.material.R.attr.colorPrimaryContainer;
