@@ -427,7 +427,7 @@ public class ProfileFragment extends Fragment {
     }
 
     private void populateStatus(JSONObject data) {
-        if (headerDetails == null || data == null)
+        if (getContext() == null || !isAdded() || headerDetails == null || data == null)
             return;
 
         boolean isOnline = data.optInt("online", 0) == 1 || data.optBoolean("is_online", false);
@@ -937,6 +937,8 @@ public class ProfileFragment extends Fragment {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 Log.e(TAG, "Network failure while fetching profile", e);
                 new Handler(Looper.getMainLooper()).post(() -> {
+                    if (getContext() == null || !isAdded())
+                        return;
                     if (progressBar != null)
                         progressBar.setVisibility(View.GONE);
                     if (contentLayout != null)
@@ -956,7 +958,11 @@ public class ProfileFragment extends Fragment {
                             // Save to cache
                             ProfileCacheManager.getInstance().putProfile(getContext(), userId, data);
 
-                            new Handler(Looper.getMainLooper()).post(() -> populateProfile(data));
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                if (getContext() == null || !isAdded())
+                                    return;
+                                populateProfile(data);
+                            });
                         } catch (JSONException e) {
                             Log.e(TAG, "Error parsing profile JSON", e);
                             handleRequestFinished();
@@ -972,6 +978,8 @@ public class ProfileFragment extends Fragment {
 
     private void handleRequestFinished() {
         new Handler(Looper.getMainLooper()).post(() -> {
+            if (getContext() == null || !isAdded())
+                return;
             if (progressBar != null)
                 progressBar.setVisibility(View.GONE);
             if (contentLayout != null)
@@ -1005,6 +1013,8 @@ public class ProfileFragment extends Fragment {
                         ProfileCacheManager.getInstance().updateStatus(getContext(), userId, online, lastConnected);
 
                         new Handler(Looper.getMainLooper()).post(() -> {
+                            if (getContext() == null || !isAdded())
+                                return;
                             // Update UI if still on this profile
                             JSONObject updated = ProfileCacheManager.getInstance().getProfile(userId);
                             if (updated != null)
@@ -1018,6 +1028,8 @@ public class ProfileFragment extends Fragment {
     }
 
     private void populateProfile(JSONObject data) {
+        if (getContext() == null || !isAdded() || data == null)
+            return;
         if (progressBar != null)
             progressBar.setVisibility(View.GONE);
         if (contentLayout != null)
@@ -1242,6 +1254,8 @@ public class ProfileFragment extends Fragment {
                             if (photos != null) {
                                 final JSONArray finalPhotos = photos;
                                 new Handler(Looper.getMainLooper()).post(() -> {
+                                    if (getContext() == null || !isAdded())
+                                        return;
                                     for (int i = 0; i < finalPhotos.length(); i++) {
                                         JSONObject p = finalPhotos.optJSONObject(i);
                                         String url = extractBestPhotoUrl(p);
@@ -1333,6 +1347,8 @@ public class ProfileFragment extends Fragment {
                             if (finalVideos != null) {
                                 final JSONArray videosArray = finalVideos;
                                 new Handler(Looper.getMainLooper()).post(() -> {
+                                    if (getContext() == null || !isAdded())
+                                        return;
                                     for (int i = 0; i < videosArray.length(); i++) {
                                         JSONObject v = videosArray.optJSONObject(i);
                                         if (v != null) {
@@ -1807,10 +1823,12 @@ public class ProfileFragment extends Fragment {
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                if (getContext() == null)
-                    return;
                 new Handler(Looper.getMainLooper())
-                        .post(() -> Toast.makeText(getContext(), R.string.error_fetching_video, Toast.LENGTH_SHORT).show());
+                        .post(() -> {
+                            if (getContext() == null || !isAdded())
+                                return;
+                            Toast.makeText(getContext(), R.string.error_fetching_video, Toast.LENGTH_SHORT).show();
+                        });
             }
 
             @Override
@@ -1819,12 +1837,17 @@ public class ProfileFragment extends Fragment {
                     if (r.isSuccessful() && r.body() != null) {
                         String mp4Url = extractMp4Url(NetworkUtils.responseToString(r));
                         if (mp4Url != null) {
-                            new Handler(Looper.getMainLooper()).post(() -> playVideo(mp4Url));
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                if (getContext() == null || !isAdded())
+                                    return;
+                                playVideo(mp4Url);
+                            });
                         } else {
-                            if (getContext() == null)
-                                return;
-                            new Handler(Looper.getMainLooper()).post(() -> Toast
-                                    .makeText(getContext(), "Could not extract video link", Toast.LENGTH_SHORT).show());
+                            new Handler(Looper.getMainLooper()).post(() -> {
+                                if (getContext() == null || !isAdded())
+                                    return;
+                                Toast.makeText(getContext(), "Could not extract video link", Toast.LENGTH_SHORT).show();
+                            });
                         }
                     }
                 } catch (Exception ignored) {
@@ -2167,6 +2190,8 @@ public class ProfileFragment extends Fragment {
             public void onUploadSuccess(JSONObject response) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        if (getContext() == null || !isAdded())
+                            return;
                         if (profileUploadProgress != null) {
                             profileUploadProgress.setVisibility(View.GONE);
                         }
@@ -2186,6 +2211,8 @@ public class ProfileFragment extends Fragment {
             public void onUploadFailure(String errorMessage) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        if (getContext() == null || !isAdded())
+                            return;
                         if (profileUploadProgress != null) {
                             profileUploadProgress.setVisibility(View.GONE);
                         }

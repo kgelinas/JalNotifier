@@ -51,6 +51,7 @@ public class ProfileCacheManager extends Object {
     }
 
     public synchronized void init(Context context) {
+        if (context == null) return;
         profileCache.clear();
         cachedNotifications = new JSONArray();
         cachedLookers = new JSONArray();
@@ -105,6 +106,7 @@ public class ProfileCacheManager extends Object {
     }
 
     public synchronized void save(Context context) {
+        if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         String userId = prefs.getString(ApiConstants.KEY_USER_ID, "");
@@ -142,6 +144,7 @@ public class ProfileCacheManager extends Object {
     }
 
     public synchronized void clear(Context context) {
+        if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE);
         String userId = prefs.getString(ApiConstants.KEY_USER_ID, "");
         String eventsKey = ApiConstants.KEY_CACHED_EVENTS + (userId.isEmpty() ? "" : "_" + userId);
@@ -231,6 +234,7 @@ public class ProfileCacheManager extends Object {
     }
 
     public synchronized void putProfile(Context context, String userId, JSONObject data) {
+        if (context == null) return;
         JSONObject cacheData = null;
         if (data != null) {
             try {
@@ -245,6 +249,7 @@ public class ProfileCacheManager extends Object {
     }
 
     public synchronized void putProfileField(Context context, String userId, String key, Object value) {
+        if (context == null) return;
         CachedProfile cached = profileCache.get(userId);
         if (cached != null) {
             try {
@@ -257,6 +262,7 @@ public class ProfileCacheManager extends Object {
     }
 
     public synchronized void updateStatus(Context context, String userId, int online, String lastConnected) {
+        if (context == null) return;
         CachedProfile cached = profileCache.get(userId);
         if (cached != null) {
             try {
@@ -278,6 +284,7 @@ public class ProfileCacheManager extends Object {
      * synchronous fetch.
      */
     public String getUserSexDescription(Context context, okhttp3.OkHttpClient client, String userLink) {
+        if (context == null) return "";
         if (userLink == null || userLink.isEmpty())
             return "";
 
@@ -315,6 +322,7 @@ public class ProfileCacheManager extends Object {
      * Resolves a username (pseudo) using cache or synchronous fetch.
      */
     public String resolveUsername(Context context, okhttp3.OkHttpClient client, String userLink) {
+        if (context == null) return null;
         if (userLink == null || userLink.isEmpty())
             return null;
 
@@ -334,6 +342,7 @@ public class ProfileCacheManager extends Object {
      * Helper to get profile from cache or fetch it synchronously if missing/stale.
      */
     public synchronized JSONObject getCachedOrFetchProfileSync(Context context, okhttp3.OkHttpClient client, String userLink) {
+        if (context == null) return null;
         String userId = extractUserIdFromLink(userLink);
         if (userId.isEmpty()) return null;
 
@@ -356,6 +365,7 @@ public class ProfileCacheManager extends Object {
     }
 
     private JSONObject fetchProfileSync(Context context, okhttp3.OkHttpClient client, String userLink, String userId) {
+        if (context == null) return null;
         SecurePrefs secure = SecurePrefs.get(context);
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
