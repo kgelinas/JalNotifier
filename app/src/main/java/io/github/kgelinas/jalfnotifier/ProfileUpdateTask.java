@@ -96,17 +96,26 @@ public class ProfileUpdateTask {
                                 handledUpdates.add(name);
                             }
                         } else {
-                            // Extract current value based on element type
+                            String tagName = input.tagName().toLowerCase();
                             String type = input.attr("type").toLowerCase();
+
                             if (type.equals("checkbox") || type.equals("radio")) {
                                 if (input.hasAttr("checked")) {
                                     params.add(new Param(name, input.attr("value")));
                                 }
-                            } else if (input.tagName().equals("select")) {
-                                Elements options = input.select("option[selected]");
-                                for (Element option : options) {
-                                    params.add(new Param(name, option.attr("value")));
+                            } else if (tagName.equals("select")) {
+                                Element selectedOpt = input.selectFirst("option[selected]");
+                                if (selectedOpt != null) {
+                                    params.add(new Param(name, selectedOpt.attr("value")));
+                                } else {
+                                    // Default to the first option if none are explicitly selected
+                                    Element firstOpt = input.selectFirst("option");
+                                    if (firstOpt != null) {
+                                        params.add(new Param(name, firstOpt.attr("value")));
+                                    }
                                 }
+                            } else if (tagName.equals("textarea")) {
+                                params.add(new Param(name, input.text()));
                             } else if (!type.equals("submit") && !type.equals("button")) {
                                 params.add(new Param(name, input.attr("value")));
                             }
