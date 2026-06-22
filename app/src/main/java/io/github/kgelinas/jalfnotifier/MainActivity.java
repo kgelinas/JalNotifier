@@ -796,6 +796,8 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+        checkAuthentication();
+
         startSseService();
         startPollingWorker();
         startLocationSyncWorker();
@@ -6161,5 +6163,89 @@ public class MainActivity extends AppCompatActivity {
     private int dpToPx(int dp) {
         float density = getResources().getDisplayMetrics().density;
         return Math.round((float) dp * density);
+    }
+
+    private void checkAuthentication() {
+        SecurePrefs secure = SecurePrefs.get(this);
+        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        String suid = secure.getString(ApiConstants.KEY_SUID, "");
+
+        Log.d(TAG, "checkAuthentication: Starting check. SUID present: " + !suid.isEmpty());
+
+        if (suid.isEmpty()) {
+            Log.d(TAG, "checkAuthentication: SUID is empty. Redirecting to login.");
+            redirectToLogin();
+            return;
+        }
+
+        Request req = new Request.Builder()
+                .url(ApiConstants.BASE_URL + "/ct/accueil")
+                .addHeader("Cookie", fullCookie)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(req).enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(@NonNull okhttp3.Call call, @NonNull IOException e) {
+                Log.e(TAG, "checkAuthentication: Network failure: " + e.getMessage(), e);
+            }
+
+            @Override
+            public void onResponse(@NonNull okhttp3.Call call, @NonNull okhttp3.Response response) throws IOException {
+                try (okhttp3.Response r = response) {
+                    String finalUrl = r.request().url().toString();
+                    int code = r.code();
+                    Log.d(TAG, "checkAuthentication: Received response. Code: " + code + ", Final URL: " + finalUrl);
+
+                    for (String name : r.headers().names()) {
+                        Log.d(TAG, "  Header: " + name + " = " + r.header(name));
+                    }
+
+                    boolean isLoggedOut = false;
+                    if (code == 401) {
+                        Log.d(TAG, "checkAuthentication: Detected 401 Unauthorized.");
+                        isLoggedOut = true;
+                    } else if (finalUrl.contains("/connect") || finalUrl.contains("/login")) {
+                        Log.d(TAG, "checkAuthentication: Final URL suggests login redirect.");
+                        isLoggedOut = true;
+                    } else {
+                        // Check if the response body contains login fields or is missing the user's home/rest path
+                        String body = r.peekBody(1024 * 50).string(); // Peak up to 50KB
+                        if (body.contains("name=\"Username\"") || body.contains("name=\"Password\"")) {
+                            Log.d(TAG, "checkAuthentication: Body contains login credentials form inputs.");
+                            isLoggedOut = true;
+                        } else if (!body.contains("/rest/users/") && !body.contains("RestApi")) {
+                            Log.d(TAG, "checkAuthentication: Body lacks user rest paths or api refs. Assuming not logged in.");
+                            isLoggedOut = true;
+                        }
+                    }
+
+                    if (isLoggedOut) {
+                        Log.w(TAG, "checkAuthentication: Session is invalid/expired. Triggering relogin flow.");
+                        runOnUiThread(() -> handleSessionExpired());
+                    } else {
+                        Log.d(TAG, "checkAuthentication: Session is active and valid.");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "checkAuthentication: Error during session check", e);
+                }
+            }
+        });
+    }
+
+    private void handleSessionExpired() {
+        Log.w(TAG, "handleSessionExpired: Clearing credentials and redirecting to LoginActivity.");
+        Toast.makeText(this, R.string.session_expired_toast, Toast.LENGTH_LONG).show();
+        SecurePrefs.get(this)
+                .putString(ApiConstants.KEY_SUID, "")
+                .putString(ApiConstants.KEY_FULL_COOKIE, "");
+        redirectToLogin();
+    }
+
+    private void redirectToLogin() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 }

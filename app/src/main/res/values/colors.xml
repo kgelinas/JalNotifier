@@ -62,4 +62,12 @@
     <color name="ic_launcher_background">#502b92</color>
     <color name="tab_selected_color">@color/md_theme_light_primary</color>
     <color name="certified_green">#2ECC71</color>
+
+    <!-- Gender Tint Colors (Light Mode) -->
+    <color name="gender_male">#E3F2FD</color>         <!-- Pale Blue -->
+    <color name="gender_female">#FCE4EC</color>       <!-- Pale Pink -->
+    <color name="gender_couple">#FFF59D</color>       <!-- Pale Gold / Yellow -->
+    <color name="gender_couple_male">#D1E8FF</color>  <!-- Lighter Blue -->
+    <color name="gender_couple_female">#F8BBD0</color><!-- Darker Pink -->
+    <color name="gender_trans">#F3E5F5</color>        <!-- Light Purple -->
 </resources>

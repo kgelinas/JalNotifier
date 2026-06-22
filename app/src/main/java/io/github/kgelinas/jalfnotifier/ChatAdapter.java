@@ -216,18 +216,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     .apply(options)
                     .into(chatHolder.avatarImage);
 
-            if (item.sexIconUrl != null && !item.sexIconUrl.isEmpty()) {
-                String sexIconUrl = item.sexIconUrl;
-                if (sexIconUrl.startsWith("/")) {
-                    sexIconUrl = ApiConstants.BASE_URL + sexIconUrl;
-                }
-                Glide.with(chatHolder.itemView.getContext())
-                        .load(sexIconUrl)
-                        .into(chatHolder.sexIcon);
-                chatHolder.sexIconContainer.setVisibility(View.VISIBLE);
-            } else {
-                chatHolder.sexIconContainer.setVisibility(View.GONE);
-            }
+            chatHolder.sexIconContainer.setVisibility(View.GONE);
+            GenderColorUtils.applyGenderTint(
+                    chatHolder.itemView.getContext(),
+                    (com.google.android.material.card.MaterialCardView) chatHolder.itemView,
+                    chatHolder.avatarSectionLayout,
+                    chatHolder.textSectionLayout,
+                    item.sexIconUrl
+            );
 
             // Click listener for chatting
             chatHolder.itemView.setOnClickListener(v -> {
@@ -301,6 +297,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         android.widget.CheckBox checkBox;
         ImageView pinIcon;
         ImageView ephemeralIcon;
+        View avatarSectionLayout;
+        View textSectionLayout;
 
         public ChatViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -316,6 +314,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             checkBox = itemView.findViewById(R.id.chat_checkbox);
             pinIcon = itemView.findViewById(R.id.chat_pin_icon);
             ephemeralIcon = itemView.findViewById(R.id.chat_ephemeral_icon);
+            avatarSectionLayout = itemView.findViewById(R.id.chat_avatar_section_layout);
+            textSectionLayout = itemView.findViewById(R.id.chat_text_section_layout);
         }
     }
 

@@ -21,6 +21,7 @@
 
         <!-- Left Tone: Avatar Section -->
         <FrameLayout
+            android:id="@+id/fav_avatar_section_layout"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:background="?attr/colorSurfaceVariant"
@@ -68,6 +69,7 @@
 
         <!-- Right Tone: Text Section -->
         <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/fav_text_section_layout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"

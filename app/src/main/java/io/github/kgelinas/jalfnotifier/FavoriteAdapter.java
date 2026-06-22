@@ -108,20 +108,14 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
             holder.avatarImage.setImageResource(R.drawable.ic_default_avatar);
         }
 
-        if (item.sexIconUrl != null && !item.sexIconUrl.isEmpty()) {
-            String sexIconUrl = item.sexIconUrl;
-            if (sexIconUrl.startsWith("/")) {
-                sexIconUrl = ApiConstants.BASE_URL + sexIconUrl;
-            }
-            if (sexIconUrl != null && !sexIconUrl.isEmpty()) {
-                Glide.with(holder.itemView.getContext())
-                        .load(sexIconUrl)
-                        .into(holder.sexIcon);
-            }
-            holder.sexIconContainer.setVisibility(View.VISIBLE);
-        } else {
-            holder.sexIconContainer.setVisibility(View.GONE);
-        }
+        holder.sexIconContainer.setVisibility(View.GONE);
+        GenderColorUtils.applyGenderTint(
+                holder.itemView.getContext(),
+                (com.google.android.material.card.MaterialCardView) holder.itemView,
+                holder.avatarSectionLayout,
+                holder.textSectionLayout,
+                item.sexIconUrl
+        );
 
         holder.onlineIndicator.setVisibility(item.isOnline ? View.VISIBLE : View.GONE);
 
@@ -165,6 +159,8 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
         ImageView badgeBell;
         ImageView badgeBookmark;
         ImageView badgeCertified;
+        View avatarSectionLayout;
+        View textSectionLayout;
 
         public FavoriteViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -179,6 +175,8 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
             badgeBell = itemView.findViewById(R.id.fav_badge_bell);
             badgeBookmark = itemView.findViewById(R.id.fav_badge_bookmark);
             badgeCertified = itemView.findViewById(R.id.fav_badge_certified);
+            avatarSectionLayout = itemView.findViewById(R.id.fav_avatar_section_layout);
+            textSectionLayout = itemView.findViewById(R.id.fav_text_section_layout);
         }
     }
 }

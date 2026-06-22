@@ -204,18 +204,16 @@ public class SearchAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
                 .apply(options)
                 .into(vh.avatarImage);
 
-        if (item.sexIconUrl != null && !item.sexIconUrl.isEmpty()) {
-            String sexIconUrl = item.sexIconUrl;
-            if (sexIconUrl.startsWith("/")) {
-                sexIconUrl = ApiConstants.BASE_URL + sexIconUrl;
-            }
-            Glide.with(vh.itemView.getContext())
-                    .load(sexIconUrl)
-                    .into(vh.sexIcon);
-            vh.sexIcon.setVisibility(View.VISIBLE);
-        } else {
-            vh.sexIcon.setVisibility(View.GONE);
+        if (vh.sexIconContainer != null) {
+            vh.sexIconContainer.setVisibility(View.GONE);
         }
+        GenderColorUtils.applyGenderTint(
+                vh.itemView.getContext(),
+                (com.google.android.material.card.MaterialCardView) vh.itemView,
+                vh.avatarSectionLayout,
+                vh.textSectionLayout,
+                item.sexIconUrl
+        );
 
         // Render privileges
         vh.privilegesContainer.removeAllViews();
@@ -260,21 +258,27 @@ public class SearchAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder>
     static class SearchViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
         ImageView sexIcon;
+        View sexIconContainer;
         View onlineIndicator;
         TextView nameText;
         TextView detailsText;
         LinearLayout privilegesContainer;
         ImageView badgeCertified;
+        View avatarSectionLayout;
+        View textSectionLayout;
 
         public SearchViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImage = itemView.findViewById(R.id.fav_avatar);
             sexIcon = itemView.findViewById(R.id.fav_sex_icon);
+            sexIconContainer = itemView.findViewById(R.id.fav_sex_icon_container);
             onlineIndicator = itemView.findViewById(R.id.fav_online_indicator);
             nameText = itemView.findViewById(R.id.fav_name);
             detailsText = itemView.findViewById(R.id.fav_details);
             privilegesContainer = itemView.findViewById(R.id.fav_privileges);
             badgeCertified = itemView.findViewById(R.id.fav_badge_certified);
+            avatarSectionLayout = itemView.findViewById(R.id.fav_avatar_section_layout);
+            textSectionLayout = itemView.findViewById(R.id.fav_text_section_layout);
         }
     }
 

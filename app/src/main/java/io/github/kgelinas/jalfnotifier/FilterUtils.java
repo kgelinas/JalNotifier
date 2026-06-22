@@ -52,10 +52,12 @@ public class FilterUtils {
         for (String label : activeLabels) {
             switch (label) {
                 case "Homme":
+                case "Male":
                     if (sexIconUrl.contains("_sex_1_") || sexIconUrl.endsWith("/1"))
                         return true;
                     break;
                 case "Femme":
+                case "Female":
                     if (sexIconUrl.contains("_sex_2_") || sexIconUrl.endsWith("/2"))
                         return true;
                     break;

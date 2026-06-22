@@ -539,6 +539,7 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="cleanup_no_candidates">Aucune conversation avec des profils bloqués ou supprimés trouvée.</string>
     <string name="cleanup_purging">Purge des conversations…</string>
     <string name="cleanup_success">%1$d conversation(s) supprimée(s) avec succès</string>
+    <string name="session_expired_toast">Session expirée. Veuillez vous reconnecter.</string>
 </resources>
 
 

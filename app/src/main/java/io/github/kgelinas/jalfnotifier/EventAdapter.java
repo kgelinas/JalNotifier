@@ -171,18 +171,14 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
             holder.avatarImage.setImageResource(R.drawable.ic_default_avatar);
         }
 
-        if (item.sexIconUrl != null && !item.sexIconUrl.isEmpty()) {
-            String sexIconUrl = item.sexIconUrl;
-            if (sexIconUrl.startsWith("/")) {
-                sexIconUrl = ApiConstants.BASE_URL + sexIconUrl;
-            }
-            Glide.with(holder.itemView.getContext())
-                    .load(sexIconUrl)
-                    .into(holder.sexIcon);
-            holder.sexIconContainer.setVisibility(View.VISIBLE);
-        } else {
-            holder.sexIconContainer.setVisibility(View.GONE);
-        }
+        holder.sexIconContainer.setVisibility(View.GONE);
+        GenderColorUtils.applyGenderTint(
+                holder.itemView.getContext(),
+                (com.google.android.material.card.MaterialCardView) holder.itemView,
+                holder.avatarSectionLayout,
+                holder.textSectionLayout,
+                item.sexIconUrl
+        );
 
         holder.onlineIndicator.setVisibility(item.isOnline ? View.VISIBLE : View.GONE);
 
@@ -232,6 +228,8 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         TextView bodyText;
         TextView timeText;
         View unreadDot;
+        View avatarSectionLayout;
+        View textSectionLayout;
 
         public EventViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -244,6 +242,8 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
             bodyText = itemView.findViewById(R.id.event_body);
             timeText = itemView.findViewById(R.id.event_time);
             unreadDot = itemView.findViewById(R.id.event_unread_dot);
+            avatarSectionLayout = itemView.findViewById(R.id.event_avatar_section_layout);
+            textSectionLayout = itemView.findViewById(R.id.event_text_section_layout);
         }
     }
 

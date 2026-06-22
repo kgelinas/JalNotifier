@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="tab_selected_color">@color/teal_200</color>
+
+    <!-- Gender Tint Colors (Dark Mode) -->
+    <color name="gender_male">#224566</color>         <!-- Lighter Dark Blue for Men -->
+    <color name="gender_female">#3E1E28</color>       <!-- Dark Pink -->
+    <color name="gender_couple">#4F3C07</color>       <!-- Dark Gold / Yellow -->
+    <color name="gender_couple_male">#102030</color>  <!-- Darker Blue for Couple -->
+    <color name="gender_couple_female">#5C253B</color><!-- Lighter Dark Pink -->
+    <color name="gender_trans">#2D1F38</color>        <!-- Dark Purple -->
 </resources>

@@ -539,4 +539,5 @@ Without it, Android would put the service to sleep and you would miss notificati
     <string name="cleanup_no_candidates">No blocked or deleted profile threads found.</string>
     <string name="cleanup_purging">Purging conversations…</string>
     <string name="cleanup_success">Successfully deleted %1$d conversation(s)</string>
+    <string name="session_expired_toast">Session expired. Please log in again.</string>
 </resources>

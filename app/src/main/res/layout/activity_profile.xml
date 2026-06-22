@@ -161,47 +161,23 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Card: Latest Activity Entry -->
+            <!-- Card 4: Details Grid -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_latest_activity"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="12dp"
-                android:clickable="true"
-                android:focusable="true"
-                app:rippleColor="?attr/colorControlHighlight">
+                android:layout_marginBottom="12dp">
                 
-                <LinearLayout
+                <GridLayout
+                    android:id="@+id/grid_details"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
+                    android:columnCount="2"
                     android:padding="16dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginEnd="16dp"
-                        android:src="@drawable/ic_bolt_24"
-                        app:tint="?attr/colorPrimary" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/profile_view_recent_activity"
-                        android:textAppearance="?attr/textAppearanceTitleMedium"
-                        android:textStyle="bold" />
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_search_24"
-                        android:rotation="90"
-                        app:tint="?android:attr/textColorSecondary" />
-                </LinearLayout>
+                    
+                    <!-- Items added programmatically -->
+                </GridLayout>
             </com.google.android.material.card.MaterialCardView>
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_bio"
@@ -302,23 +278,47 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Card 4: Details Grid -->
+            <!-- Card: Latest Activity Entry -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_latest_activity"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="2dp"
-                android:layout_marginBottom="12dp">
+                android:layout_marginBottom="12dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:rippleColor="?attr/colorControlHighlight">
                 
-                <GridLayout
-                    android:id="@+id/grid_details"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:columnCount="2"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:padding="16dp">
-                    
-                    <!-- Items added programmatically -->
-                </GridLayout>
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_marginEnd="16dp"
+                        android:src="@drawable/ic_bolt_24"
+                        app:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/profile_view_recent_activity"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:textStyle="bold" />
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_search_24"
+                        android:rotation="90"
+                        app:tint="?android:attr/textColorSecondary" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
             
             <View
