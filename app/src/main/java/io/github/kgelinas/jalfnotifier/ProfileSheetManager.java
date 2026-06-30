@@ -229,16 +229,29 @@ public class ProfileSheetManager {
             
             // Immediately cancel any pending background auto-offline tasks
             androidx.work.WorkManager.getInstance(activity).cancelAllWorkByTag("AutoOfflineWork");
-            
-            // Update local state immediately
-            activity.setMyOnline(!newState);
-            activity.updateOnlineIndicator();
-            onlineIndicator.setVisibility(activity.isMyOnline() ? View.VISIBLE : View.GONE);
 
             java.util.Map<String, String> fields = new java.util.HashMap<>();
             fields.put("Visible", newState ? "no" : "yes");
             fields.put("save", "Enregistrer");
-            ProfileUpdateTask.updateProfileFields(activity, fields, null);
+            ProfileUpdateTask.updateProfileFields(activity, fields, new ProfileUpdateTask.UpdateCallback() {
+                @Override
+                public void onSuccess() {
+                    String expectedVisible = newState ? "no" : "yes";
+                    android.util.Log.w("GhostMode", "[GHOST] POST succeeded. Expected Visible=" + expectedVisible
+                            + ". Fetching status in 1.5s to verify...");
+                    // Wait briefly for the server to apply the change, then refresh indicator
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                            activity::fetchUserStatus, 1500);
+
+                    // Separately verify the Visible field was actually stored on the server
+                    verifyVisibleOnServer(activity, expectedVisible);
+                }
+
+                @Override
+                public void onFailure(String error) {
+                    android.util.Log.e("GhostMode", "[GHOST] POST failed: " + error);
+                }
+            });
         });
 
         // 2. Read Receipts
@@ -281,6 +294,68 @@ public class ProfileSheetManager {
             AppTourManager.getInstance().onProfileSheetShown();
         });
         bottomSheet.show();
+    }
+
+    /**
+     * Re-fetches the profile edit page after a ghost mode change and scrapes the
+     * Visible field to confirm the server actually applied the new value.
+     * Logs a warning if the server value doesn't match what we sent.
+     */
+    private static void verifyVisibleOnServer(MainActivity activity, String expectedVisible) {
+        SecurePrefs secure = SecurePrefs.get(activity);
+        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        if (fullCookie.isEmpty()) return;
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(ApiConstants.BASE_URL + ApiConstants.PATH_PROFILE_EDIT)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        JalfNotifierApplication.httpClient().newCall(request).enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(@androidx.annotation.NonNull okhttp3.Call call, @androidx.annotation.NonNull java.io.IOException e) {
+                android.util.Log.e(TAG, "[GHOST] verifyVisible fetch failed: " + e.getMessage());
+            }
+
+            @Override
+            public void onResponse(@androidx.annotation.NonNull okhttp3.Call call, @androidx.annotation.NonNull okhttp3.Response response) throws java.io.IOException {
+                try (okhttp3.Response r = response) {
+                    if (!r.isSuccessful() || r.body() == null) {
+                        android.util.Log.e(TAG, "[GHOST] verifyVisible HTTP error: " + r.code());
+                        return;
+                    }
+                    String html = NetworkUtils.responseToString(r);
+                    Document doc = Jsoup.parse(html);
+                    org.jsoup.select.Elements visibleEls = doc.select("[name=Visible]");
+                    if (visibleEls.isEmpty()) {
+                        android.util.Log.w(TAG, "[GHOST] verifyVisible: Element [name=Visible] not found in profile form at all.");
+                        return;
+                    }
+                    
+                    Element visibleEl = visibleEls.first();
+                    String actualVisible = "(unknown)";
+                    if (visibleEl.tagName().equals("select")) {
+                        Element selected = visibleEl.selectFirst("option[selected]");
+                        actualVisible = selected != null ? selected.attr("value") : "(none selected)";
+                    } else if (visibleEl.tagName().equals("input") && (visibleEl.attr("type").equals("radio") || visibleEl.attr("type").equals("checkbox"))) {
+                        Element checked = doc.selectFirst("input[name=Visible][checked]");
+                        actualVisible = checked != null ? checked.attr("value") : "(none checked)";
+                    } else {
+                        actualVisible = visibleEl.attr("value");
+                    }
+                    
+                    if (actualVisible.equals(expectedVisible)) {
+                        android.util.Log.d(TAG, "[GHOST] verifyVisible: Server confirmed Visible=" + actualVisible);
+                    } else {
+                        android.util.Log.w(TAG, "[GHOST] verifyVisible: MISMATCH! Expected Visible="
+                                + expectedVisible + " but server has Visible=" + actualVisible);
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e(TAG, "[GHOST] verifyVisible parse error: " + e.getMessage());
+                }
+            }
+        });
     }
 
     private static void updateStatusUi(TextView statusText, ImageButton statusDelete, String msg, String statusId) {

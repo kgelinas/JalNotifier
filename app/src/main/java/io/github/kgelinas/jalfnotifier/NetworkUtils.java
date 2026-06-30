@@ -46,7 +46,20 @@ public class NetworkUtils {
             try {
                 sb.append(URLEncoder.encode(param.name, "ISO-8859-1"));
                 sb.append("=");
-                sb.append(URLEncoder.encode(param.value != null ? param.value : "", "ISO-8859-1"));
+                
+                String val = param.value != null ? param.value : "";
+                StringBuilder encodedVal = new StringBuilder();
+                for (int i = 0; i < val.length(); i++) {
+                    int codePoint = val.codePointAt(i);
+                    if (codePoint > 255) {
+                        encodedVal.append("&#").append(codePoint).append(";");
+                        if (Character.isSupplementaryCodePoint(codePoint)) i++;
+                    } else {
+                        encodedVal.append((char) codePoint);
+                    }
+                }
+                
+                sb.append(URLEncoder.encode(encodedVal.toString(), "ISO-8859-1"));
             } catch (UnsupportedEncodingException e) {
                 sb.append(param.name).append("=").append(param.value);
             }

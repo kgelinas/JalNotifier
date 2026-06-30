@@ -2905,7 +2905,7 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private void fetchUserStatus() {
+    public void fetchUserStatus() {
         if (myUserId == null || myUserId.isEmpty())
             return;
 
@@ -2921,28 +2921,38 @@ public class MainActivity extends AppCompatActivity {
                 .addHeader("User-Agent", ApiConstants.USER_AGENT)
                 .build();
 
+        Log.d("GhostMode", "[STATUS] Fetching /rest/users/" + myUserId + "/status");
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e("GhostMode", "[STATUS] Fetch failed: " + e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (Response r = response) {
                     if (r.isSuccessful() && r.body() != null) {
+                        String raw = NetworkUtils.responseToString(r);
+                        Log.d("GhostMode", "[STATUS] Raw response: " + raw);
                         try {
-                            JSONObject status = new JSONObject(NetworkUtils.responseToString(r));
+                            JSONObject status = new JSONObject(raw);
                             boolean serverOnline = status.optInt("online", 0) == 1;
 
-                            // Local state check: if Appear Offline is enabled, we force local state to
-                            // offline
+                            // /status always returns online=1 while connected.
+                            // Visible=no (ghost mode) only hides us from others — it does NOT
+                            // change this field. Use local pref as the source of truth for the indicator.
                             SharedPreferences prefs = getAppPrefs().getRaw();
                             boolean appearOffline = prefs.getBoolean(ApiConstants.KEY_APPEAR_OFFLINE, false);
-
                             isMyOnline = serverOnline && !appearOffline;
+                            Log.w("GhostMode", "[STATUS] serverOnline=" + serverOnline
+                                    + " appearOffline=" + appearOffline
+                                    + " → indicator=" + isMyOnline);
                             runOnUiThread(() -> updateOnlineIndicator());
-                        } catch (Exception ignored) {
+                        } catch (Exception e) {
+                            Log.e("GhostMode", "[STATUS] JSON parse error: " + e.getMessage());
                         }
+                    } else {
+                        Log.e("GhostMode", "[STATUS] Unsuccessful response: " + r.code());
                     }
                 }
             }
