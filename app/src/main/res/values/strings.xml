@@ -479,6 +479,8 @@ Without it, Android would put the service to sleep and you would miss notificati
     <string name="tour_geo_body">Toggle sharing your current location to update search result distances.</string>
     <string name="tour_logout_title">Logout 🚪</string>
     <string name="tour_logout_body">Tap here to sign out of your JALF account safely.</string>
+    <string name="tour_cleanup_title">Clean Up Chats 🧹</string>
+    <string name="tour_cleanup_body">Remove conversations with deleted profiles and blocked users to keep your inbox organized.</string>
 
     <string name="settings_ai_unlock_steps">You are now %1$d steps away from unlocking AI settings.</string>
     <string name="settings_ai_unlocked">AI Settings unlocked! 🚀</string>

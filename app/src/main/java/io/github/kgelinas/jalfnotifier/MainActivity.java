@@ -844,6 +844,11 @@ public class MainActivity extends AppCompatActivity {
         if (intent == null)
             return;
 
+        if ("CLEANUP_CHATS".equals(intent.getAction())) {
+            startConversationCleanup();
+            return;
+        }
+
         if (intent.hasExtra(ApiConstants.EXTRA_CONVERSATION_LINK)) {
             String link = intent.getStringExtra(ApiConstants.EXTRA_CONVERSATION_LINK);
             String userId = intent.getStringExtra(ApiConstants.EXTRA_OTHER_USER_ID);
@@ -5185,10 +5190,6 @@ public class MainActivity extends AppCompatActivity {
             getMenuInflater().inflate(R.menu.menu_search, menu);
         } else {
             getMenuInflater().inflate(R.menu.main_menu, menu);
-            MenuItem cleanupItem = menu.findItem(R.id.action_cleanup_threads);
-            if (cleanupItem != null) {
-                cleanupItem.setVisible(bottomNav.getSelectedItemId() == R.id.nav_chats);
-            }
         }
         return true;
     }
@@ -5207,9 +5208,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_delete) {
             deleteSelected();
-            return true;
-        } else if (id == R.id.action_cleanup_threads) {
-            startConversationCleanup();
             return true;
         }
         return super.onOptionsItemSelected(item);

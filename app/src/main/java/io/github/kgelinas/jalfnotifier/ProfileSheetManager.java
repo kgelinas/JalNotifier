@@ -203,8 +203,9 @@ public class ProfileSheetManager {
         ImageButton btnReadReceipts = view.findViewById(R.id.btn_profile_read_receipts);
         ImageButton btnNsfw = view.findViewById(R.id.btn_profile_nsfw);
         ImageButton btnGeolocation = view.findViewById(R.id.btn_profile_geolocation);
-        ImageButton btnSettings = view.findViewById(R.id.btn_profile_settings);
-        ImageButton btnLogout = view.findViewById(R.id.btn_profile_logout);
+        View btnSettings = view.findViewById(R.id.btn_profile_settings);
+        ImageButton btnCleanup = view.findViewById(R.id.btn_profile_cleanup);
+        View btnLogout = view.findViewById(R.id.btn_profile_logout);
 
         // Tooltips
         androidx.appcompat.widget.TooltipCompat.setTooltipText(btnAppearOffline, activity.getString(R.string.appear_offline));
@@ -212,6 +213,9 @@ public class ProfileSheetManager {
         androidx.appcompat.widget.TooltipCompat.setTooltipText(btnNsfw, activity.getString(R.string.nsfw_blur));
         androidx.appcompat.widget.TooltipCompat.setTooltipText(btnGeolocation, activity.getString(R.string.geolocation));
         androidx.appcompat.widget.TooltipCompat.setTooltipText(btnSettings, activity.getString(R.string.settings));
+        if (btnCleanup != null) {
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(btnCleanup, activity.getString(R.string.action_cleanup_threads));
+        }
         androidx.appcompat.widget.TooltipCompat.setTooltipText(btnLogout, activity.getString(R.string.logout));
 
         // --- States and Listeners ---
@@ -271,6 +275,17 @@ public class ProfileSheetManager {
             bottomSheet.dismiss();
             activity.startActivity(new Intent(activity, SettingsActivity.class));
         });
+
+        // 5.5 Clean Up
+        if (btnCleanup != null) {
+            btnCleanup.setOnClickListener(v -> {
+                bottomSheet.dismiss();
+                Intent intent = new Intent(activity, MainActivity.class);
+                intent.setAction("CLEANUP_CHATS");
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                activity.startActivity(intent);
+            });
+        }
 
         // 6. Logout
         btnLogout.setOnClickListener(v -> {

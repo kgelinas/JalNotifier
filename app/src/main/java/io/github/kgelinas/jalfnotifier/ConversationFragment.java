@@ -1529,6 +1529,9 @@ public class ConversationFragment extends Fragment {
         }
 
         Request request = requestBuilder.build();
+        
+        AppLogger.log(TAG, "Sending AI Request to: " + apiUrl);
+        AppLogger.log(TAG, "AI Request Payload: " + payload.toString());
 
         okhttp3.OkHttpClient aiClient = client.newBuilder()
                 .connectTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
@@ -1605,6 +1608,8 @@ public class ConversationFragment extends Fragment {
                             });
                         }
                     } else {
+                        String errorBody = r.body() != null ? r.body().string() : "";
+                        AppLogger.log(TAG, "AI API returned error code: " + r.code() + ", body: " + errorBody);
                         mainHandler.post(() -> {
                             if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);

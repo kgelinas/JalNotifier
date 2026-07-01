@@ -252,6 +252,17 @@ public class AppTourManager {
                 false  // isInteractive
         ));
 
+        // Clean up chats
+        steps.add(new TourStep(
+                a.getString(R.string.tour_cleanup_title),
+                a.getString(R.string.tour_cleanup_body),
+                R.id.btn_profile_cleanup,
+                SpotlightShape.CIRCLE,
+                TooltipPosition.ABOVE,
+                true,  // inBottomSheet
+                false  // isInteractive
+        ));
+
         // Logout
         steps.add(new TourStep(
                 a.getString(R.string.tour_logout_title),
@@ -448,21 +459,22 @@ public class AppTourManager {
 
     private void restoreOriginalListeners() {
         if (currentActivity instanceof MainActivity) {
-            View avatar = currentActivity.findViewById(R.id.toolbar_avatar);
+            final MainActivity mainActivity = (MainActivity) currentActivity;
+            View avatar = mainActivity.findViewById(R.id.toolbar_avatar);
             if (avatar != null) {
-                avatar.setOnClickListener(v -> ((MainActivity) currentActivity).showProfileSheet());
+                avatar.setOnClickListener(v -> mainActivity.showProfileSheet());
             }
-            View navRail = currentActivity.findViewById(R.id.navigation_rail);
+            View navRail = mainActivity.findViewById(R.id.navigation_rail);
             if (navRail instanceof com.google.android.material.navigationrail.NavigationRailView) {
                 View header = ((com.google.android.material.navigationrail.NavigationRailView) navRail).getHeaderView();
                 if (header != null) {
                     View navAvatar = header.findViewById(R.id.nav_rail_avatar);
                     if (navAvatar != null) {
-                        navAvatar.setOnClickListener(v -> ((MainActivity) currentActivity).showProfileSheet());
+                        navAvatar.setOnClickListener(v -> mainActivity.showProfileSheet());
                     }
                 }
             }
-            BottomSheetDialog dialog = ((MainActivity) currentActivity).getCurrentProfileSheet();
+            BottomSheetDialog dialog = mainActivity.getCurrentProfileSheet();
             if (dialog != null && dialog.isShowing()) {
                 Window window = dialog.getWindow();
                 if (window != null) {
@@ -470,7 +482,7 @@ public class AppTourManager {
                     if (btnSettings != null) {
                         btnSettings.setOnClickListener(v -> {
                             dialog.dismiss();
-                            currentActivity.startActivity(new android.content.Intent(currentActivity, SettingsActivity.class));
+                            mainActivity.startActivity(new android.content.Intent(mainActivity, SettingsActivity.class));
                         });
                     }
                 }

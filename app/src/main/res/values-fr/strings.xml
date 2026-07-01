@@ -479,6 +479,8 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="tour_geo_body">Activez le partage de votre position actuelle pour mettre à jour les distances des résultats de recherche.</string>
     <string name="tour_logout_title">Déconnexion 🚪</string>
     <string name="tour_logout_body">Appuyez ici pour vous déconnecter de votre compte JALF en toute sécurité.</string>
+    <string name="tour_cleanup_title">Nettoyer les discussions 🧹</string>
+    <string name="tour_cleanup_body">Supprimez les conversations avec des profils supprimés ou des utilisateurs bloqués pour garder votre boîte de réception organisée.</string>
 
     <string name="settings_ai_unlock_steps">Vous êtes maintenant à %1$d étapes de déverrouiller les paramètres IA.</string>
     <string name="settings_ai_unlocked">Paramètres IA déverrouillés ! 🚀</string>
