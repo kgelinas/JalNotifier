@@ -151,7 +151,7 @@ public class UpdateManager {
         new AlertDialog.Builder(activity)
                 .setTitle(R.string.update_available_title)
                 .setMessage(msg)
-                .setPositiveButton(R.string.add, (dialog, which) -> downloadAndInstallApk(activity, downloadUrl)) // Reuses standard positive action
+                .setPositiveButton(R.string.update_download, (dialog, which) -> downloadAndInstallApk(activity, downloadUrl))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
     }

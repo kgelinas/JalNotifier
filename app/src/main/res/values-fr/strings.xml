@@ -523,6 +523,7 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="update_checking">Recherche de mises à jour…</string>
     <string name="update_available_title">Mise à jour disponible</string>
     <string name="update_available_message">Une nouvelle version (%1$s) est disponible. Voulez-vous la télécharger et l\'installer ?</string>
+    <string name="update_download">Télécharger</string>
     <string name="update_downloading">Téléchargement de la mise à jour…</string>
     <string name="update_up_to_date">JALNotifier est à jour</string>
     <string name="update_failed">Échec de la recherche de mises à jour : %1$s</string>
