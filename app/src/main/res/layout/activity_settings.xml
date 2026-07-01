@@ -473,7 +473,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_sparkle_24"
+                        android:src="@drawable/ic_refresh_24"
                         android:layout_marginEnd="16dp"
                         app:tint="?attr/colorOnSurfaceVariant"
                         android:contentDescription="@null" />
@@ -497,14 +497,6 @@
                             android:textAppearance="?attr/textAppearanceBodySmall"
                             android:textColor="?android:attr/textColorSecondary" />
                     </LinearLayout>
-
-                    <ImageView
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
-                        android:src="@drawable/ic_refresh_24"
-                        app:tint="?attr/colorOnSurfaceVariant"
-                        android:contentDescription="@null" />
-
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

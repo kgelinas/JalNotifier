@@ -826,18 +826,33 @@ public class ConversationFragment extends Fragment {
         aiBottomSheet.setCancelable(true);
 
         android.widget.LinearLayout container = new android.widget.LinearLayout(context());
-        container.setOrientation(android.widget.LinearLayout.VERTICAL);
-        container.setGravity(android.view.Gravity.CENTER);
+        container.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        container.setGravity(android.view.Gravity.CENTER_VERTICAL);
         int padding = (int) (24 * getResources().getDisplayMetrics().density);
         container.setPadding(padding, padding, padding, padding);
 
-        android.widget.ProgressBar progress = new android.widget.ProgressBar(context());
-        container.addView(progress);
+        android.widget.ImageView loadingIcon = new android.widget.ImageView(context());
+        loadingIcon.setImageResource(R.drawable.ic_sparkle_24);
+        int iconSize = (int) (24 * getResources().getDisplayMetrics().density);
+        android.widget.LinearLayout.LayoutParams iconParams = new android.widget.LinearLayout.LayoutParams(iconSize, iconSize);
+        
+        android.util.TypedValue outValue = new android.util.TypedValue();
+        context().getTheme().resolveAttribute(android.R.attr.colorPrimary, outValue, true);
+        loadingIcon.setColorFilter(outValue.data, android.graphics.PorterDuff.Mode.SRC_IN);
+        loadingIcon.setLayoutParams(iconParams);
+
+        android.view.animation.AlphaAnimation anim = new android.view.animation.AlphaAnimation(0.3f, 1.0f);
+        anim.setDuration(1000);
+        anim.setRepeatMode(android.view.animation.Animation.REVERSE);
+        anim.setRepeatCount(android.view.animation.Animation.INFINITE);
+        loadingIcon.startAnimation(anim);
+        
+        container.addView(loadingIcon);
 
         android.widget.TextView text = new android.widget.TextView(context());
         text.setText(status);
         text.setTextSize(16f);
-        text.setPadding(0, padding / 2, 0, 0);
+        text.setPadding(padding / 2, 0, 0, 0);
         container.addView(text);
 
         aiBottomSheet.setContentView(container);
