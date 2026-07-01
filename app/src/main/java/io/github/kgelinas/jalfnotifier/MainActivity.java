@@ -1741,14 +1741,20 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 isLoadingMore = false;
-                runOnUiThread(() -> swipeRefreshLayout.setRefreshing(false));
+                runOnUiThread(() -> {
+                    swipeRefreshLayout.setRefreshing(false);
+                    setLoading(false);
+                });
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (Response r = response) {
                     isLoadingMore = false;
-                    runOnUiThread(() -> swipeRefreshLayout.setRefreshing(false));
+                    runOnUiThread(() -> {
+                        swipeRefreshLayout.setRefreshing(false);
+                        setLoading(false);
+                    });
                     if (r.isSuccessful() && r.body() != null) {
                         try {
                             String body = NetworkUtils.responseToString(r);
@@ -5236,10 +5242,11 @@ public class MainActivity extends AppCompatActivity {
             if (count == 0) {
                 exitSelectionMode();
             } else {
+                toolbar.setTitleCentered(false);
                 toolbar.setTitle(getString(R.string.items_selected, count));
-
             }
         } else {
+            toolbar.setTitleCentered(true);
             toolbar.setTitle(getString(R.string.tab_chats));
         }
     }
