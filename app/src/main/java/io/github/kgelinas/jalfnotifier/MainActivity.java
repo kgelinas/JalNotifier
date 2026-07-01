@@ -5469,10 +5469,12 @@ public class MainActivity extends AppCompatActivity {
             ChatAdapter.ChatItem item = candidates.get(i);
             String name = item.name;
             if (name == null || name.isEmpty()) {
-                name = getString(R.string.someone);
+                name = item.otherUserId != null && !item.otherUserId.isEmpty()
+                        ? "#" + item.otherUserId
+                        : getString(R.string.someone);
             }
             if (item.lastMessage != null && !item.lastMessage.isEmpty()) {
-                names[i] = name + " (" + item.lastMessage + ")";
+                names[i] = name + " — " + item.lastMessage;
             } else {
                 names[i] = name;
             }
@@ -5481,7 +5483,7 @@ public class MainActivity extends AppCompatActivity {
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.cleanup_dialog_title)
-                .setMessage(R.string.cleanup_dialog_message)
+                // NOTE: Do NOT add setMessage() here — it hides setMultiChoiceItems() in AlertDialog
                 .setMultiChoiceItems(names, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
                 .setPositiveButton(R.string.delete, (dialog, which) -> {
                     List<ChatAdapter.ChatItem> toDelete = new ArrayList<>();
