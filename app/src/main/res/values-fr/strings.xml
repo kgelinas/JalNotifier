@@ -355,6 +355,7 @@
     <string name="gemini_error_exception">Exception lors de l\'appel à l\'API IA</string>
     <string name="gemini_menu_introduction">Introduction</string>
     <string name="gemini_menu_reply">Répondre</string>
+    <string name="gemini_choose_option">Choisissez une option</string>
     <string name="error_fetching_profile_ai">Échec de la récupération du profil pour l\'IA</string>
     <string name="error_parsing_profile">Erreur lors de l\'analyse du profil</string>
     <string name="error_fetching_profile">Erreur lors de la récupération du profil</string>

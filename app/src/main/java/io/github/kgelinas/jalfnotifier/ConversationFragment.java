@@ -71,6 +71,10 @@ public class ConversationFragment extends Fragment {
     private static final String ARG_IS_ONLINE = "isOnline";
 
     private final OkHttpClient client = JalfNotifierApplication.httpClient();
+    private boolean isLoadingMore = false;
+    private com.google.android.material.bottomsheet.BottomSheetDialog aiBottomSheet;
+    private String[] pendingAiOptions = null;
+
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private String conversationLink;
@@ -408,6 +412,10 @@ public class ConversationFragment extends Fragment {
             boolean blurNsfw = prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true);
             // messageAdapter doesn't have setBlurNsfw yet, I should add it or just notifyDataSetChanged since it reads prefs in onBind
             messageAdapter.notifyDataSetChanged();
+        }
+        if (pendingAiOptions != null) {
+            showAiOptionsBottomSheet(pendingAiOptions);
+            pendingAiOptions = null;
         }
         updateAiButtonVisibility();
         IntentFilter filter = new IntentFilter("io.github.kgelinas.jalfnotifier.SSE_EVENT");
@@ -810,35 +818,41 @@ public class ConversationFragment extends Fragment {
         btnGeminiGenerate.setVisibility(isConfigured ? View.VISIBLE : View.GONE);
     }
 
+    private void showAiLoadingBottomSheet(String status) {
+        if (!isAdded() || getContext() == null) return;
+        if (aiBottomSheet == null) {
+            aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
+        }
+        aiBottomSheet.setCancelable(true);
+
+        android.widget.LinearLayout container = new android.widget.LinearLayout(context());
+        container.setOrientation(android.widget.LinearLayout.VERTICAL);
+        container.setGravity(android.view.Gravity.CENTER);
+        int padding = (int) (24 * getResources().getDisplayMetrics().density);
+        container.setPadding(padding, padding, padding, padding);
+
+        android.widget.ProgressBar progress = new android.widget.ProgressBar(context());
+        container.addView(progress);
+
+        android.widget.TextView text = new android.widget.TextView(context());
+        text.setText(status);
+        text.setTextSize(16f);
+        text.setPadding(0, padding / 2, 0, 0);
+        container.addView(text);
+
+        aiBottomSheet.setContentView(container);
+        if (!aiBottomSheet.isShowing()) {
+            aiBottomSheet.show();
+        }
+    }
+
     private void setAiGeneratingState(boolean generating, String status) {
         mainHandler.post(() -> {
             if (btnGeminiGenerate != null) {
                 btnGeminiGenerate.setEnabled(!generating);
             }
             if (generating) {
-                if (aiLoadingItem == null) {
-                    aiLoadingItem = new MessageAdapter.MessageItem();
-                    aiLoadingItem.isAiLoading = true;
-                    aiLoadingItem.loadingStatus = status;
-                    messageList.add(aiLoadingItem);
-                    messageAdapter.notifyItemInserted(messageList.size() - 1);
-                    recyclerMessages.scrollToPosition(messageList.size() - 1);
-                } else {
-                    aiLoadingItem.loadingStatus = status;
-                    int pos = messageList.indexOf(aiLoadingItem);
-                    if (pos != -1) {
-                        messageAdapter.notifyItemChanged(pos);
-                    }
-                }
-            } else {
-                if (aiLoadingItem != null) {
-                    int pos = messageList.indexOf(aiLoadingItem);
-                    if (pos != -1) {
-                        messageList.remove(pos);
-                        messageAdapter.notifyItemRemoved(pos);
-                    }
-                    aiLoadingItem = null;
-                }
+                showAiLoadingBottomSheet(status);
             }
         });
     }
@@ -1447,16 +1461,16 @@ public class ConversationFragment extends Fragment {
             promptBuilder.append(
                     "\nJe veux que tu répondes spécifiquement, directement, et personnellement au message exact suivant : \"")
                     .append(specificContextMessage).append("\"\n");
-            promptBuilder.append("Ton rôle est de générer UNE proposition de réponse, en ").append(lang)
-                    .append(", qui s'adresse au sujet de ce message précis.\n");
+            promptBuilder.append("Ton rôle est de générer EXACTEMENT TROIS propositions de réponse différentes, en ").append(lang)
+                    .append(", qui s'adressent au sujet de ce message précis.\n");
         } else if (history != null && !history.isEmpty()) {
-            promptBuilder.append("C'est à mon tour de répondre. Écris un court message de réponse en ").append(lang)
-                    .append(" qui soit naturel et engageant.\n");
+            promptBuilder.append("C'est à mon tour de répondre. Écris EXACTEMENT TROIS courts messages de réponse différents en ").append(lang)
+                    .append(" qui soient naturels et engageants.\n");
         } else {
-            promptBuilder.append("Écris un court message d'accroche ou de réponse en ").append(lang)
-                    .append(" qui soit naturel et engageant.\n");
+            promptBuilder.append("Écris EXACTEMENT TROIS courts messages d'accroche ou de réponse différents en ").append(lang)
+                    .append(" qui soient naturels et engageants.\n");
         }
-        promptBuilder.append("Ne sors QUE le texte du message, sans guillemets.");
+        promptBuilder.append("Ne sors QUE le texte des messages, sans guillemets, et sépare CHAQUE option EXACTEMENT par la chaîne '|||' sans rien d'autre.");
 
         String prompt = promptBuilder.toString();
         String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
@@ -1502,9 +1516,9 @@ public class ConversationFragment extends Fragment {
         Request request = requestBuilder.build();
 
         okhttp3.OkHttpClient aiClient = client.newBuilder()
-                .connectTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(90, java.util.concurrent.TimeUnit.SECONDS)
+                .connectTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                .writeTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
                 .build();
 
         aiClient.newCall(request).enqueue(new Callback() {
@@ -1514,6 +1528,7 @@ public class ConversationFragment extends Fragment {
                 mainHandler.post(() -> {
                     if (!isAdded() || getContext() == null) return;
                     setAiGeneratingState(false, null);
+                    if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
                     String errMsg = getString(R.string.gemini_error_api_failure) + " (" + e.getMessage() + ")";
                     Toast.makeText(context(), errMsg, Toast.LENGTH_LONG).show();
                 });
@@ -1545,14 +1560,31 @@ public class ConversationFragment extends Fragment {
                             mainHandler.post(() -> {
                                 if (!isAdded() || getContext() == null) return;
                                 setAiGeneratingState(false, null);
-                                editMessage.setText(finalAiText.trim());
-                                editMessage.setSelection(editMessage.getText().length());
+                                String[] options = parseAiOptions(finalAiText);
+                                if (options != null && options.length > 0) {
+                                    if (options.length == 1) {
+                                        if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
+                                        editMessage.setText(options[0]);
+                                        editMessage.setSelection(editMessage.getText().length());
+                                    } else {
+                                        if (isResumed()) {
+                                            showAiOptionsBottomSheet(options);
+                                        } else {
+                                            pendingAiOptions = options;
+                                        }
+                                    }
+                                } else {
+                                    if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
+                                    editMessage.setText(finalAiText.trim());
+                                    editMessage.setSelection(editMessage.getText().length());
+                                }
                             });
                         } catch (Exception e) {
                             AppLogger.log(TAG, "Error parsing Gemini response: " + bodyString, e);
                             mainHandler.post(() -> {
                                 if (!isAdded() || getContext() == null) return;
                                 setAiGeneratingState(false, null);
+                                if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
                                 Toast.makeText(context(), R.string.gemini_error_blocked,
                                         Toast.LENGTH_LONG).show();
                             });
@@ -1561,6 +1593,7 @@ public class ConversationFragment extends Fragment {
                         mainHandler.post(() -> {
                             if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);
+                            if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
                             Toast.makeText(context(), getString(R.string.gemini_error_api_error), Toast.LENGTH_SHORT).show();
                         });
                     }
@@ -1569,11 +1602,116 @@ public class ConversationFragment extends Fragment {
                     mainHandler.post(() -> {
                         if (!isAdded() || getContext() == null) return;
                         setAiGeneratingState(false, null);
+                        if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
                         Toast.makeText(context(), R.string.gemini_error_exception, Toast.LENGTH_SHORT).show();
                     });
                 }
             }
         });
+    }
+
+    private String[] parseAiOptions(String text) {
+        if (text == null || text.trim().isEmpty()) return new String[0];
+        
+        // 1. Try our explicit delimiter
+        if (text.contains("|||")) {
+            return text.split("\\|\\|\\|");
+        }
+        
+        // 2. Try falling back to markdown list items (* or -) or numbered lists (1. 2.)
+        String[] lines = text.split("\n");
+        java.util.List<String> options = new java.util.ArrayList<>();
+        StringBuilder currentOpt = new StringBuilder();
+        
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) continue;
+            
+            // If line starts with a list marker, treat it as a new option
+            if (trimmed.matches("^(?:\\d+\\.|[-*])\\s+.*")) {
+                if (currentOpt.length() > 0) {
+                    options.add(currentOpt.toString().trim());
+                    currentOpt.setLength(0);
+                }
+                // Strip the marker
+                currentOpt.append(trimmed.replaceFirst("^(?:\\d+\\.|[-*])\\s+", "")).append("\n");
+            } else {
+                currentOpt.append(trimmed).append("\n");
+            }
+        }
+        if (currentOpt.length() > 0) {
+            options.add(currentOpt.toString().trim());
+        }
+        
+        // If we found multiple options via fallback, return them
+        if (options.size() > 1) {
+            return options.toArray(new String[0]);
+        }
+        
+        // 3. Fallback: just return the whole text as 1 option or try splitting by double newline
+        String[] doubleNewlines = text.split("\n\\s*\n");
+        if (doubleNewlines.length > 1) {
+            return doubleNewlines;
+        }
+        
+        return new String[]{text.trim()};
+    }
+
+    private void showAiOptionsBottomSheet(String[] options) {
+        if (!isAdded() || getContext() == null) return;
+        if (aiBottomSheet == null) {
+            aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
+        }
+        aiBottomSheet.setCancelable(true);
+        
+        android.widget.LinearLayout container = new android.widget.LinearLayout(context());
+        container.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        container.setPadding(padding, padding, padding, padding);
+
+        android.widget.TextView title = new android.widget.TextView(context());
+        title.setText(R.string.gemini_choose_option);
+        title.setTextSize(18f);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setPadding(0, 0, 0, padding);
+        container.addView(title);
+
+        for (String opt : options) {
+            final String cleanOpt = opt.trim();
+            if (cleanOpt.isEmpty()) continue;
+
+            com.google.android.material.card.MaterialCardView card = new com.google.android.material.card.MaterialCardView(context());
+            android.widget.LinearLayout.LayoutParams cardParams = new android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+            cardParams.setMargins(0, 0, 0, padding);
+            card.setLayoutParams(cardParams);
+            card.setClickable(true);
+            card.setFocusable(true);
+            card.setCardElevation(4f);
+            card.setRadius(8f * getResources().getDisplayMetrics().density);
+
+            android.widget.TextView text = new android.widget.TextView(context());
+            text.setText(cleanOpt);
+            text.setPadding(padding, padding, padding, padding);
+            text.setTextSize(16f);
+            card.addView(text);
+
+            card.setOnClickListener(v -> {
+                aiBottomSheet.dismiss();
+                editMessage.setText(cleanOpt);
+                editMessage.setSelection(editMessage.getText().length());
+            });
+
+            container.addView(card);
+        }
+
+        androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(context());
+        scrollView.addView(container);
+        
+        aiBottomSheet.setContentView(scrollView);
+        if (!aiBottomSheet.isShowing()) {
+            aiBottomSheet.show();
+        }
     }
 
     private void showQuickResponseMenu() {

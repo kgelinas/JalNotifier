@@ -336,6 +336,7 @@
     <string name="gemini_error_exception">Exception calling AI API</string>
     <string name="gemini_menu_introduction">Introduction</string>
     <string name="gemini_menu_reply">Reply</string>
+    <string name="gemini_choose_option">Choose an option</string>
     <string name="error_fetching_profile_ai">Failed to fetch profile for AI</string>
     <string name="error_parsing_profile">Error parsing profile</string>
     <string name="error_fetching_profile">Error fetching profile</string>
