@@ -6,6 +6,7 @@
     <string name="auth_required_to_unlock">Authentification requise pour continuer</string>
     <string name="action_unlock">Déverrouiller</string>
     <string name="filter_online">En ligne</string>
+    <string name="filter_exclude_chatted">Exclure déjà contacté</string>
     <string name="filter_sex">Sexe</string>
     <string name="filter_contact_all">Contact: Tous</string>
     <string name="recent_activity">Activité récente</string>

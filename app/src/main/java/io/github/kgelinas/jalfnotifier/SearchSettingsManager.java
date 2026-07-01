@@ -62,6 +62,7 @@ public class SearchSettingsManager {
         public String ageMinSimple = "18";
         public String ageMaxSimple = "99";
         public boolean onlineSimple = false;
+        public boolean excludeChatted = false;
         public boolean photoSimple = false;
         public boolean myRegionSimple = false;
         public boolean desiresTodaySimple = false;
@@ -331,6 +332,7 @@ public class SearchSettingsManager {
         j.put("ageMinSimple",       s.ageMinSimple);
         j.put("ageMaxSimple",       s.ageMaxSimple);
         j.put("onlineSimple",       s.onlineSimple);
+        j.put("excludeChatted",     s.excludeChatted);
         j.put("photoSimple",        s.photoSimple);
         j.put("myRegionSimple",     s.myRegionSimple);
         j.put("desiresTodaySimple", s.desiresTodaySimple);
@@ -359,6 +361,7 @@ public class SearchSettingsManager {
         s.ageMinSimple       = j.optString("ageMinSimple", "18");
         s.ageMaxSimple       = j.optString("ageMaxSimple", "99");
         s.onlineSimple       = j.optBoolean("onlineSimple", false);
+        s.excludeChatted     = j.optBoolean("excludeChatted", false);
         s.photoSimple        = j.optBoolean("photoSimple", false);
         s.myRegionSimple     = j.optBoolean("myRegionSimple", false);
         s.desiresTodaySimple = j.optBoolean("desiresTodaySimple", false);

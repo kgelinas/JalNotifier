@@ -281,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
     private com.google.android.material.textfield.TextInputEditText etPseudoUnified;
     private RangeSlider sliderAgeUnified;
     private android.widget.TextView tvAgeRangeValueUnified;
-    private com.google.android.material.checkbox.MaterialCheckBox chkOnlineUnified, chkPhotoUnified, chkWebcamUnified, chkSpeedMeetingUnified, chkMyRegionUnified;
+    private com.google.android.material.checkbox.MaterialCheckBox chkOnlineUnified, chkExcludeChattedUnified, chkPhotoUnified, chkWebcamUnified, chkSpeedMeetingUnified, chkMyRegionUnified;
     private android.widget.RadioGroup rgOrderByUnified;
 
     private ChipGroup cgStatusUnified, cgRelCherUnified, cgSmokerUnified, cgZodiacUnified, cgAvailUnified, cgEthnicUnified;
@@ -3106,8 +3106,7 @@ public class MainActivity extends AppCompatActivity {
     private List<ChatAdapter.ChatItem> parseConversationJson(JSONArray arr, boolean forceUnread) {
         List<ChatAdapter.ChatItem> result = ApiParser.parseConversationJson(arr, forceUnread, myUserId);
 
-        // Persist conversation links as a side-effect (kept here, not in the pure
-        // parser)
+        // Persist conversation links as a side-effect (kept here, not in the pure parser)
         android.content.SharedPreferences convoPrefs = getSharedPreferences("ConversationLinks",
                 android.content.Context.MODE_PRIVATE);
         android.content.SharedPreferences.Editor convoEditor = convoPrefs.edit();
@@ -4087,6 +4086,7 @@ public class MainActivity extends AppCompatActivity {
             });
         }
         chkOnlineUnified = root.findViewById(R.id.chk_online_unified);
+        chkExcludeChattedUnified = root.findViewById(R.id.chk_exclude_chatted_unified);
         chkPhotoUnified = root.findViewById(R.id.chk_photo_unified);
         chkWebcamUnified = root.findViewById(R.id.chk_webcam_unified);
         chkSpeedMeetingUnified = root.findViewById(R.id.chk_speed_meeting_unified);
@@ -4220,6 +4220,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Reset checkboxes
         if (chkOnlineUnified != null) chkOnlineUnified.setChecked(false);
+        if (chkExcludeChattedUnified != null) chkExcludeChattedUnified.setChecked(false);
         if (chkPhotoUnified != null) chkPhotoUnified.setChecked(false);
         if (chkWebcamUnified != null) chkWebcamUnified.setChecked(false);
         if (chkSpeedMeetingUnified != null) chkSpeedMeetingUnified.setChecked(false);
@@ -4422,6 +4423,8 @@ public class MainActivity extends AppCompatActivity {
         isSearchingUnified = true;
         setSearchLoading(true);
 
+        final boolean excludeChatted = chkExcludeChattedUnified != null && chkExcludeChattedUnified.isChecked();
+
         SecurePrefs secure = SecurePrefs.get(this);
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid       = secure.getString(ApiConstants.KEY_SUID, "");
@@ -4535,6 +4538,20 @@ public class MainActivity extends AppCompatActivity {
                     String html = NetworkUtils.responseToString(r);
                     List<SearchAdapter.SearchItem> newItems = parseSearchResults(html);
 
+                    if (excludeChatted) {
+                        android.content.SharedPreferences convoPrefs = getSharedPreferences("ConversationLinks", MODE_PRIVATE);
+                        java.util.Map<String, ?> chattedMap = convoPrefs.getAll();
+                        if (!chattedMap.isEmpty()) {
+                            java.util.Iterator<SearchAdapter.SearchItem> iterator = newItems.iterator();
+                            while (iterator.hasNext()) {
+                                SearchAdapter.SearchItem item = iterator.next();
+                                if (item.userId != null && chattedMap.containsKey(item.userId)) {
+                                    iterator.remove();
+                                }
+                            }
+                        }
+                    }
+
                     runOnUiThread(() -> {
                         if (newItems.isEmpty() && page == 1)
                             Toast.makeText(MainActivity.this, R.string.no_results_found, Toast.LENGTH_SHORT).show();
@@ -4612,6 +4629,7 @@ public class MainActivity extends AppCompatActivity {
         s.ageMinDet = s.ageMinSimple;
         s.ageMaxDet = s.ageMaxSimple;
         s.onlineSimple = (chkOnlineUnified != null && chkOnlineUnified.isChecked());
+        s.excludeChatted = (chkExcludeChattedUnified != null && chkExcludeChattedUnified.isChecked());
         s.photoSimple = (chkPhotoUnified != null && chkPhotoUnified.isChecked());
         s.webcamDet = (chkWebcamUnified != null && chkWebcamUnified.isChecked());
         s.speedMeetingDet = (chkSpeedMeetingUnified != null && chkSpeedMeetingUnified.isChecked());
@@ -4728,6 +4746,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception ignored) {}
         }
         if (chkOnlineUnified != null) chkOnlineUnified.setChecked(s.onlineSimple);
+        if (chkExcludeChattedUnified != null) chkExcludeChattedUnified.setChecked(s.excludeChatted);
         if (chkPhotoUnified != null) chkPhotoUnified.setChecked(s.photoSimple);
         if (chkWebcamUnified != null) chkWebcamUnified.setChecked(s.webcamDet);
         if (chkSpeedMeetingUnified != null) chkSpeedMeetingUnified.setChecked(s.speedMeetingDet);
