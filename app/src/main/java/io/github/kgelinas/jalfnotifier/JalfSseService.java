@@ -278,11 +278,10 @@ public class JalfSseService extends Service {
 
                     } else if (("login".equals(type) || "joined".equals(type)) && !userLink.isEmpty()) {
                         String userName = resolveName(json, source, userLink);
-                        JalfNotificationTask.showNotification(getApplicationContext(), "jal_online_notifications",
-                                getString(R.string.online_notifications),
-                                type.equals("login") ? getString(R.string.event_login_title) : getString(R.string.event_join_title),
-                                userName + " " + (type.equals("login") ? getString(R.string.event_online_message) : getString(R.string.event_join_message)),
-                                userLink);
+                        // Route through notifyIfOnline so the 2-hour cooldown deduplicates
+                        // this SSE event against the poll-based online check.
+                        JalfNotificationTask task = new JalfNotificationTask(getApplicationContext());
+                        task.notifyIfOnline(userLink, userName);
 
                     } else if (("message".equals(type) || "convo_new".equals(type)) && !userLink.isEmpty()) {
                         String senderName = resolveName(json, source, userLink);

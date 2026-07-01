@@ -722,7 +722,7 @@ public class JalfNotificationTask {
         }
     }
 
-    private void notifyIfOnline(String userLink, String name) {
+    public void notifyIfOnline(String userLink, String name) {
         AppPrefs prefs = getAppPrefs();
         String lastNotifiedKey = "LAST_ONLINE_NOTIF_V2_" + userLink; // Using V2 to reset due to logic change
         long lastNotified = prefs.getLong(lastNotifiedKey, 0);
