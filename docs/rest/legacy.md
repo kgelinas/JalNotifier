@@ -31,6 +31,33 @@ Fetch the online status of all bookmarked contacts.
 
 ---
 
+## 3. Web Photo Albums
+**Endpoint**: `POST /ct/photoAlbum`
+
+Fetch the user's public or private photo albums via the legacy HTML interface, which includes hidden metadata like photo IDs, like statuses, and realize statuses not present in the newer REST endpoints.
+
+| Property | Value |
+| :--- | :--- |
+| **Format** | HTML |
+| **Parameters** | `action=getAlbum`, `album=public` (or private), `of={userId}` |
+| **Parser** | `ApiParser.parseWebPhotos` |
+| **Scraping Tag** | `div.swiper-slide` attributes: `data-picid`, `data-iliked`, `data-irealized` |
+| **Description** | Merged with REST API `/members/{id}/photos/albums` to attach interactive IDs to profile photos. |
+
+---
+
+## 4. Toggle Photo Like / Realize
+**Endpoint**: `POST /ct/mediaLovers/pictures/{picId}`
+
+Toggle the "Like" or "Realize Fantasy" state for a specific picture using the legacy HTML endpoints.
+
+| Property | Value |
+| :--- | :--- |
+| **Format** | Form Data (No JSON Response) |
+| **Parameters** | `action={add|del|add-fntsm|del-fntsm}`, `Pid={picId}` |
+| **Description** | Toggles interactive states for photos discovered via `/ct/photoAlbum`. |
+---
+
 ## 3. Profile Viewers (Lookers)
 **Endpoint**: `GET /ct/online/3`
 

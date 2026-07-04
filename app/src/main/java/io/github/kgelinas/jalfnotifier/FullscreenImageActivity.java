@@ -44,6 +44,33 @@ public class FullscreenImageActivity extends AppCompatActivity {
     private boolean blurNsfw = true;
     private int initialPosition;
     private ViewPager2 viewPager;
+    private ArrayList<String> picIds;
+    private boolean[] likes;
+    private boolean[] realizes;
+    private FloatingActionButton fabLike;
+    private FloatingActionButton fabRealize;
+    private boolean isFabMenuOpen = false;
+
+    private void toggleFabMenu(FloatingActionButton fabMain, FloatingActionButton fabSave) {
+        isFabMenuOpen = !isFabMenuOpen;
+        int position = viewPager.getCurrentItem();
+        String picId = (picIds != null && picIds.size() > position) ? picIds.get(position) : null;
+        boolean hasPicId = picId != null && !picId.isEmpty();
+
+        if (isFabMenuOpen) {
+            fabMain.setImageResource(R.drawable.ic_close_24);
+            fabSave.show();
+            if (hasPicId) {
+                fabLike.show();
+                fabRealize.show();
+            }
+        } else {
+            fabMain.setImageResource(R.drawable.ic_menu);
+            fabSave.hide();
+            fabLike.hide();
+            fabRealize.hide();
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +83,9 @@ public class FullscreenImageActivity extends AppCompatActivity {
             imageList = getIntent().getStringArrayListExtra("images");
 
         imageRanks = getIntent().getIntegerArrayListExtra("imageRanks");
+        picIds = getIntent().getStringArrayListExtra("picIds");
+        likes = getIntent().getBooleanArrayExtra("likes");
+        realizes = getIntent().getBooleanArrayExtra("realizes");
 
         SharedPreferences prefs = getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE);
         blurNsfw = prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true);
@@ -98,6 +128,72 @@ public class FullscreenImageActivity extends AppCompatActivity {
         FullscreenImageAdapter adapter = new FullscreenImageAdapter(imageList);
         viewPager.setAdapter(adapter);
         viewPager.setCurrentItem(initialPosition, false);
+
+        FloatingActionButton fabMain = findViewById(R.id.fab_main);
+        fabLike = findViewById(R.id.fab_like);
+        fabRealize = findViewById(R.id.fab_realize);
+
+        if (fabMain != null) {
+            fabMain.setOnClickListener(v -> toggleFabMenu(fabMain, fabSave));
+        }
+
+        if (picIds != null) {
+            viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+                @Override
+                public void onPageSelected(int position) {
+                    super.onPageSelected(position);
+                    String picId = picIds.get(position);
+                    boolean hasPicId = picId != null && !picId.isEmpty();
+                    
+                    if (hasPicId) {
+                        fabLike.setImageResource(likes[position] ? R.drawable.ic_like_active : R.drawable.ic_like_inactive);
+                        fabRealize.setImageResource(realizes[position] ? R.drawable.ic_realize_active : R.drawable.ic_realize_inactive);
+                    }
+                    
+                    if (isFabMenuOpen) {
+                        if (hasPicId) {
+                            fabLike.show();
+                            fabRealize.show();
+                        } else {
+                            fabLike.hide();
+                            fabRealize.hide();
+                        }
+                    } else {
+                        fabLike.hide();
+                        fabRealize.hide();
+                    }
+                }
+            });
+
+            fabLike.setOnClickListener(v -> {
+                int pos = viewPager.getCurrentItem();
+                String picId = picIds.get(pos);
+                if (picId == null || picId.isEmpty()) return;
+                boolean newState = !likes[pos];
+                likes[pos] = newState;
+                fabLike.setImageResource(newState ? R.drawable.ic_like_active : R.drawable.ic_like_inactive);
+                toggleStatus(picId, newState, "add", "del");
+            });
+
+            fabRealize.setOnClickListener(v -> {
+                int pos = viewPager.getCurrentItem();
+                String picId = picIds.get(pos);
+                if (picId == null || picId.isEmpty()) return;
+                boolean newState = !realizes[pos];
+                realizes[pos] = newState;
+                fabRealize.setImageResource(newState ? R.drawable.ic_realize_active : R.drawable.ic_realize_inactive);
+                toggleStatus(picId, newState, "add-fntsm", "del-fntsm");
+            });
+            
+            // Initial state trigger
+            viewPager.post(() -> {
+                int pos = viewPager.getCurrentItem();
+                if (picIds.size() > pos && picIds.get(pos) != null && !picIds.get(pos).isEmpty()) {
+                    fabLike.setImageResource(likes[pos] ? R.drawable.ic_like_active : R.drawable.ic_like_inactive);
+                    fabRealize.setImageResource(realizes[pos] ? R.drawable.ic_realize_active : R.drawable.ic_realize_inactive);
+                }
+            });
+        }
     }
     
     @Override
@@ -165,6 +261,50 @@ public class FullscreenImageActivity extends AppCompatActivity {
             Toast.makeText(this, R.string.image_saved_to_gallery, Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
         }
+    }
+
+    private void toggleStatus(String picId, boolean newState, String addAction, String delAction) {
+        String action = newState ? addAction : delAction;
+        SecurePrefs secure = SecurePrefs.get(this);
+        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        String suid = secure.getString(ApiConstants.KEY_SUID, "");
+
+        okhttp3.RequestBody formBody = new okhttp3.FormBody.Builder()
+                .add("action", action)
+                .add("Pid", picId)
+                .build();
+
+        okhttp3.Request request = new okhttp3.Request.Builder()
+                .url(ApiConstants.BASE_URL + "/ct/mediaLovers/pictures/" + picId)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .addHeader("x-requested-with", "XMLHttpRequest")
+                .post(formBody)
+                .build();
+
+        JalfNotifierApplication.httpClient().newCall(request).enqueue(new okhttp3.Callback() {
+            @Override
+            public void onFailure(@NonNull okhttp3.Call call, @NonNull java.io.IOException e) {
+                android.util.Log.e("FullscreenImage", "Failed to update picture status", e);
+            }
+
+            @Override
+            public void onResponse(@NonNull okhttp3.Call call, @NonNull okhttp3.Response response) throws java.io.IOException {
+                response.close();
+            }
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (picIds != null && likes != null && realizes != null) {
+            android.content.Intent resultIntent = new android.content.Intent();
+            resultIntent.putExtra("likes", likes);
+            resultIntent.putExtra("realizes", realizes);
+            setResult(RESULT_OK, resultIntent);
+        }
+        super.onBackPressed();
     }
 
     private class FullscreenImageAdapter extends RecyclerView.Adapter<FullscreenImageAdapter.ViewHolder> {

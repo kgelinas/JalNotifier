@@ -72,7 +72,15 @@ public class ConversationFragment extends Fragment {
 
     private final OkHttpClient client = JalfNotifierApplication.httpClient();
     private boolean isLoadingMore = false;
+    private okhttp3.OkHttpClient aiClient;
     private com.google.android.material.bottomsheet.BottomSheetDialog aiBottomSheet;
+
+    // Caching for LLM Retries/Fallbacks
+    private JSONObject lastMyProfile;
+    private JSONObject lastOtherProfile;
+    private String lastHistory;
+    private String lastSpecificMessage;
+    private int currentLlmIndex = 0;
     private String[] pendingAiOptions = null;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -820,16 +828,18 @@ public class ConversationFragment extends Fragment {
 
     private void showAiLoadingBottomSheet(String status) {
         if (!isAdded() || getContext() == null) return;
-        if (aiBottomSheet == null) {
-            aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
+        if (aiBottomSheet != null) {
+            try { aiBottomSheet.dismiss(); } catch (Exception ignored) {}
         }
+        aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
         aiBottomSheet.setCancelable(true);
 
         android.widget.LinearLayout container = new android.widget.LinearLayout(context());
         container.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-        container.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        container.setGravity(android.view.Gravity.CENTER);
         int padding = (int) (24 * getResources().getDisplayMetrics().density);
         container.setPadding(padding, padding, padding, padding);
+        container.setMinimumHeight((int) (200 * getResources().getDisplayMetrics().density));
 
         android.widget.ImageView loadingIcon = new android.widget.ImageView(context());
         loadingIcon.setImageResource(R.drawable.ic_sparkle_24);
@@ -856,9 +866,77 @@ public class ConversationFragment extends Fragment {
         container.addView(text);
 
         aiBottomSheet.setContentView(container);
-        if (!aiBottomSheet.isShowing()) {
-            aiBottomSheet.show();
+        try { aiBottomSheet.show(); } catch (Exception ignored) {}
+    }
+
+    private void showAiErrorBottomSheet(String errorMsg, boolean hasNextLlm) {
+        if (!isAdded() || getContext() == null) return;
+        if (aiBottomSheet != null) {
+            try { aiBottomSheet.dismiss(); } catch (Exception ignored) {}
         }
+        aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
+        aiBottomSheet.setCancelable(true);
+
+        android.widget.LinearLayout container = new android.widget.LinearLayout(context());
+        container.setOrientation(android.widget.LinearLayout.VERTICAL);
+        container.setGravity(android.view.Gravity.CENTER);
+        int padding = (int) (24 * getResources().getDisplayMetrics().density);
+        container.setPadding(padding, padding, padding, padding);
+        container.setMinimumHeight((int) (200 * getResources().getDisplayMetrics().density));
+
+        android.widget.TextView text = new android.widget.TextView(context());
+        text.setText(errorMsg);
+        text.setTextSize(16f);
+        text.setTextColor(0xFFD32F2F); // Red
+        text.setGravity(android.view.Gravity.CENTER);
+        container.addView(text);
+
+        String[] slotNames = getAiSlotNames();
+        
+        android.widget.LinearLayout btnContainer = new android.widget.LinearLayout(context());
+        btnContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        btnContainer.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        android.widget.LinearLayout.LayoutParams btnParams = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        btnParams.setMargins(0, padding, 0, 0);
+        btnContainer.setLayoutParams(btnParams);
+
+        android.widget.Spinner llmSpinner = new android.widget.Spinner(context());
+        android.widget.ArrayAdapter<String> spinnerAdapter = new android.widget.ArrayAdapter<>(context(), android.R.layout.simple_spinner_dropdown_item, slotNames);
+        llmSpinner.setAdapter(spinnerAdapter);
+        if (currentLlmIndex >= 0 && currentLlmIndex < slotNames.length) {
+            llmSpinner.setSelection(currentLlmIndex);
+        }
+        
+        android.widget.LinearLayout.LayoutParams spinnerParams = new android.widget.LinearLayout.LayoutParams(
+                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        llmSpinner.setLayoutParams(spinnerParams);
+
+        com.google.android.material.button.MaterialButton btnRetry = new com.google.android.material.button.MaterialButton(context(), null, com.google.android.material.R.attr.materialButtonStyle);
+        btnRetry.setText("Retry");
+        btnRetry.setOnClickListener(v -> {
+            currentLlmIndex = llmSpinner.getSelectedItemPosition();
+            String status = getString(R.string.gemini_status_reply);
+            if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
+                status = getString(R.string.gemini_status_targeted);
+            } else if (lastHistory == null || lastHistory.trim().isEmpty()) {
+                status = getString(R.string.gemini_status_introduction);
+            }
+            setAiGeneratingState(true, status);
+            callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
+        });
+
+        btnContainer.addView(llmSpinner);
+        btnContainer.addView(btnRetry);
+
+        container.addView(btnContainer);
+
+        androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(context());
+        scrollView.addView(container);
+
+        aiBottomSheet.setContentView(scrollView);
+        try { aiBottomSheet.show(); } catch (Exception ignored) {}
     }
 
     private void setAiGeneratingState(boolean generating, String status) {
@@ -1417,28 +1495,36 @@ public class ConversationFragment extends Fragment {
     private String formatProfileForPrompt(JSONObject profile) {
         if (profile == null) return "";
         StringBuilder sb = new StringBuilder();
+        AppPrefs prefs = AppPrefs.getInstance(context());
+        String allowedFieldsStr = prefs.getString(ApiConstants.KEY_AI_PROFILE_FIELDS, "name,age,city,social_status,goals,sex,sexes_interested,sexual_orientation,relationship,fantasies,profile_descriptions");
+        java.util.List<String> allowedFields = java.util.Arrays.asList(allowedFieldsStr.split(","));
+        boolean allowAll = allowedFieldsStr.trim().isEmpty() || allowedFieldsStr.equals("*");
+
         try {
-            if (profile.has("pseudo") || profile.has("name")) {
-                sb.append("Pseudo: ").append(profile.optString("pseudo", profile.optString("name", ""))).append("\n");
-            }
-            if (profile.has("age")) {
-                sb.append("Âge: ").append(profile.optString("age", "")).append("\n");
-            }
-            if (profile.has("city")) {
-                sb.append("Ville: ").append(profile.optString("city", "")).append("\n");
-            }
-            if (profile.has("description")) {
-                String desc = profile.optString("description", "");
-                if (desc.length() > 300) {
-                    desc = desc.substring(0, 300) + "...";
+            java.util.Iterator<String> keys = profile.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                if (!allowAll && !allowedFields.contains(key)) {
+                    continue;
                 }
-                sb.append("Description: ").append(desc).append("\n");
-            }
-            if (profile.has("looking_for")) {
-                sb.append("Recherche: ").append(profile.optString("looking_for", "")).append("\n");
-            }
-            if (profile.has("relational_status")) {
-                sb.append("Statut: ").append(profile.optString("relational_status", "")).append("\n");
+                Object value = profile.opt(key);
+                if (value != null && !(value instanceof org.json.JSONObject)) {
+                    String strValue = "";
+                    if (value instanceof org.json.JSONArray) {
+                        org.json.JSONArray arr = (org.json.JSONArray) value;
+                        StringBuilder arrSb = new StringBuilder();
+                        for (int i = 0; i < arr.length(); i++) {
+                            if (arrSb.length() > 0) arrSb.append(", ");
+                            arrSb.append(arr.optString(i));
+                        }
+                        strValue = arrSb.toString().trim();
+                    } else {
+                        strValue = value.toString().trim();
+                    }
+                    if (!strValue.isEmpty() && !strValue.equals("null")) {
+                        sb.append(key).append(": ").append(strValue).append("\n");
+                    }
+                }
             }
         } catch (Exception e) {
             AppLogger.log(TAG, "Error formatting profile for prompt", e);
@@ -1448,49 +1534,71 @@ public class ConversationFragment extends Fragment {
 
     private void callGeminiApi(JSONObject myProfile, JSONObject otherProfile, String history,
             String specificContextMessage) {
+        this.lastMyProfile = myProfile;
+        this.lastOtherProfile = otherProfile;
+        this.lastHistory = history;
+        this.lastSpecificMessage = specificContextMessage;
+
         AppPrefs prefs = AppPrefs.getInstance(context());
         String lang = prefs.getString(ApiConstants.KEY_GEMINI_LANGUAGE, "Français");
         String userPref = prefs.getString(ApiConstants.KEY_GEMINI_PREFERENCE, "");
-        String model = prefs.getString(ApiConstants.KEY_GEMINI_MODEL, "models/gemini-1.5-flash");
+
+        String savedConfigsJson = prefs.getString(ApiConstants.KEY_AI_CONFIGS, "[]");
+        org.json.JSONArray configs;
+        try {
+            configs = new org.json.JSONArray(savedConfigsJson);
+        } catch (Exception e) {
+            configs = new org.json.JSONArray();
+        }
+
+        if (currentLlmIndex >= configs.length() && configs.length() > 0) {
+            currentLlmIndex = 0; // wrap around or safety
+        }
+
+        org.json.JSONObject config = configs.optJSONObject(currentLlmIndex);
+        if (config == null) config = new org.json.JSONObject();
+
+        String model = config.optString("model", "models/gemini-1.5-flash");
+        String savedToken = config.optString("token", "").trim();
+        String endpoint = config.optString("endpoint", "https://generativelanguage.googleapis.com/v1beta/openai").trim();
+        final boolean hasNextLlm = currentLlmIndex < configs.length() - 1;
+
+        String template = prefs.getString(ApiConstants.KEY_AI_PROMPT_TEMPLATE, "");
+        if (template.trim().isEmpty()) {
+            template = "Tu es un assistant qui aide à écrire un message sur le réseau social JALF.\n" +
+                       "Mon profil :\n{myProfile}\n\n" +
+                       "Profil de l'autre personne :\n{otherProfile}\n\n" +
+                       "Historique de la conversation :\n{history}";
+        }
+
+        String myProfileText = myProfile != null ? formatProfileForPrompt(myProfile) : "";
+        String otherProfileText = otherProfile != null ? formatProfileForPrompt(otherProfile) : "";
+        String historyText = history != null ? history : "";
+
+        String basePrompt = template
+                .replace("{myProfile}", myProfileText)
+                .replace("{otherProfile}", otherProfileText)
+                .replace("{history}", historyText);
 
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("Tu es un assistant qui aide à écrire un message sur le réseau social JALF.\n");
-
-        if (myProfile != null) {
-            promptBuilder.append("Mon profil :\n").append(formatProfileForPrompt(myProfile)).append("\n");
-        }
-
-        if (otherProfile != null) {
-            promptBuilder.append("Profil de l'autre personne :\n").append(formatProfileForPrompt(otherProfile)).append("\n");
-        }
-
-        if (userPref != null && !userPref.isEmpty()) {
-            promptBuilder.append("Mes préférences : ").append(userPref).append("\n");
-        }
-
-        if (history != null && !history.isEmpty()) {
-            promptBuilder.append("Historique de la conversation :\n").append(history).append("\n");
-        }
+        promptBuilder.append(basePrompt.trim());
 
         if (specificContextMessage != null && !specificContextMessage.isEmpty()) {
-            promptBuilder.append(
-                    "\nJe veux que tu répondes spécifiquement, directement, et personnellement au message exact suivant : \"")
+            promptBuilder.append("\n\nJe veux que tu répondes spécifiquement, directement, et personnellement au message exact suivant : \"")
                     .append(specificContextMessage).append("\"\n");
-            promptBuilder.append("Ton rôle est de générer EXACTEMENT TROIS propositions de réponse différentes, en ").append(lang)
+            promptBuilder.append("Ton rôle est de générer EXACTEMENT DEUX propositions de réponse différentes, en ").append(lang)
                     .append(", qui s'adressent au sujet de ce message précis.\n");
         } else if (history != null && !history.isEmpty()) {
-            promptBuilder.append("C'est à mon tour de répondre. Écris EXACTEMENT TROIS courts messages de réponse différents en ").append(lang)
+            promptBuilder.append("\n\nC'est à mon tour de répondre. Écris EXACTEMENT DEUX courts messages de réponse différents en ").append(lang)
                     .append(" qui soient naturels et engageants.\n");
         } else {
-            promptBuilder.append("Écris EXACTEMENT TROIS courts messages d'accroche ou de réponse différents en ").append(lang)
+            promptBuilder.append("\n\nÉcris EXACTEMENT DEUX courts messages d'accroche ou de réponse différents en ").append(lang)
                     .append(" qui soient naturels et engageants.\n");
         }
-        promptBuilder.append("Ne sors QUE le texte des messages, sans guillemets, et sépare CHAQUE option EXACTEMENT par la chaîne '|||' sans rien d'autre.");
+        promptBuilder.append("N'inclus aucun bloc de réflexion, de planification ou de chaîne de pensée. N'utilise pas de balises <|...>. Ne sors absolument rien d'autre que le texte des messages, sans guillemets, et sépare CHAQUE option EXACTEMENT par la chaîne '|||' sans rien d'autre.");
 
         String prompt = promptBuilder.toString();
-        String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
         String tokenToUse = savedToken.isEmpty() ? ApiConstants.GEMINI_API_KEY.trim() : savedToken;
-        String endpoint = prefs.getString(ApiConstants.KEY_AI_ENDPOINT, "https://generativelanguage.googleapis.com/v1beta/openai").trim();
 
         if (endpoint.endsWith("/")) {
             endpoint = endpoint.substring(0, endpoint.length() - 1);
@@ -1540,15 +1648,13 @@ public class ConversationFragment extends Fragment {
                 .build();
 
         aiClient.newCall(request).enqueue(new Callback() {
-            @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 AppLogger.log(TAG, "AI API request failed", e);
                 mainHandler.post(() -> {
                     if (!isAdded() || getContext() == null) return;
                     setAiGeneratingState(false, null);
-                    if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
                     String errMsg = getString(R.string.gemini_error_api_failure) + " (" + e.getMessage() + ")";
-                    Toast.makeText(context(), errMsg, Toast.LENGTH_LONG).show();
+                    showAiErrorBottomSheet(errMsg, hasNextLlm);
                 });
             }
 
@@ -1602,19 +1708,51 @@ public class ConversationFragment extends Fragment {
                             mainHandler.post(() -> {
                                 if (!isAdded() || getContext() == null) return;
                                 setAiGeneratingState(false, null);
-                                if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                                Toast.makeText(context(), R.string.gemini_error_blocked,
-                                        Toast.LENGTH_LONG).show();
+                                showAiErrorBottomSheet(getString(R.string.gemini_error_blocked), hasNextLlm);
                             });
                         }
                     } else {
                         String errorBody = r.body() != null ? r.body().string() : "";
                         AppLogger.log(TAG, "AI API returned error code: " + r.code() + ", body: " + errorBody);
+                        
+                        String parsedErrorMsg = "";
+                        try {
+                            String errorBodyTrimmed = errorBody.trim();
+                            if (errorBodyTrimmed.startsWith("[")) {
+                                org.json.JSONArray arr = new org.json.JSONArray(errorBodyTrimmed);
+                                if (arr.length() > 0) {
+                                    org.json.JSONObject first = arr.getJSONObject(0);
+                                    if (first.has("error")) {
+                                        org.json.JSONObject inner = first.optJSONObject("error");
+                                        if (inner != null) parsedErrorMsg = inner.optString("message", "");
+                                    }
+                                }
+                            } else if (errorBodyTrimmed.startsWith("{")) {
+                                org.json.JSONObject obj = new org.json.JSONObject(errorBodyTrimmed);
+                                if (obj.has("error")) {
+                                    org.json.JSONObject inner = obj.optJSONObject("error");
+                                    if (inner != null) {
+                                        parsedErrorMsg = inner.optString("message", "");
+                                    } else {
+                                        parsedErrorMsg = obj.optString("error", "");
+                                    }
+                                } else if (obj.has("message")) {
+                                    parsedErrorMsg = obj.optString("message", "");
+                                }
+                            }
+                        } catch (Exception ignored) {}
+
+                        String finalError = getString(R.string.gemini_error_api_error) + " (Code: " + r.code() + ")";
+                        if (!parsedErrorMsg.isEmpty()) {
+                            finalError += "\n" + parsedErrorMsg;
+                        }
+
+                        final String errorMsgToDisplay = finalError;
+
                         mainHandler.post(() -> {
                             if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);
-                            if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                            Toast.makeText(context(), getString(R.string.gemini_error_api_error), Toast.LENGTH_SHORT).show();
+                            showAiErrorBottomSheet(errorMsgToDisplay, hasNextLlm);
                         });
                     }
                 } catch (Exception e) {
@@ -1622,8 +1760,7 @@ public class ConversationFragment extends Fragment {
                     mainHandler.post(() -> {
                         if (!isAdded() || getContext() == null) return;
                         setAiGeneratingState(false, null);
-                        if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                        Toast.makeText(context(), R.string.gemini_error_exception, Toast.LENGTH_SHORT).show();
+                        showAiErrorBottomSheet(getString(R.string.gemini_error_exception), hasNextLlm);
                     });
                 }
             }
@@ -1679,9 +1816,10 @@ public class ConversationFragment extends Fragment {
 
     private void showAiOptionsBottomSheet(String[] options) {
         if (!isAdded() || getContext() == null) return;
-        if (aiBottomSheet == null) {
-            aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
+        if (aiBottomSheet != null) {
+            try { aiBottomSheet.dismiss(); } catch (Exception ignored) {}
         }
+        aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
         aiBottomSheet.setCancelable(true);
         
         android.widget.LinearLayout container = new android.widget.LinearLayout(context());
@@ -1725,12 +1863,68 @@ public class ConversationFragment extends Fragment {
             container.addView(card);
         }
 
+        String[] slotNames = getAiSlotNames();
+
+        android.widget.LinearLayout regenContainer = new android.widget.LinearLayout(context());
+        regenContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        regenContainer.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        android.widget.LinearLayout.LayoutParams regenParams = new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        regenParams.setMargins(0, padding, 0, 0);
+        regenContainer.setLayoutParams(regenParams);
+
+        android.widget.Spinner llmSpinner = new android.widget.Spinner(context());
+        android.widget.ArrayAdapter<String> spinnerAdapter = new android.widget.ArrayAdapter<>(context(), android.R.layout.simple_spinner_dropdown_item, slotNames);
+        llmSpinner.setAdapter(spinnerAdapter);
+        if (currentLlmIndex >= 0 && currentLlmIndex < slotNames.length) {
+            llmSpinner.setSelection(currentLlmIndex);
+        }
+        
+        android.widget.LinearLayout.LayoutParams spinnerParams = new android.widget.LinearLayout.LayoutParams(
+                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        llmSpinner.setLayoutParams(spinnerParams);
+
+        com.google.android.material.button.MaterialButton btnRegenerate = new com.google.android.material.button.MaterialButton(context(), null, com.google.android.material.R.attr.materialButtonStyle);
+        btnRegenerate.setText("Get new intro / reply");
+        btnRegenerate.setOnClickListener(v -> {
+            currentLlmIndex = llmSpinner.getSelectedItemPosition();
+            String status = getString(R.string.gemini_status_reply);
+            if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
+                status = getString(R.string.gemini_status_targeted);
+            } else if (lastHistory == null || lastHistory.trim().isEmpty()) {
+                status = getString(R.string.gemini_status_introduction);
+            }
+            setAiGeneratingState(true, status);
+            callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
+        });
+
+        regenContainer.addView(llmSpinner);
+        regenContainer.addView(btnRegenerate);
+        container.addView(regenContainer);
+
         androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(context());
         scrollView.addView(container);
         
         aiBottomSheet.setContentView(scrollView);
-        if (!aiBottomSheet.isShowing()) {
-            aiBottomSheet.show();
+        try { aiBottomSheet.show(); } catch (Exception ignored) {}
+    }
+
+    private String[] getAiSlotNames() {
+        AppPrefs prefs = AppPrefs.getInstance(context());
+        String savedConfigsJson = prefs.getString(ApiConstants.KEY_AI_CONFIGS, "[]");
+        try {
+            JSONArray configs = new JSONArray(savedConfigsJson);
+            if (configs.length() == 0) return new String[]{"LLM 1"};
+            String[] names = new String[configs.length()];
+            for (int i = 0; i < configs.length(); i++) {
+                JSONObject config = configs.getJSONObject(i);
+                String fName = config.optString("friendlyName", "");
+                if (fName.trim().isEmpty()) fName = "LLM " + (i + 1);
+                names[i] = fName;
+            }
+            return names;
+        } catch (Exception e) {
+            return new String[]{"LLM 1"};
         }
     }
 

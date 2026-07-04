@@ -26,11 +26,17 @@ public class ProfilePhotoAdapter extends RecyclerView.Adapter<ProfilePhotoAdapte
         public final String url;
         public final String rating;
         public final int rank;
+        public final String picId;
+        public boolean isLiked;
+        public boolean isRealized;
 
-        public PhotoItem(String url, String rating, int rank) {
+        public PhotoItem(String url, String rating, int rank, String picId, boolean isLiked, boolean isRealized) {
             this.url = url;
             this.rating = rating;
             this.rank = rank;
+            this.picId = picId;
+            this.isLiked = isLiked;
+            this.isRealized = isRealized;
         }
     }
 

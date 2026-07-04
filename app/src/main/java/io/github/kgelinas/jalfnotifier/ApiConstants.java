@@ -63,7 +63,10 @@ public class ApiConstants {
         public static final String KEY_GEMINI_MODEL = "GEMINI_MODEL";
         public static final String KEY_AI_PROVIDER = "AI_PROVIDER";
         public static final String KEY_AI_TOKEN = "AI_TOKEN";
+        public static final String KEY_AI_PROMPT_TEMPLATE = "pref_ai_prompt_template";
         public static final String KEY_AI_ENDPOINT = "AI_ENDPOINT";
+        public static final String KEY_AI_CONFIGS = "AI_CONFIGS";
+        public static final String KEY_AI_PROFILE_FIELDS = "AI_PROFILE_FIELDS";
         public static final String KEY_AI_UNLOCKED = "AI_UNLOCKED";
         public static final String KEY_CACHED_EVENTS = "CACHED_EVENTS";
         public static final String KEY_CACHED_PROFILES = "CACHED_PROFILES";

@@ -323,12 +323,17 @@
     <string name="settings_intelligence_model">Language Model</string>
     <string name="settings_intelligence_props">Assistant Properties</string>
     <string name="settings_intelligence_lang">Assistant Language</string>
-    <string name="settings_intelligence_persona">Personal Preference / Persona</string>
-    <string name="settings_intelligence_expand">Expand editor</string>
+    <string name="settings_intelligence_prompt_template">System Prompt Template</string>
+    <string name="settings_intelligence_prompt_template_reset">Reset to Default</string>
+    <string name="settings_intelligence_prompt_template_editor_title">Persona / Preferences</string>
+    <string name="settings_intelligence_prompt_template_editor_hint">Assistant Personality and Instructions</string>
+    <string name="settings_intelligence_prompt_template_editor_done">Done</string>
+    <string name="settings_intelligence_profile_fields">Profile fields to include (comma separated)</string>
+    <string name="sync_status_title">Drive Synchronization</string>
     <string name="settings_language">App Language</string>
-    <string name="gemini_status_introduction">AI Introduction...</string>
-    <string name="gemini_status_reply">AI Reply...</string>
-    <string name="gemini_status_targeted">AI Targeted Response...</string>
+    <string name="gemini_status_introduction">Generating Introduction...</string>
+    <string name="gemini_status_reply">Generating Reply...</string>
+    <string name="gemini_status_targeted">Generating Targeted Response...</string>
     <string name="gemini_error_no_token">Please configure an AI Provider Token first.</string>
     <string name="gemini_error_api_failure">AI API failure</string>
     <string name="gemini_error_api_error">AI API error</string>
@@ -545,4 +550,6 @@ Without it, Android would put the service to sleep and you would miss notificati
     <string name="cleanup_purging">Purging conversations…</string>
     <string name="cleanup_success">Successfully deleted %1$d conversation(s)</string>
     <string name="session_expired_toast">Session expired. Please log in again.</string>
+    <string name="action_like_photo">Like this photo</string>
+    <string name="action_realize_fantasy">Realize fantasy for this photo</string>
 </resources>

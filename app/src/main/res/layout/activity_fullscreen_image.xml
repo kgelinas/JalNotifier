@@ -27,13 +27,52 @@
         android:elevation="4dp" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_save"
+        android:id="@+id/fab_main"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="24dp"
-        android:src="@drawable/ic_download"
+        android:src="@drawable/ic_menu"
+        android:contentDescription="Open actions menu"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:tint="@android:color/white" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_download"
+        app:layout_constraintBottom_toTopOf="@id/fab_main"
+        app:layout_constraintEnd_toEndOf="@id/fab_main"
+        app:layout_constraintStart_toStartOf="@id/fab_main"
+        android:visibility="gone"
+        app:tint="@android:color/white" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_like"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_like_inactive"
+        android:contentDescription="@string/action_like_photo"
+        app:layout_constraintBottom_toTopOf="@id/fab_save"
+        app:layout_constraintEnd_toEndOf="@id/fab_save"
+        app:layout_constraintStart_toStartOf="@id/fab_save"
+        android:visibility="gone"
+        app:tint="@null" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_realize"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_realize_inactive"
+        android:contentDescription="@string/action_realize_fantasy"
+        app:layout_constraintBottom_toTopOf="@id/fab_like"
+        app:layout_constraintEnd_toEndOf="@id/fab_like"
+        app:layout_constraintStart_toStartOf="@id/fab_like"
+        android:visibility="gone"
+        app:tint="@null" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

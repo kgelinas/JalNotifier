@@ -50,6 +50,7 @@ import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.FormBody;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
@@ -146,6 +147,11 @@ public class ProfileFragment extends Fragment {
     private static final int CHIP_TYPE_FANTASY = 1;
     private static final int CHIP_TYPE_INTEREST = 2;
 
+    private androidx.activity.result.ActivityResultLauncher<Intent> fullscreenImageLauncher;
+
+    public ProfileFragment() {
+    }
+
     public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite,
             boolean isBookmarked) {
         ProfileFragment fragment = new ProfileFragment();
@@ -166,6 +172,22 @@ public class ProfileFragment extends Fragment {
             isFavorite = getArguments().getBoolean("isFavorite", false);
             isBookmarked = getArguments().getBoolean("isBookmarked", false);
         }
+
+        fullscreenImageLauncher = registerForActivityResult(
+                new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == android.app.Activity.RESULT_OK && result.getData() != null) {
+                        boolean[] likes = result.getData().getBooleanArrayExtra("likes");
+                        boolean[] realizes = result.getData().getBooleanArrayExtra("realizes");
+                        if (likes != null && realizes != null && likes.length == allPhotoItems.size()) {
+                            for (int i = 0; i < allPhotoItems.size(); i++) {
+                                ProfilePhotoAdapter.PhotoItem item = allPhotoItems.get(i);
+                                item.isLiked = likes[i];
+                                item.isRealized = realizes[i];
+                            }
+                        }
+                    }
+                });
 
         if (getContext() != null) {
             profileCameraGalleryPicker = new CameraGalleryPicker(getContext(), new CameraGalleryPicker.PhotoSelectionCallback() {
@@ -488,18 +510,32 @@ public class ProfileFragment extends Fragment {
         toolbar.setOnMenuItemClickListener(this::onMenuItemClick);
 
         ViewPager2 photoPager = v.findViewById(R.id.profile_photo_pager);
-        photoAdapter = new ProfilePhotoAdapter(allPhotoItems, position -> {
-            Intent intent = new Intent(getContext(), FullscreenImageActivity.class);
-            ArrayList<String> urls = new ArrayList<>();
-            ArrayList<Integer> ranks = new ArrayList<>();
-            for (ProfilePhotoAdapter.PhotoItem item : allPhotoItems) {
-                urls.add(item.url);
-                ranks.add(item.rank);
+        photoAdapter = new ProfilePhotoAdapter(allPhotoItems, new ProfilePhotoAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(int position) {
+                Intent intent = new Intent(getContext(), FullscreenImageActivity.class);
+                ArrayList<String> urls = new ArrayList<>();
+                ArrayList<Integer> ranks = new ArrayList<>();
+                ArrayList<String> picIds = new ArrayList<>();
+                boolean[] likes = new boolean[allPhotoItems.size()];
+                boolean[] realizes = new boolean[allPhotoItems.size()];
+                
+                for (int i = 0; i < allPhotoItems.size(); i++) {
+                    ProfilePhotoAdapter.PhotoItem item = allPhotoItems.get(i);
+                    urls.add(item.url);
+                    ranks.add(item.rank);
+                    picIds.add(item.picId != null ? item.picId : "");
+                    likes[i] = item.isLiked;
+                    realizes[i] = item.isRealized;
+                }
+                intent.putStringArrayListExtra("imageUrlList", urls);
+                intent.putIntegerArrayListExtra("imageRanks", ranks);
+                intent.putStringArrayListExtra("picIds", picIds);
+                intent.putExtra("likes", likes);
+                intent.putExtra("realizes", realizes);
+                intent.putExtra("initialPosition", position);
+                fullscreenImageLauncher.launch(intent);
             }
-            intent.putStringArrayListExtra("imageUrlList", urls);
-            intent.putIntegerArrayListExtra("imageRanks", ranks);
-            intent.putExtra("initialPosition", position);
-            startActivity(intent);
         });
         photoPager.setAdapter(photoAdapter);
 
@@ -773,6 +809,10 @@ public class ProfileFragment extends Fragment {
     }
 
     private void addPhotoItem(String url, String ratingLink) {
+        addPhotoItem(url, ratingLink, null, false, false);
+    }
+
+    private void addPhotoItem(String url, String ratingLink, String picId, boolean isLiked, boolean isRealized) {
         if (getContext() == null || !isAdded()) {
             return;
         }
@@ -786,12 +826,26 @@ public class ProfileFragment extends Fragment {
 
         for (int i = 0; i < allPhotoItems.size(); i++) {
             ProfilePhotoAdapter.PhotoItem existing = allPhotoItems.get(i);
-            if (existing.url.equals(fullUrl)) {
+            boolean matchUrl = existing.url.equals(fullUrl);
+            boolean matchPicId = picId != null && !picId.isEmpty() && existing.url.contains(picId);
+            boolean matchRestUrlToExistingPicId = existing.picId != null && !existing.picId.isEmpty() && fullUrl.contains(existing.picId);
+            
+            if (matchUrl || matchPicId || matchRestUrlToExistingPicId) {
                 // Update rank/rating if we now have it (from REST)
                 String newLabel = getRatingLabel(ratingLink);
                 int newRank = getRatingRank(ratingLink);
-                if (existing.rank == 0 && newRank > 0) {
-                    allPhotoItems.set(i, new ProfilePhotoAdapter.PhotoItem(fullUrl, newLabel, newRank));
+                boolean updateRank = existing.rank == 0 && newRank > 0;
+                boolean updateWeb = picId != null && !picId.isEmpty() && (existing.picId == null || existing.picId.isEmpty() || existing.isLiked != isLiked || existing.isRealized != isRealized);
+
+                if (updateRank || updateWeb || matchPicId) {
+                    allPhotoItems.set(i, new ProfilePhotoAdapter.PhotoItem(
+                        existing.url, // Keep original URL, it's the REST one
+                        updateRank ? newLabel : existing.rating,
+                        updateRank ? newRank : existing.rank,
+                        updateWeb ? picId : existing.picId,
+                        updateWeb ? isLiked : existing.isLiked,
+                        updateWeb ? isRealized : existing.isRealized
+                    ));
                     if (photoAdapter != null) {
                         photoAdapter.notifyItemChanged(i);
                     }
@@ -803,17 +857,17 @@ public class ProfileFragment extends Fragment {
         String label = getRatingLabel(ratingLink);
         int rank = getRatingRank(ratingLink);
 
-        // Special case: if we only have the initial placeholder (rank 0) and we're adding 
-        // the first rated photo from REST, replace it even if URL differs (thumbnail vs full)
-        if (allPhotoItems.size() == 1 && allPhotoItems.get(0).rank == 0 && rank > 0) {
-            allPhotoItems.set(0, new ProfilePhotoAdapter.PhotoItem(fullUrl, label, rank));
+        // Special case: if we only have the initial placeholder (no picId, no rank) and we're adding 
+        // the first photo from REST or WEB API, replace it even if URL differs (thumbnail vs full)
+        if (allPhotoItems.size() == 1 && allPhotoItems.get(0).rank == 0 && (allPhotoItems.get(0).picId == null || allPhotoItems.get(0).picId.isEmpty())) {
+            allPhotoItems.set(0, new ProfilePhotoAdapter.PhotoItem(fullUrl, label, rank, picId, isLiked, isRealized));
             if (photoAdapter != null) {
                 photoAdapter.notifyItemChanged(0);
             }
             return;
         }
 
-        allPhotoItems.add(new ProfilePhotoAdapter.PhotoItem(fullUrl, label, rank));
+        allPhotoItems.add(new ProfilePhotoAdapter.PhotoItem(fullUrl, label, rank, picId, isLiked, isRealized));
         if (photoAdapter != null) {
             photoAdapter.notifyItemInserted(allPhotoItems.size() - 1);
         }
@@ -1084,17 +1138,17 @@ public class ProfileFragment extends Fragment {
             // Fallback for primary photo if 'photos' array is missing
             JSONObject photo = data.optJSONObject("photo");
             if (photo != null) {
-                String thumb = photo.optString("image_144x189_link",
-                        photo.optString("thumbnail_uri",
-                                photo.optString("image_1024x768_link", "")));
-                if (!thumb.isEmpty())
-                    addPhotoItem(thumb, photo.optString("photo_rating_link", ""));
+                String bestUrl = extractBestPhotoUrl(photo);
+                if (!bestUrl.isEmpty())
+                    addPhotoItem(bestUrl, photo.optString("photo_rating_link", ""));
             }
         }
 
         String albumsLink = data.optString("user_photos_albums_link", "");
-        if (!albumsLink.isEmpty())
+        if (!albumsLink.isEmpty()) {
             fetchAlbums(albumsLink);
+            fetchWebPhotosFromAlbum();
+        }
 
         String videoAlbumsLink = data.optString("user_videos_albums_link", "");
         if (videoAlbumsLink.isEmpty())
@@ -1218,6 +1272,81 @@ public class ProfileFragment extends Fragment {
                         }
                     }
                 }
+            }
+        });
+    }
+
+
+
+    private void fetchWebPhotosFromAlbum() {
+        if (userId == null || userId.isEmpty()) return;
+        RequestBody formBody = new FormBody.Builder()
+                .add("action", "getAlbum")
+                .add("album", "public")
+                .add("of", userId)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(ApiConstants.BASE_URL + "/ct/photoAlbum")
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .addHeader("x-requested-with", "XMLHttpRequest")
+                .post(formBody)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                Log.e(TAG, "Failed to fetch web photos", e);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        String body = response.body().string();
+                        JSONObject json = new JSONObject(body);
+                        JSONArray slides = json.optJSONArray("slides");
+                        if (slides != null) {
+                            for (int i = 0; i < slides.length(); i++) {
+                                String html = slides.optString(i);
+                                String picId = "";
+                                boolean isLiked = false;
+                                boolean isRealized = false;
+                                String imgUrl = "";
+
+                                java.util.regex.Matcher picIdMatcher = java.util.regex.Pattern.compile("data-picId=\"([^\"]+)\"").matcher(html);
+                                if (picIdMatcher.find()) picId = picIdMatcher.group(1);
+
+                                java.util.regex.Matcher likedMatcher = java.util.regex.Pattern.compile("data-iliked=\"([^\"]+)\"").matcher(html);
+                                if (likedMatcher.find()) isLiked = "true".equals(likedMatcher.group(1));
+
+                                java.util.regex.Matcher realizedMatcher = java.util.regex.Pattern.compile("data-irealized=\"([^\"]+)\"").matcher(html);
+                                if (realizedMatcher.find()) isRealized = "true".equals(realizedMatcher.group(1));
+
+                                java.util.regex.Matcher imgMatcher = java.util.regex.Pattern.compile("<img[^>]+data-src=\"([^\"]+)\"").matcher(html);
+                                if (imgMatcher.find()) {
+                                    imgUrl = imgMatcher.group(1);
+                                } else {
+                                    imgMatcher = java.util.regex.Pattern.compile("<img[^>]+src=\"([^\"]+)\"").matcher(html);
+                                    if (imgMatcher.find()) imgUrl = imgMatcher.group(1);
+                                }
+
+                                if (!imgUrl.isEmpty()) {
+                                    final String finalUrl = imgUrl;
+                                    final String finalPicId = picId;
+                                    final boolean finalLiked = isLiked;
+                                    final boolean finalRealized = isRealized;
+                                    new Handler(Looper.getMainLooper()).post(() -> addPhotoItem(finalUrl, "", finalPicId, finalLiked, finalRealized));
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error parsing web photos", e);
+                    }
+                }
+                response.close();
             }
         });
     }

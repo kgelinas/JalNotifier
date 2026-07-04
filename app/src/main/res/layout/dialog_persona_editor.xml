@@ -13,31 +13,33 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Persona / Preferences"
+            android:text="@string/settings_intelligence_prompt_template_editor_title"
             android:textAppearance="?attr/textAppearanceTitleLarge"
             android:layout_marginBottom="16dp" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Assistant Personality and Instructions"
+            android:hint="@string/settings_intelligence_prompt_template_editor_hint"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_marginBottom="24dp">
 
-            <com.google.android.material.textfield.TextInputEditText
+            <MultiAutoCompleteTextView
                 android:id="@+id/edit_persona_full"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="top"
+                android:gravity="top|start"
                 android:inputType="textMultiLine"
-                android:minLines="10" />
+                android:minLines="10"
+                android:padding="16dp"
+                android:dropDownHeight="150dp" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save_persona"
             android:layout_width="match_parent"
             android:layout_height="64dp"
-            android:text="Done"
+            android:text="@string/settings_intelligence_prompt_template_editor_done"
             app:cornerRadius="16dp"
             style="@style/Widget.Material3.Button" />
     </LinearLayout>

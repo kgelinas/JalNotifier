@@ -323,8 +323,13 @@
     <string name="settings_intelligence_model">Modèle de langage</string>
     <string name="settings_intelligence_props">Propriétés de l\'assistant</string>
     <string name="settings_intelligence_lang">Langue de l\'assistant</string>
-    <string name="settings_intelligence_persona">Préférence personnelle / Persona</string>
-    <string name="settings_intelligence_expand">Agrandir l\'éditeur</string>
+    <string name="settings_intelligence_prompt_template">Modèle de prompt système</string>
+    <string name="settings_intelligence_prompt_template_reset">Rétablir par défaut</string>
+    <string name="settings_intelligence_prompt_template_editor_title">Persona / Préférences</string>
+    <string name="settings_intelligence_prompt_template_editor_hint">Personnalité et instructions de l\'assistant</string>
+    <string name="settings_intelligence_prompt_template_editor_done">Terminé</string>
+    <string name="settings_intelligence_profile_fields">Champs du profil à inclure (séparés par des virgules)</string>
+    <string name="sync_status_title">Synchronisation Drive</string>
     <string name="settings_notification_title">Notifications</string>
     <string name="settings_notification_by_sex">Notifications par Sexe</string>
     <string name="settings_notification_sex_header">Sexe</string>
@@ -345,8 +350,8 @@
     <string name="action_reply">Répondre</string>
     <string name="action_mark_as_read">Marquer comme lu</string>
     <string name="settings_language">Langue de l\'application</string>
-    <string name="gemini_status_introduction">Introduction IA...</string>
-    <string name="gemini_status_reply">Réponse IA...</string>
+    <string name="gemini_status_introduction">Génération d\'introduction...</string>
+    <string name="gemini_status_reply">Génération de réponse...</string>
     <string name="gemini_status_targeted">Génération de réponse ciblée...</string>
     <string name="gemini_error_no_token">Veuillez d\'abord configurer un jeton de fournisseur d\'IA.</string>
     <string name="gemini_error_api_failure">Échec de l\'API IA</string>
@@ -545,6 +550,8 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="cleanup_purging">Purge des conversations…</string>
     <string name="cleanup_success">%1$d conversation(s) supprimée(s) avec succès</string>
     <string name="session_expired_toast">Session expirée. Veuillez vous reconnecter.</string>
+    <string name="action_like_photo">Aimer cette photo</string>
+    <string name="action_realize_fantasy">Réaliser le fantasme de cette photo</string>
 </resources>
 
 

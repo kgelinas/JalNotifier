@@ -65,11 +65,14 @@ public class SettingsViewModel extends AndroidViewModel {
     private final MutableLiveData<String> _geminiLanguage = new MutableLiveData<>();
     public final LiveData<String> geminiLanguage = _geminiLanguage;
 
-    private final MutableLiveData<String> _geminiPreference = new MutableLiveData<>();
-    public final LiveData<String> geminiPreference = _geminiPreference;
+    private final MutableLiveData<String> _aiPromptTemplate = new MutableLiveData<>();
+    public final LiveData<String> aiPromptTemplate = _aiPromptTemplate;
 
     private final MutableLiveData<String> _geminiModel = new MutableLiveData<>();
     public final LiveData<String> geminiModel = _geminiModel;
+
+    private final MutableLiveData<String> _aiProfileFields = new MutableLiveData<>();
+    public final LiveData<String> aiProfileFields = _aiProfileFields;
 
     private final MutableLiveData<String> _aiProvider = new MutableLiveData<>();
     public final LiveData<String> aiProvider = _aiProvider;
@@ -97,6 +100,14 @@ public class SettingsViewModel extends AndroidViewModel {
 
     private final MutableLiveData<Map<String, String>> _sexesMetadata = new MutableLiveData<>();
     public final LiveData<Map<String, String>> sexesMetadata = _sexesMetadata;
+
+    private final MutableLiveData<Integer> _currentLlmSlot = new MutableLiveData<>(0);
+    public final LiveData<Integer> currentLlmSlot = _currentLlmSlot;
+    
+    private final MutableLiveData<String> _friendlyName = new MutableLiveData<>();
+    public final LiveData<String> friendlyName = _friendlyName;
+
+    private JSONArray aiConfigsArray = new JSONArray();
 
     private final Runnable metadataListener = this::loadMetadata;
 
@@ -201,11 +212,11 @@ public class SettingsViewModel extends AndroidViewModel {
         _sendReadReceipts.postValue(prefs.getBoolean(ApiConstants.KEY_SEND_READ_RECEIPTS, true));
         _blurNsfw.postValue(prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true));
         _geminiLanguage.postValue(prefs.getString(ApiConstants.KEY_GEMINI_LANGUAGE, "Français"));
-        _geminiPreference.postValue(prefs.getString(ApiConstants.KEY_GEMINI_PREFERENCE, ""));
-        _geminiModel.postValue(prefs.getString(ApiConstants.KEY_GEMINI_MODEL, "models/gemini-1.5-flash"));
-        _aiProvider.postValue(prefs.getString(ApiConstants.KEY_AI_PROVIDER, "Google AI Studio"));
-        _aiToken.postValue(prefs.getString(ApiConstants.KEY_AI_TOKEN, ""));
-        _aiEndpoint.postValue(prefs.getString(ApiConstants.KEY_AI_ENDPOINT, "https://generativelanguage.googleapis.com/v1beta/openai"));
+        _aiPromptTemplate.postValue(prefs.getString(ApiConstants.KEY_AI_PROMPT_TEMPLATE, ""));
+        _aiProfileFields.postValue(prefs.getString(ApiConstants.KEY_AI_PROFILE_FIELDS, "name,age,city,social_status,goals,sex,sexes_interested,sexual_orientation,relationship,fantasies,profile_descriptions"));
+        
+        loadAiConfigs();
+        
         String myId = prefs.getString(ApiConstants.KEY_USER_ID, "");
         _remoteGeolocation.postValue(prefs.getInt("remote_geolocation_" + myId, 1) == 1);
         _remoteShareDistance.postValue(prefs.getInt("remote_share_distance_" + myId, 1) == 1);
@@ -343,29 +354,97 @@ public class SettingsViewModel extends AndroidViewModel {
         prefs.edit().putString(ApiConstants.KEY_GEMINI_LANGUAGE, value).apply();
     }
 
-    public void setGeminiPreference(String value) {
-        _geminiPreference.setValue(value);
-        prefs.edit().putString(ApiConstants.KEY_GEMINI_PREFERENCE, value).apply();
+    public void setAiPromptTemplate(String value) {
+        _aiPromptTemplate.setValue(value);
+        prefs.edit().putString(ApiConstants.KEY_AI_PROMPT_TEMPLATE, value).apply();
+    }
+
+    public void setCurrentLlmSlot(int slot) {
+        _currentLlmSlot.setValue(slot);
+        updateUiForCurrentSlot();
+    }
+
+    private void updateUiForCurrentSlot() {
+        int slot = _currentLlmSlot.getValue() != null ? _currentLlmSlot.getValue() : 0;
+        JSONObject config = aiConfigsArray.optJSONObject(slot);
+        if (config == null) config = new JSONObject();
+        
+        String fName = config.optString("friendlyName", "");
+        _friendlyName.setValue(fName);
+        _geminiModel.setValue(config.optString("model", "models/gemini-1.5-flash"));
+        _aiProvider.setValue(config.optString("provider", "Google AI Studio"));
+        _aiToken.setValue(config.optString("token", ""));
+        _aiEndpoint.setValue(config.optString("endpoint", "https://generativelanguage.googleapis.com/v1beta/openai"));
+        
+        fetchAvailableModels();
+    }
+
+    private void saveCurrentSlotConfig(String key, String value) {
+        int slot = _currentLlmSlot.getValue() != null ? _currentLlmSlot.getValue() : 0;
+        try {
+            while (aiConfigsArray.length() <= slot) {
+                aiConfigsArray.put(new JSONObject());
+            }
+            JSONObject config = aiConfigsArray.getJSONObject(slot);
+            config.put(key, value);
+            prefs.edit().putString(ApiConstants.KEY_AI_CONFIGS, aiConfigsArray.toString()).apply();
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to save AI config", e);
+        }
+    }
+
+    private void loadAiConfigs() {
+        String jsonStr = prefs.getString(ApiConstants.KEY_AI_CONFIGS, null);
+        if (jsonStr != null) {
+            try {
+                aiConfigsArray = new JSONArray(jsonStr);
+            } catch (Exception e) {
+                aiConfigsArray = new JSONArray();
+            }
+        } else {
+            // Migrate old settings
+            aiConfigsArray = new JSONArray();
+            JSONObject primary = new JSONObject();
+            try {
+                primary.put("provider", prefs.getString(ApiConstants.KEY_AI_PROVIDER, "Google AI Studio"));
+                primary.put("token", prefs.getString(ApiConstants.KEY_AI_TOKEN, ""));
+                primary.put("endpoint", prefs.getString(ApiConstants.KEY_AI_ENDPOINT, "https://generativelanguage.googleapis.com/v1beta/openai"));
+                primary.put("model", prefs.getString(ApiConstants.KEY_GEMINI_MODEL, "models/gemini-1.5-flash"));
+                aiConfigsArray.put(primary);
+                prefs.edit().putString(ApiConstants.KEY_AI_CONFIGS, aiConfigsArray.toString()).apply();
+            } catch (Exception ignored) {}
+        }
+        updateUiForCurrentSlot();
     }
 
     public void setGeminiModel(String value) {
         _geminiModel.setValue(value);
-        prefs.edit().putString(ApiConstants.KEY_GEMINI_MODEL, value).apply();
+        saveCurrentSlotConfig("model", value);
+    }
+
+    public void setFriendlyName(String value) {
+        _friendlyName.setValue(value);
+        saveCurrentSlotConfig("friendlyName", value);
     }
 
     public void setAiProvider(String value) {
         _aiProvider.setValue(value);
-        prefs.edit().putString(ApiConstants.KEY_AI_PROVIDER, value).apply();
+        saveCurrentSlotConfig("provider", value);
     }
 
     public void setAiToken(String value) {
         _aiToken.setValue(value);
-        prefs.edit().putString(ApiConstants.KEY_AI_TOKEN, value).apply();
+        saveCurrentSlotConfig("token", value);
     }
 
     public void setAiEndpoint(String value) {
         _aiEndpoint.setValue(value);
-        prefs.edit().putString(ApiConstants.KEY_AI_ENDPOINT, value).apply();
+        saveCurrentSlotConfig("endpoint", value);
+    }
+
+    public void setAiProfileFields(String value) {
+        _aiProfileFields.setValue(value);
+        prefs.edit().putString(ApiConstants.KEY_AI_PROFILE_FIELDS, value).apply();
     }
 
 
@@ -433,8 +512,8 @@ public class SettingsViewModel extends AndroidViewModel {
     }
 
     public void fetchAvailableModels() {
-        String token = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
-        String endpoint = prefs.getString(ApiConstants.KEY_AI_ENDPOINT, "https://generativelanguage.googleapis.com/v1beta/openai").trim();
+        String token = _aiToken.getValue() != null ? _aiToken.getValue().trim() : "";
+        String endpoint = _aiEndpoint.getValue() != null ? _aiEndpoint.getValue().trim() : "https://generativelanguage.googleapis.com/v1beta/openai";
 
         if (endpoint.endsWith("/")) {
             endpoint = endpoint.substring(0, endpoint.length() - 1);
