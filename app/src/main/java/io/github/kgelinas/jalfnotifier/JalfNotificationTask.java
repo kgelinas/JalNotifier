@@ -15,6 +15,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.Person;
 import androidx.core.app.RemoteInput;
+import androidx.core.content.pm.ShortcutInfoCompat;
+import androidx.core.content.pm.ShortcutManagerCompat;
+import androidx.core.graphics.drawable.IconCompat;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
@@ -961,7 +964,11 @@ public class JalfNotificationTask {
             notificationManager.createNotificationChannel(channel);
         }
 
+        String convoIdStr = StringUtils.extractNumericId(conversationLink);
+        int notificationId = convoIdStr.isEmpty() ? conversationLink.hashCode() : convoIdStr.hashCode();
+
         Intent intent = new Intent(context, MainActivity.class);
+        intent.setAction(Intent.ACTION_VIEW);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         intent.putExtra(ApiConstants.EXTRA_CONVERSATION_LINK, conversationLink);
         intent.putExtra(ApiConstants.EXTRA_OTHER_USER_ID, otherUserId);
@@ -970,8 +977,34 @@ public class JalfNotificationTask {
         intent.putExtra(ApiConstants.EXTRA_SEX_ICON_URL, sexIconUrl);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
-                context, (int) System.currentTimeMillis(), intent,
+                context, notificationId, intent,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Intent bubbleIntent = new Intent(context, ConversationActivity.class);
+        bubbleIntent.putExtra("conversationLink", conversationLink);
+        bubbleIntent.putExtra("otherUserId", otherUserId);
+        bubbleIntent.putExtra("otherName", senderName);
+        bubbleIntent.putExtra("avatarUrl", avatarUrl);
+        bubbleIntent.putExtra("sexIconUrl", sexIconUrl);
+
+        PendingIntent bubblePendingIntent = PendingIntent.getActivity(
+                context, notificationId, bubbleIntent,
+                PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        ShortcutInfoCompat shortcutInfo = new ShortcutInfoCompat.Builder(context, conversationLink)
+                .setShortLabel(senderName)
+                .setLongLabel(senderName)
+                .setIcon(IconCompat.createWithResource(context, R.drawable.ic_chat_24))
+                .setIntent(intent)
+                .setLongLived(true)
+                .build();
+        ShortcutManagerCompat.pushDynamicShortcut(context, shortcutInfo);
+
+        NotificationCompat.BubbleMetadata bubbleMetadata = new NotificationCompat.BubbleMetadata.Builder(
+                bubblePendingIntent,
+                IconCompat.createWithResource(context, R.drawable.ic_chat_24))
+                .setDesiredHeight(600)
+                .build();
 
         Person sender = new Person.Builder()
                 .setName(senderName)
@@ -988,9 +1021,6 @@ public class JalfNotificationTask {
         Intent replyIntent = new Intent(context, ReplyReceiver.class);
         replyIntent.setAction(ApiConstants.ACTION_REPLY);
         replyIntent.putExtra(ApiConstants.EXTRA_CONVERSATION_LINK, conversationLink);
-
-        String convoIdStr = StringUtils.extractNumericId(conversationLink);
-        int notificationId = convoIdStr.isEmpty() ? conversationLink.hashCode() : convoIdStr.hashCode();
 
         PendingIntent replyPendingIntent = PendingIntent.getBroadcast(
                 context,
@@ -1025,6 +1055,7 @@ public class JalfNotificationTask {
                 .setStyle(messagingStyle)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setShortcutId(conversationLink)
+                .setBubbleMetadata(bubbleMetadata)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .addAction(replyAction)

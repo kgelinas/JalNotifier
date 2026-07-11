@@ -293,6 +293,7 @@
     <string name="settings_add_quick_response">Add Quick Response</string>
     <string name="profile_action_poke">Poke</string>
     <string name="profile_action_message">Message</string>
+    <string name="profile_action_onfire">On Fire</string>
     <string name="settings_security_confirm_access">Confirm Access</string>
     <string name="settings_security_auth_reason">Please authenticate to enable biometric login</string>
     <string name="settings_security_auth_enabled">Biometric login enabled</string>
@@ -323,6 +324,9 @@
     <string name="settings_intelligence_model">Language Model</string>
     <string name="settings_intelligence_props">Assistant Properties</string>
     <string name="settings_intelligence_lang">Assistant Language</string>
+    <string name="settings_intelligence_include_picture">Include Profile Picture</string>
+    <string name="settings_intelligence_include_all_pictures">Include All Pictures (Slower)</string>
+    <string name="settings_intelligence_encode_base64">Encode Images as Base64 (Local LLMs)</string>
     <string name="settings_intelligence_prompt_template">System Prompt Template</string>
     <string name="settings_intelligence_prompt_template_reset">Reset to Default</string>
     <string name="settings_intelligence_prompt_template_editor_title">Persona / Preferences</string>
@@ -490,6 +494,34 @@ Without it, Android would put the service to sleep and you would miss notificati
     <string name="settings_ai_unlock_steps">You are now %1$d steps away from unlocking AI settings.</string>
     <string name="settings_ai_unlocked">AI Settings unlocked! 🚀</string>
     <string name="settings_ai_already_unlocked">AI settings are already unlocked.</string>
+
+    <string name="pref_ai_intro_prompt_title">Intro Prompt Template</string>
+    <string name="pref_ai_reply_prompt_title">Reply Prompt Template</string>
+
+    <string name="default_ai_intro_prompt">You are an assistant helping me write an introductory message on the JALF dating network.
+My profile:
+Name: {myName}, Age: {myAge}, Sex: {mySex}, City: {myCity}
+
+Their profile:
+Name: {name}, Age: {age}, Sex: {sex}, City: {city}
+Bio: {profile_descriptions}
+
+Write EXACTLY TWO different short icebreaker options in English that are natural and engaging.</string>
+
+    <string name="default_ai_reply_prompt">You are an assistant helping me reply to a message on the JALF dating network.
+My profile:
+Name: {myName}, Age: {myAge}, Sex: {mySex}, City: {myCity}
+
+Their profile:
+Name: {name}, Age: {age}, Sex: {sex}, City: {city}
+Bio: {profile_descriptions}
+
+Conversation history:
+{history}
+
+I want you to reply specifically and personally to this message: "{specificMessage}"
+
+Write EXACTLY TWO different short reply options in English that are natural and engaging.</string>
 
     <string name="widget_title">JALF Contacts</string>
     <string name="widget_updating">Updating…</string>

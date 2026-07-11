@@ -123,11 +123,32 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
             }
         });
 
-        String[] tags = new String[]{"{myProfile}", "{otherProfile}", "{history}"};
+        binding.editAiReplyPromptTemplate.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (!s.toString().equals(viewModel.aiReplyPromptTemplate.getValue())) {
+                    viewModel.setAiReplyPromptTemplate(s.toString());
+                }
+            }
+        });
+
+        String[] tags = new String[]{
+            "{myProfile}", "{otherProfile}", "{history}", "{specificMessage}",
+            "{name}", "{sex}", "{city}", "{age}", "{social_status}", "{goals}", "{sexual_orientation}", "{relationship}", "{fantasies}", "{profile_descriptions}",
+            "{myName}", "{mySex}", "{myCity}", "{myAge}", "{mySocial_status}", "{myGoals}", "{mySexual_orientation}", "{myRelationship}", "{myFantasies}", "{myProfile_descriptions}"
+        };
         ArrayAdapter<String> tagsAdapter = new ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, tags);
         binding.editAiPromptTemplate.setAdapter(tagsAdapter);
         binding.editAiPromptTemplate.setThreshold(1); // Trigger on the first character '{'
-        binding.editAiPromptTemplate.setTokenizer(new android.widget.MultiAutoCompleteTextView.Tokenizer() {
+        android.widget.MultiAutoCompleteTextView.Tokenizer tokenizer = new android.widget.MultiAutoCompleteTextView.Tokenizer() {
             @Override
             public int findTokenStart(CharSequence text, int cursor) {
                 int i = cursor;
@@ -157,15 +178,39 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
             public CharSequence terminateToken(CharSequence text) {
                 return text;
             }
-        });
+        };
+
+        binding.editAiPromptTemplate.setTokenizer(tokenizer);
+        binding.editAiReplyPromptTemplate.setAdapter(tagsAdapter);
+        binding.editAiReplyPromptTemplate.setThreshold(1);
+        binding.editAiReplyPromptTemplate.setTokenizer(tokenizer);
 
         binding.btnResetPromptTemplate.setOnClickListener(v -> {
-            viewModel.setAiPromptTemplate("");
+            viewModel.setAiPromptTemplate(getString(R.string.default_ai_intro_prompt));
         });
 
-        binding.editAiProfileFields.setOnClickListener(v -> showProfileFieldsDialog());
+        binding.btnResetReplyPromptTemplate.setOnClickListener(v -> {
+            viewModel.setAiReplyPromptTemplate(getString(R.string.default_ai_reply_prompt));
+        });
 
-        binding.layoutAiPromptTemplate.setEndIconOnClickListener(v -> showPromptTemplateEditorDialog());
+        binding.layoutAiPromptTemplate.setEndIconOnClickListener(v -> showPromptTemplateEditorDialog(true));
+        binding.layoutAiReplyPromptTemplate.setEndIconOnClickListener(v -> showPromptTemplateEditorDialog(false));
+
+        binding.switchIncludePicture.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            viewModel.setAiIncludePicture(isChecked);
+        });
+
+        binding.switchIncludeAllPictures.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            viewModel.setAiIncludeAllPictures(isChecked);
+            if (isChecked) {
+                android.widget.Toast.makeText(this, "Avertissement : Joindre toutes les photos peut ralentir la réponse.", android.widget.Toast.LENGTH_LONG).show();
+            }
+        });
+
+        binding.switchEncodeBase64.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            viewModel.setAiEncodeBase64(isChecked);
+        });
+
         viewModel.fetchAvailableModels();
     }
 
@@ -238,11 +283,12 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
         });
 
         viewModel.aiPromptTemplate.observe(this, pref -> {
-            if (pref != null && !pref.equals(binding.editAiPromptTemplate.getText().toString())) {
-                binding.editAiPromptTemplate.setText(pref);
+            String toDisplay = (pref == null || pref.isEmpty()) ? getString(R.string.default_ai_intro_prompt) : pref;
+            if (!toDisplay.equals(binding.editAiPromptTemplate.getText().toString())) {
+                binding.editAiPromptTemplate.setText(toDisplay);
             }
             if (pref == null || pref.isEmpty()) {
-                binding.layoutAiPromptTemplate.setHelperText("Leave empty to use the default app template");
+                binding.layoutAiPromptTemplate.setHelperText("Currently using the default app template. Edit to override.");
             } else {
                 binding.layoutAiPromptTemplate.setHelperText(null);
             }
@@ -254,9 +300,33 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
             }
         });
 
-        viewModel.aiProfileFields.observe(this, fields -> {
-            if (fields != null && !fields.equals(binding.editAiProfileFields.getText().toString())) {
-                binding.editAiProfileFields.setText(fields);
+        viewModel.aiReplyPromptTemplate.observe(this, pref -> {
+            String toDisplay = (pref == null || pref.isEmpty()) ? getString(R.string.default_ai_reply_prompt) : pref;
+            if (!toDisplay.equals(binding.editAiReplyPromptTemplate.getText().toString())) {
+                binding.editAiReplyPromptTemplate.setText(toDisplay);
+            }
+            if (pref == null || pref.isEmpty()) {
+                binding.layoutAiReplyPromptTemplate.setHelperText("Currently using the default app template. Edit to override.");
+            } else {
+                binding.layoutAiReplyPromptTemplate.setHelperText(null);
+            }
+        });
+
+        viewModel.aiIncludePicture.observe(this, include -> {
+            if (include != null && include != binding.switchIncludePicture.isChecked()) {
+                binding.switchIncludePicture.setChecked(include);
+            }
+        });
+
+        viewModel.aiIncludeAllPictures.observe(this, include -> {
+            if (include != null && include != binding.switchIncludeAllPictures.isChecked()) {
+                binding.switchIncludeAllPictures.setChecked(include);
+            }
+        });
+
+        viewModel.aiEncodeBase64.observe(this, encode -> {
+            if (encode != null && encode != binding.switchEncodeBase64.isChecked()) {
+                binding.switchEncodeBase64.setChecked(encode);
             }
         });
 
@@ -298,38 +368,9 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
         });
     }
 
-    private void showProfileFieldsDialog() {
-        String[] allFields = {"name", "age", "city", "social_status", "goals", "sex", "sexes_interested", "sexual_orientation", "relationship", "fantasies", "profile_descriptions"};
-        String currentPrefs = viewModel.aiProfileFields.getValue();
-        if (currentPrefs == null) currentPrefs = "";
-        
-        java.util.List<String> selectedList = java.util.Arrays.asList(currentPrefs.split(","));
-        boolean[] checkedItems = new boolean[allFields.length];
-        for (int i = 0; i < allFields.length; i++) {
-            checkedItems[i] = selectedList.contains(allFields[i]);
-        }
-
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.settings_intelligence_profile_fields)
-                .setMultiChoiceItems(allFields, checkedItems, (dialog, which, isChecked) -> {
-                    checkedItems[which] = isChecked;
-                })
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0; i < allFields.length; i++) {
-                        if (checkedItems[i]) {
-                            if (sb.length() > 0) sb.append(",");
-                            sb.append(allFields[i]);
-                        }
-                    }
-                    viewModel.setAiProfileFields(sb.toString());
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
-    }
-
-    private void showPromptTemplateEditorDialog() {
-        binding.editAiPromptTemplate.dismissDropDown(); // Hide the main popup if it was open
+    private void showPromptTemplateEditorDialog(boolean isIntro) {
+        if (isIntro) binding.editAiPromptTemplate.dismissDropDown();
+        else binding.editAiReplyPromptTemplate.dismissDropDown();
 
         com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(this);
         View view = getLayoutInflater().inflate(R.layout.dialog_persona_editor, null);
@@ -338,7 +379,11 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
         android.widget.Button btn = view.findViewById(R.id.btn_save_persona);
 
         // Setup the exact same tags dropdown logic for the fullscreen editor
-        String[] tags = new String[]{"{myProfile}", "{otherProfile}", "{history}"};
+        String[] tags = new String[]{
+            "{myProfile}", "{otherProfile}", "{history}", "{specificMessage}",
+            "{name}", "{sex}", "{city}", "{age}", "{social_status}", "{goals}", "{sexual_orientation}", "{relationship}", "{fantasies}", "{profile_descriptions}",
+            "{myName}", "{mySex}", "{myCity}", "{myAge}", "{mySocial_status}", "{myGoals}", "{mySexual_orientation}", "{myRelationship}", "{myFantasies}", "{myProfile_descriptions}"
+        };
         android.widget.ArrayAdapter<String> tagsAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_dropdown_item_1line, tags);
         edit.setAdapter(tagsAdapter);
         edit.setThreshold(1);
@@ -374,11 +419,19 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
             }
         });
 
-        edit.setText(binding.editAiPromptTemplate.getText().toString());
-        btn.setOnClickListener(v -> {
-            binding.editAiPromptTemplate.setText(edit.getText().toString());
-            dialog.dismiss();
-        });
+        if (isIntro) {
+            edit.setText(binding.editAiPromptTemplate.getText().toString());
+            btn.setOnClickListener(v -> {
+                binding.editAiPromptTemplate.setText(edit.getText().toString());
+                dialog.dismiss();
+            });
+        } else {
+            edit.setText(binding.editAiReplyPromptTemplate.getText().toString());
+            btn.setOnClickListener(v -> {
+                binding.editAiReplyPromptTemplate.setText(edit.getText().toString());
+                dialog.dismiss();
+            });
+        }
 
         dialog.setContentView(view);
         dialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);

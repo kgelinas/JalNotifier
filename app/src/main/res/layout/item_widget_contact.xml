@@ -78,6 +78,16 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- Fire indicator -->
+    <ImageView
+        android:id="@+id/widget_fire_icon"
+        android:layout_width="14dp"
+        android:layout_height="14dp"
+        android:layout_marginStart="4dp"
+        android:src="@drawable/ic_fire_24"
+        android:visibility="gone"
+        android:tint="#FFFF5722" />
+
     <!-- Online indicator status dot -->
     <ImageView
         android:id="@+id/widget_online_dot"

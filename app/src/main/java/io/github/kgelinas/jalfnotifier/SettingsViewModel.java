@@ -71,8 +71,17 @@ public class SettingsViewModel extends AndroidViewModel {
     private final MutableLiveData<String> _geminiModel = new MutableLiveData<>();
     public final LiveData<String> geminiModel = _geminiModel;
 
-    private final MutableLiveData<String> _aiProfileFields = new MutableLiveData<>();
-    public final LiveData<String> aiProfileFields = _aiProfileFields;
+    private final MutableLiveData<String> _aiReplyPromptTemplate = new MutableLiveData<>();
+    public final LiveData<String> aiReplyPromptTemplate = _aiReplyPromptTemplate;
+
+    private final MutableLiveData<Boolean> _aiIncludePicture = new MutableLiveData<>();
+    public final LiveData<Boolean> aiIncludePicture = _aiIncludePicture;
+
+    private final MutableLiveData<Boolean> _aiIncludeAllPictures = new MutableLiveData<>();
+    public final LiveData<Boolean> aiIncludeAllPictures = _aiIncludeAllPictures;
+
+    private final MutableLiveData<Boolean> _aiEncodeBase64 = new MutableLiveData<>();
+    public final LiveData<Boolean> aiEncodeBase64 = _aiEncodeBase64;
 
     private final MutableLiveData<String> _aiProvider = new MutableLiveData<>();
     public final LiveData<String> aiProvider = _aiProvider;
@@ -130,6 +139,21 @@ public class SettingsViewModel extends AndroidViewModel {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
             _lastSyncTime.postValue(sdf.format(new Date(last)));
         }
+    }
+
+    public void setAiIncludePicture(boolean include) {
+        prefs.edit().putBoolean(ApiConstants.KEY_AI_INCLUDE_PICTURE, include).apply();
+        _aiIncludePicture.postValue(include);
+    }
+
+    public void setAiIncludeAllPictures(boolean include) {
+        prefs.edit().putBoolean(ApiConstants.KEY_AI_INCLUDE_ALL_PICTURES, include).apply();
+        _aiIncludeAllPictures.postValue(include);
+    }
+
+    public void setAiEncodeBase64(boolean encode) {
+        prefs.edit().putBoolean(ApiConstants.KEY_AI_ENCODE_BASE64, encode).apply();
+        _aiEncodeBase64.postValue(encode);
     }
 
     public void setGoogleAccount(String email) {
@@ -213,7 +237,10 @@ public class SettingsViewModel extends AndroidViewModel {
         _blurNsfw.postValue(prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true));
         _geminiLanguage.postValue(prefs.getString(ApiConstants.KEY_GEMINI_LANGUAGE, "Français"));
         _aiPromptTemplate.postValue(prefs.getString(ApiConstants.KEY_AI_PROMPT_TEMPLATE, ""));
-        _aiProfileFields.postValue(prefs.getString(ApiConstants.KEY_AI_PROFILE_FIELDS, "name,age,city,social_status,goals,sex,sexes_interested,sexual_orientation,relationship,fantasies,profile_descriptions"));
+        _aiReplyPromptTemplate.postValue(prefs.getString(ApiConstants.KEY_AI_REPLY_PROMPT_TEMPLATE, ""));
+        _aiIncludePicture.postValue(prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_PICTURE, false));
+        _aiIncludeAllPictures.postValue(prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_ALL_PICTURES, false));
+        _aiEncodeBase64.postValue(prefs.getBoolean(ApiConstants.KEY_AI_ENCODE_BASE64, false));
         
         loadAiConfigs();
         
@@ -442,9 +469,9 @@ public class SettingsViewModel extends AndroidViewModel {
         saveCurrentSlotConfig("endpoint", value);
     }
 
-    public void setAiProfileFields(String value) {
-        _aiProfileFields.setValue(value);
-        prefs.edit().putString(ApiConstants.KEY_AI_PROFILE_FIELDS, value).apply();
+    public void setAiReplyPromptTemplate(String value) {
+        _aiReplyPromptTemplate.setValue(value);
+        prefs.edit().putString(ApiConstants.KEY_AI_REPLY_PROMPT_TEMPLATE, value).apply();
     }
 
 

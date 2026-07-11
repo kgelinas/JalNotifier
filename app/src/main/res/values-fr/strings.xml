@@ -323,6 +323,9 @@
     <string name="settings_intelligence_model">Modèle de langage</string>
     <string name="settings_intelligence_props">Propriétés de l\'assistant</string>
     <string name="settings_intelligence_lang">Langue de l\'assistant</string>
+    <string name="settings_intelligence_include_picture">Joindre la photo de profil</string>
+    <string name="settings_intelligence_include_all_pictures">Joindre toutes les photos (Plus lent)</string>
+    <string name="settings_intelligence_encode_base64">Encoder les images en Base64 (LLMs locaux)</string>
     <string name="settings_intelligence_prompt_template">Modèle de prompt système</string>
     <string name="settings_intelligence_prompt_template_reset">Rétablir par défaut</string>
     <string name="settings_intelligence_prompt_template_editor_title">Persona / Préférences</string>
@@ -490,6 +493,34 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="settings_ai_unlock_steps">Vous êtes maintenant à %1$d étapes de déverrouiller les paramètres IA.</string>
     <string name="settings_ai_unlocked">Paramètres IA déverrouillés ! 🚀</string>
     <string name="settings_ai_already_unlocked">Les paramètres IA sont déjà déverrouillés.</string>
+
+    <string name="pref_ai_intro_prompt_title">Modèle de prompt (Introduction)</string>
+    <string name="pref_ai_reply_prompt_title">Modèle de prompt (Réponse)</string>
+
+    <string name="default_ai_intro_prompt">Tu es un assistant qui aide à écrire un message d\'accroche sur le réseau social JALF.
+Mon profil :
+Nom : {myName}, Âge : {myAge}, Sexe : {mySex}, Ville : {myCity}
+
+Leur profil :
+Nom : {name}, Âge : {age}, Sexe : {sex}, Ville : {city}
+Bio : {profile_descriptions}
+
+Écris EXACTEMENT DEUX courts messages d\'accroche différents en français qui soient naturels et engageants.</string>
+
+    <string name="default_ai_reply_prompt">Tu es un assistant qui aide à répondre à un message sur le réseau social JALF.
+Mon profil :
+Nom : {myName}, Âge : {myAge}, Sexe : {mySex}, Ville : {myCity}
+
+Leur profil :
+Nom : {name}, Âge : {age}, Sexe : {sex}, Ville : {city}
+Bio : {profile_descriptions}
+
+Historique de la conversation :
+{history}
+
+Message spécifique auquel répondre : "{specificMessage}"
+
+Écris EXACTEMENT DEUX courts messages de réponse différents en français qui soient naturels et engageants.</string>
 
     <string name="widget_title">Contacts JALF</string>
     <string name="widget_updating">Mise à jour…</string>

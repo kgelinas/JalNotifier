@@ -105,8 +105,12 @@ public class ProfileFragment extends Fragment {
 
     private boolean isBlocked = false;
 
-    private FloatingActionButton fabMain;
-    private ExtendedFloatingActionButton fabPoke, fabMessage;
+    private ExtendedFloatingActionButton fabOnfire;
+    private android.widget.LinearLayout fabMenu;
+    private com.google.android.material.floatingactionbutton.FloatingActionButton fabMain;
+    private ExtendedFloatingActionButton fabMessage;
+    private ExtendedFloatingActionButton fabPoke;
+    private boolean isFabMenuOpen = false;
 
     private View cardManagePhotos;
     private androidx.appcompat.widget.AppCompatSpinner spinnerProfileAlbums;
@@ -141,7 +145,7 @@ public class ProfileFragment extends Fragment {
             }
         }
     };
-    private boolean isFabMenuOpen = false;
+
 
     private static final int CHIP_TYPE_GOAL = 0;
     private static final int CHIP_TYPE_FANTASY = 1;
@@ -295,11 +299,23 @@ public class ProfileFragment extends Fragment {
             if (cardManagePhotos != null) {
                 cardManagePhotos.setVisibility(View.VISIBLE);
             }
+            if (fabOnfire != null) {
+                fabOnfire.show();
+            }
+            if (fabMenu != null) {
+                fabMenu.setVisibility(View.GONE);
+            }
             setupUploadUi();
             fetchOwnAlbums();
         } else {
             if (cardManagePhotos != null) {
                 cardManagePhotos.setVisibility(View.GONE);
+            }
+            if (fabOnfire != null) {
+                fabOnfire.hide();
+            }
+            if (fabMenu != null) {
+                fabMenu.setVisibility(View.VISIBLE);
             }
         }
     }
@@ -351,6 +367,11 @@ public class ProfileFragment extends Fragment {
 
         addDetailRow(getString(R.string.zodiac_sign), currentProfileData.optString("zodiac_sign_link"),
                 currentProfileData.optString("zodiac_sign", ""));
+
+        boolean isOnfire = "1".equals(currentProfileData.optString("onfire", "0"));
+        if (isOnfire) {
+            addDetailRow(getString(R.string.profile_action_onfire), null, "Yes");
+        }
 
         // Privileges
         headerPrivileges.removeAllViews();
@@ -583,40 +604,101 @@ public class ProfileFragment extends Fragment {
             cardLatestActivity.setOnClickListener(v1 -> fetchLatestActivity());
         }
 
-        fabMain = v.findViewById(R.id.fab_main);
-        fabPoke = v.findViewById(R.id.fab_poke);
-        fabMessage = v.findViewById(R.id.fab_message);
+        fabOnfire = v.findViewById(R.id.fab_onfire);
+        if (fabOnfire != null) {
+            fabOnfire.setOnClickListener(view -> toggleOnfire());
+        }
 
-        if (fabMain != null)
+        fabMenu = v.findViewById(R.id.fab_menu);
+        fabMain = v.findViewById(R.id.fab_main);
+        fabMessage = v.findViewById(R.id.fab_message);
+        fabPoke = v.findViewById(R.id.fab_poke);
+
+        if (fabMain != null) {
             fabMain.setOnClickListener(view -> toggleFabMenu());
-        if (fabMessage != null)
+        }
+        if (fabMessage != null) {
             fabMessage.setOnClickListener(view -> {
                 toggleFabMenu();
                 openChat();
             });
-        if (fabPoke != null)
+        }
+        if (fabPoke != null) {
             fabPoke.setOnClickListener(view -> {
                 toggleFabMenu();
                 showPokeDialog();
             });
+        }
     }
 
     private void toggleFabMenu() {
         isFabMenuOpen = !isFabMenuOpen;
         if (isFabMenuOpen) {
-            if (fabPoke != null)
-                fabPoke.show();
-            if (fabMessage != null)
-                fabMessage.show();
-            if (fabMain != null)
-                fabMain.setImageResource(R.drawable.ic_close_24);
+            if (fabMessage != null) fabMessage.show();
+            if (fabPoke != null) fabPoke.show();
+            if (fabMain != null) fabMain.setImageResource(R.drawable.ic_close);
         } else {
-            if (fabPoke != null)
-                fabPoke.hide();
-            if (fabMessage != null)
-                fabMessage.hide();
-            if (fabMain != null)
-                fabMain.setImageResource(R.drawable.ic_menu);
+            if (fabMessage != null) fabMessage.hide();
+            if (fabPoke != null) fabPoke.hide();
+            if (fabMain != null) fabMain.setImageResource(R.drawable.ic_menu);
+        }
+    }
+
+    private void toggleOnfire() {
+        String url = ApiConstants.BASE_URL + "/ct/online/4";
+        RequestBody body = new FormBody.Builder()
+                .add("action", "toggle")
+                .build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-requested-with", "XMLHttpRequest")
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(getContext(), "Failed to toggle onfire", Toast.LENGTH_SHORT).show()
+                );
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                boolean isSuccessful = response.isSuccessful();
+                response.close();
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (isSuccessful) {
+                        Toast.makeText(getContext(), "Onfire toggled", Toast.LENGTH_SHORT).show();
+                        // Instead of full fetchProfile which resets scroll, we could just toggle locally,
+                        // but fetchProfile() ensures accuracy.
+                        fetchProfile();
+                    } else {
+                        Toast.makeText(getContext(), "Server error while toggling onfire", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        });
+    }
+
+    private void updateOnfireUi() {
+        if (fabOnfire == null || currentProfileData == null) return;
+        boolean isOnfire = "1".equals(currentProfileData.optString("onfire", "0"));
+        Context context = getContext();
+        if (context == null) return;
+        if (isOnfire) {
+            fabOnfire.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF5722)); // Orange/Red
+            fabOnfire.setTextColor(0xFFFFFFFF);
+            fabOnfire.setIconTint(android.content.res.ColorStateList.valueOf(0xFFFFFFFF));
+        } else {
+            int surfaceVariant = com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceVariant, 0xFFE0E0E0);
+            int onSurface = com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF000000);
+            fabOnfire.setBackgroundTintList(android.content.res.ColorStateList.valueOf(surfaceVariant));
+            fabOnfire.setTextColor(onSurface);
+            fabOnfire.setIconTint(android.content.res.ColorStateList.valueOf(onSurface));
         }
     }
 
@@ -650,6 +732,7 @@ public class ProfileFragment extends Fragment {
             menuBookmark
                     .setShowAsAction(isBookmarked ? MenuItem.SHOW_AS_ACTION_ALWAYS : MenuItem.SHOW_AS_ACTION_IF_ROOM);
         }
+        // fabLike removed, icon update not needed for poke
         if (menuNotify != null) {
             menuNotify.setIcon(isNotified ? R.drawable.ic_notifications_active : R.drawable.ic_notifications_none);
             menuNotify.setShowAsAction(isNotified ? MenuItem.SHOW_AS_ACTION_ALWAYS : MenuItem.SHOW_AS_ACTION_IF_ROOM);
@@ -1226,6 +1309,7 @@ public class ProfileFragment extends Fragment {
 
         currentProfileData = data;
         updateGridUi();
+        updateOnfireUi();
 
         isFavorite = data.optBoolean("is_favorite", isFavorite);
         updateMenuIcons();

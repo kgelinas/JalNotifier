@@ -188,7 +188,7 @@
                         android:id="@+id/layout_ai_prompt_template"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/settings_intelligence_prompt_template"
+                        android:hint="@string/pref_ai_intro_prompt_title"
                         app:expandedHintEnabled="false"
                         app:endIconMode="custom"
                         app:endIconDrawable="@drawable/ic_edit_profile_24"
@@ -214,24 +214,61 @@
                         android:text="@string/settings_intelligence_prompt_template_reset"
                         style="@style/Widget.Material3.Button.TextButton"
                         android:layout_gravity="end"
+                        android:layout_marginBottom="8dp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_include_picture"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_intelligence_include_picture"
+                        android:layout_marginBottom="8dp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_include_all_pictures"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_intelligence_include_all_pictures"
+                        android:layout_marginBottom="8dp" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switch_encode_base64"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_intelligence_encode_base64"
                         android:layout_marginBottom="16dp" />
 
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/layout_ai_profile_fields"
+                        android:id="@+id/layout_ai_reply_prompt_template"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/settings_intelligence_profile_fields"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/edit_ai_profile_fields"
+                        android:hint="@string/pref_ai_reply_prompt_title"
+                        app:expandedHintEnabled="false"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@drawable/ic_edit_profile_24"
+                        app:endIconContentDescription="Expand Editor"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        android:layout_marginBottom="8dp">
+                        <MultiAutoCompleteTextView
+                            android:id="@+id/edit_ai_reply_prompt_template"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:focusable="false"
-                            android:clickable="true"
-                            android:cursorVisible="false"
-                            android:inputType="none" />
+                            android:inputType="textMultiLine"
+                            android:minLines="6"
+                            android:padding="16dp"
+                            android:gravity="top|start"
+                            android:dropDownHeight="150dp"
+                            android:dropDownAnchor="@+id/layout_ai_reply_prompt_template" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_reset_reply_prompt_template"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_intelligence_prompt_template_reset"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_gravity="end"
+                        android:layout_marginBottom="8dp" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

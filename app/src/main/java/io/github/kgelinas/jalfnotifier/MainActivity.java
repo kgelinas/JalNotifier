@@ -1491,11 +1491,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (Response r = response) {
+                    Log.d(TAG, "fetchBookmarks HTTP response code: " + r.code());
                     if (r.isSuccessful() && r.body() != null) {
                         String body = NetworkUtils.responseToString(r);
 
                         Log.d(TAG, "HTML Body length: " + body.length());
-
                         List<FavoriteAdapter.FavoriteItem> scrapedItems = ApiParser.parseBookmarkHtml(body);
                         Log.d(TAG, "Scraper found " + scrapedItems.size() + " bookmarked users");
 
@@ -3891,9 +3891,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Apply sorting according to last connection if VIP/Pro is active
         if (isMyVip && !"default".equals(favoritesSortOrder)) {
+            final long now = System.currentTimeMillis();
             Collections.sort(filtered, (item1, item2) -> {
-                long t1 = parseLastConnectionToTimestamp(item1.lastConnection, item1.isOnline);
-                long t2 = parseLastConnectionToTimestamp(item2.lastConnection, item2.isOnline);
+                long t1 = parseLastConnectionToTimestamp(item1.lastConnection, item1.isOnline, now);
+                long t2 = parseLastConnectionToTimestamp(item2.lastConnection, item2.isOnline, now);
                 if (t1 == 0 && t2 == 0) return 0;
                 if (t1 == 0) return 1;  // Put 0 values at the bottom
                 if (t2 == 0) return -1; // Put 0 values at the bottom
@@ -3947,16 +3948,15 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private long parseLastConnectionToTimestamp(String value, boolean isOnline) {
+    private long parseLastConnectionToTimestamp(String value, boolean isOnline, long now) {
         if (isOnline) {
-            return System.currentTimeMillis();
+            return now;
         }
         if (value == null || value.trim().isEmpty() || value.equalsIgnoreCase("need_vip")) {
             return 0; // indicates "no time shown"
         }
 
         String str = value.trim().toLowerCase();
-        long now = System.currentTimeMillis();
 
         // Handle precise French connection states in order of modern/scraped presence
         if (str.contains("présentement en ligne") || str.equals("membre présentement en ligne")) {

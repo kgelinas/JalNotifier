@@ -169,7 +169,7 @@ public class ConversationFragment extends Fragment {
         txtTypingIndicator = view.findViewById(R.id.txt_typing_indicator);
 
         btnQuickResponse.setOnClickListener(v -> showQuickResponseMenu());
-        btnGeminiGenerate.setOnClickListener(v -> showGeminiMenu(v));
+        btnGeminiGenerate.setOnClickListener(v -> checkTokenAndGenerate(false));
         btnQueueMessage.setOnClickListener(v -> queueAutoMessage());
 
         editMessage.addTextChangedListener(new android.text.TextWatcher() {
@@ -573,6 +573,15 @@ public class ConversationFragment extends Fragment {
                 });
                 try (Response r = response) {
                     if (r.isSuccessful() && r.body() != null) {
+                        String finalPath = r.request().url().encodedPath();
+                        if (finalPath != null && !finalPath.isEmpty() && !finalPath.equals(conversationLink) && finalPath.contains("/conversations/")) {
+                            conversationLink = finalPath;
+                            if (otherUserId != null && !otherUserId.isEmpty() && getContext() != null) {
+                                getContext().getSharedPreferences("ConversationLinks", Context.MODE_PRIVATE)
+                                        .edit().putString(otherUserId, conversationLink).apply();
+                            }
+                        }
+
                         String body = NetworkUtils.responseToString(r);
                         JSONObject root = new JSONObject(body);
 
@@ -1235,7 +1244,7 @@ public class ConversationFragment extends Fragment {
         });
     }
 
-    private void showGeminiMenu(View v) {
+    private void checkTokenAndGenerate(boolean isReply) {
         AppPrefs prefs = AppPrefs.getInstance(context());
         String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
         if (savedToken.isEmpty() && ApiConstants.GEMINI_API_KEY.isEmpty()) {
@@ -1244,22 +1253,7 @@ public class ConversationFragment extends Fragment {
             startActivity(new android.content.Intent(context(), SettingsIntelligenceActivity.class));
             return;
         }
-
-        androidx.appcompat.widget.PopupMenu popup = new androidx.appcompat.widget.PopupMenu(context(), v);
-        popup.getMenu().add(0, 1, 0, R.string.gemini_menu_introduction);
-        popup.getMenu().add(0, 2, 1, R.string.gemini_menu_reply);
-
-        popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 1) {
-                onGeminiGenerate(false);
-                return true;
-            } else if (item.getItemId() == 2) {
-                onGeminiGenerate(true);
-                return true;
-            }
-            return false;
-        });
-        popup.show();
+        onGeminiGenerate(isReply);
     }
 
     private void onGeminiGenerate(boolean isReply) {
@@ -1495,18 +1489,11 @@ public class ConversationFragment extends Fragment {
     private String formatProfileForPrompt(JSONObject profile) {
         if (profile == null) return "";
         StringBuilder sb = new StringBuilder();
-        AppPrefs prefs = AppPrefs.getInstance(context());
-        String allowedFieldsStr = prefs.getString(ApiConstants.KEY_AI_PROFILE_FIELDS, "name,age,city,social_status,goals,sex,sexes_interested,sexual_orientation,relationship,fantasies,profile_descriptions");
-        java.util.List<String> allowedFields = java.util.Arrays.asList(allowedFieldsStr.split(","));
-        boolean allowAll = allowedFieldsStr.trim().isEmpty() || allowedFieldsStr.equals("*");
 
         try {
             java.util.Iterator<String> keys = profile.keys();
             while (keys.hasNext()) {
                 String key = keys.next();
-                if (!allowAll && !allowedFields.contains(key)) {
-                    continue;
-                }
                 Object value = profile.opt(key);
                 if (value != null && !(value instanceof org.json.JSONObject)) {
                     String strValue = "";
@@ -1530,6 +1517,30 @@ public class ConversationFragment extends Fragment {
             AppLogger.log(TAG, "Error formatting profile for prompt", e);
         }
         return sb.toString();
+    }
+
+    private String extractBestPhotoUrl(JSONObject photo) {
+        if (photo == null) return "";
+        String url = photo.optString("image_720x945_link", "");
+        if (url.isEmpty()) url = photo.optString("thumbnail_uri", "");
+        if (url.isEmpty()) url = photo.optString("image_144x189_link", "");
+        return url;
+    }
+
+    private String fetchImageAsBase64(String urlStr) {
+        try {
+            if (urlStr.startsWith("/")) urlStr = ApiConstants.BASE_URL + urlStr;
+            okhttp3.Request request = new okhttp3.Request.Builder().url(urlStr).build();
+            try (okhttp3.Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    byte[] bytes = response.body().bytes();
+                    return android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+                }
+            }
+        } catch (Exception e) {
+            AppLogger.log(TAG, "Failed to fetch image for base64: " + urlStr, e);
+        }
+        return null;
     }
 
     private void callGeminiApi(JSONObject myProfile, JSONObject otherProfile, String history,
@@ -1563,41 +1574,53 @@ public class ConversationFragment extends Fragment {
         String endpoint = config.optString("endpoint", "https://generativelanguage.googleapis.com/v1beta/openai").trim();
         final boolean hasNextLlm = currentLlmIndex < configs.length() - 1;
 
-        String template = prefs.getString(ApiConstants.KEY_AI_PROMPT_TEMPLATE, "");
+        boolean isReply = specificContextMessage != null && !specificContextMessage.isEmpty();
+        String templateKey = isReply ? ApiConstants.KEY_AI_REPLY_PROMPT_TEMPLATE : ApiConstants.KEY_AI_PROMPT_TEMPLATE;
+        String template = prefs.getString(templateKey, "");
         if (template.trim().isEmpty()) {
-            template = "Tu es un assistant qui aide à écrire un message sur le réseau social JALF.\n" +
-                       "Mon profil :\n{myProfile}\n\n" +
-                       "Profil de l'autre personne :\n{otherProfile}\n\n" +
-                       "Historique de la conversation :\n{history}";
+            template = isReply ? getString(R.string.default_ai_reply_prompt) : getString(R.string.default_ai_intro_prompt);
         }
 
         String myProfileText = myProfile != null ? formatProfileForPrompt(myProfile) : "";
         String otherProfileText = otherProfile != null ? formatProfileForPrompt(otherProfile) : "";
         String historyText = history != null ? history : "";
+        String specificMsgText = specificContextMessage != null ? specificContextMessage : "";
 
         String basePrompt = template
                 .replace("{myProfile}", myProfileText)
                 .replace("{otherProfile}", otherProfileText)
-                .replace("{history}", historyText);
+                .replace("{history}", historyText)
+                .replace("{specificMessage}", specificMsgText);
 
-        StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append(basePrompt.trim());
-
-        if (specificContextMessage != null && !specificContextMessage.isEmpty()) {
-            promptBuilder.append("\n\nJe veux que tu répondes spécifiquement, directement, et personnellement au message exact suivant : \"")
-                    .append(specificContextMessage).append("\"\n");
-            promptBuilder.append("Ton rôle est de générer EXACTEMENT DEUX propositions de réponse différentes, en ").append(lang)
-                    .append(", qui s'adressent au sujet de ce message précis.\n");
-        } else if (history != null && !history.isEmpty()) {
-            promptBuilder.append("\n\nC'est à mon tour de répondre. Écris EXACTEMENT DEUX courts messages de réponse différents en ").append(lang)
-                    .append(" qui soient naturels et engageants.\n");
-        } else {
-            promptBuilder.append("\n\nÉcris EXACTEMENT DEUX courts messages d'accroche ou de réponse différents en ").append(lang)
-                    .append(" qui soient naturels et engageants.\n");
+        if (myProfile != null) {
+            java.util.Iterator<String> keys = myProfile.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                Object value = myProfile.opt(key);
+                String strValue = value != null ? value.toString() : "";
+                String token1 = "{my" + key.substring(0, 1).toUpperCase() + key.substring(1) + "}";
+                String token2 = "{my" + key + "}";
+                basePrompt = basePrompt.replace(token1, strValue).replace(token2, strValue);
+            }
         }
-        promptBuilder.append("N'inclus aucun bloc de réflexion, de planification ou de chaîne de pensée. N'utilise pas de balises <|...>. Ne sors absolument rien d'autre que le texte des messages, sans guillemets, et sépare CHAQUE option EXACTEMENT par la chaîne '|||' sans rien d'autre.");
 
-        String prompt = promptBuilder.toString();
+        if (otherProfile != null) {
+            java.util.Iterator<String> keys = otherProfile.keys();
+            while (keys.hasNext()) {
+                String key = keys.next();
+                Object value = otherProfile.opt(key);
+                String strValue = value != null ? value.toString() : "";
+                String token1 = "{" + key + "}";
+                basePrompt = basePrompt.replace(token1, strValue);
+            }
+        }
+
+        boolean includeMainPicture = prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_PICTURE, false);
+        boolean includeAllPictures = prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_ALL_PICTURES, false);
+        boolean encodeBase64 = prefs.getBoolean(ApiConstants.KEY_AI_ENCODE_BASE64, false);
+
+        String systemInstruction = "\n\nIMPORTANT: N'inclus aucun bloc de réflexion, de planification ou de chaîne de pensée. Ne sors absolument rien d'autre que le texte des messages finaux, sans guillemets, et sépare CHAQUE option EXACTEMENT par la chaîne '|||' sans rien d'autre.";
+        String prompt = basePrompt.trim() + systemInstruction;
         String tokenToUse = savedToken.isEmpty() ? ApiConstants.GEMINI_API_KEY.trim() : savedToken;
 
         if (endpoint.endsWith("/")) {
@@ -1615,39 +1638,103 @@ public class ConversationFragment extends Fragment {
             }
         }
 
-        JSONObject payload = new JSONObject();
-        try {
-            payload.put("model", model);
+        final String finalApiUrl = apiUrl;
+        new Thread(() -> {
+            JSONObject payload = new JSONObject();
+            try {
+                payload.put("model", model);
 
-            JSONArray messages = new JSONArray();
-            JSONObject message = new JSONObject();
-            message.put("role", "user");
-            message.put("content", prompt);
-            messages.put(message);
-            payload.put("messages", messages);
-        } catch (Exception ignored) {}
+                JSONArray messages = new JSONArray();
+                JSONObject message = new JSONObject();
+                message.put("role", "user");
 
-        RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json"));
-        Request.Builder requestBuilder = new Request.Builder()
-                .url(apiUrl)
-                .post(body);
+                if (includeMainPicture || includeAllPictures) {
+                    JSONArray contentArray = new JSONArray();
+                    JSONObject textPart = new JSONObject();
+                    textPart.put("type", "text");
+                    textPart.put("text", prompt);
+                    contentArray.put(textPart);
 
-        if (!tokenToUse.isEmpty()) {
-            requestBuilder.addHeader("Authorization", "Bearer " + tokenToUse);
-        }
+                    java.util.List<String> imageUrls = new java.util.ArrayList<>();
+                    if (includeAllPictures && otherProfile != null) {
+                        JSONArray photos = otherProfile.optJSONArray("photos");
+                        if (photos != null) {
+                            for (int i = 0; i < photos.length(); i++) {
+                                JSONObject p = photos.optJSONObject(i);
+                                if (p != null) {
+                                    String url = extractBestPhotoUrl(p);
+                                    if (!url.isEmpty() && !imageUrls.contains(url)) imageUrls.add(url);
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (imageUrls.isEmpty() && (includeMainPicture || includeAllPictures)) {
+                        if (otherProfile != null) {
+                            JSONObject photo = otherProfile.optJSONObject("photo");
+                            if (photo != null) {
+                                String url = extractBestPhotoUrl(photo);
+                                if (!url.isEmpty() && !imageUrls.contains(url)) imageUrls.add(url);
+                            }
+                        }
+                        if (imageUrls.isEmpty() && getArguments() != null) {
+                            String argAvatar = getArguments().getString(ARG_AVATAR_URL);
+                            if (argAvatar != null && !argAvatar.isEmpty() && !imageUrls.contains(argAvatar)) imageUrls.add(argAvatar);
+                        }
+                    }
 
-        Request request = requestBuilder.build();
-        
-        AppLogger.log(TAG, "Sending AI Request to: " + apiUrl);
-        AppLogger.log(TAG, "AI Request Payload: " + payload.toString());
+                    for (String url : imageUrls) {
+                        if (url.startsWith("/")) {
+                            url = ApiConstants.BASE_URL + url;
+                        }
+                        
+                        String finalUrl;
+                        if (encodeBase64) {
+                            String base64 = fetchImageAsBase64(url);
+                            if (base64 == null || base64.isEmpty()) continue;
+                            finalUrl = "data:image/jpeg;base64," + base64;
+                        } else {
+                            finalUrl = url;
+                        }
+                        
+                        JSONObject imagePart = new JSONObject();
+                        imagePart.put("type", "image_url");
+                        JSONObject imageUrlObj = new JSONObject();
+                        imageUrlObj.put("url", finalUrl);
+                        imagePart.put("image_url", imageUrlObj);
+                        contentArray.put(imagePart);
+                    }
 
-        okhttp3.OkHttpClient aiClient = client.newBuilder()
-                .connectTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-                .build();
+                    message.put("content", contentArray);
+                } else {
+                    message.put("content", prompt);
+                }
 
-        aiClient.newCall(request).enqueue(new Callback() {
+                messages.put(message);
+                payload.put("messages", messages);
+            } catch (Exception ignored) {}
+
+            RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json"));
+            Request.Builder requestBuilder = new Request.Builder()
+                    .url(finalApiUrl)
+                    .post(body);
+
+            if (!tokenToUse.isEmpty()) {
+                requestBuilder.addHeader("Authorization", "Bearer " + tokenToUse);
+            }
+
+            Request request = requestBuilder.build();
+            
+            AppLogger.log(TAG, "Sending AI Request to: " + finalApiUrl);
+            AppLogger.log(TAG, "AI Request Payload Length: " + payload.toString().length());
+
+            okhttp3.OkHttpClient aiClient = client.newBuilder()
+                    .connectTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+                    .build();
+
+            aiClient.newCall(request).enqueue(new Callback() {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 AppLogger.log(TAG, "AI API request failed", e);
                 mainHandler.post(() -> {
@@ -1765,6 +1852,7 @@ public class ConversationFragment extends Fragment {
                 }
             }
         });
+        }).start();
     }
 
     private String[] parseAiOptions(String text) {

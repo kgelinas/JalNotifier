@@ -89,6 +89,8 @@
         <activity
             android:name="io.github.kgelinas.jalfnotifier.ConversationActivity"
             android:exported="false"
+            android:resizeableActivity="true"
+            android:documentLaunchMode="always"
             android:parentActivityName="io.github.kgelinas.jalfnotifier.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density" />
 

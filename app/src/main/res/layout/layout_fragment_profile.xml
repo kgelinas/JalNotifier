@@ -427,6 +427,19 @@
         android:indeterminate="true"
         android:visibility="gone" />
 
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fab_onfire"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:text="@string/profile_action_onfire"
+        android:visibility="gone"
+        app:icon="@drawable/ic_fire_24"
+        app:iconTint="?attr/colorOnPrimary"
+        app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"
+        tools:visibility="visible" />
+
     <LinearLayout
         android:id="@+id/fab_menu"
         android:layout_width="wrap_content"
@@ -435,6 +448,7 @@
         android:layout_margin="16dp"
         android:orientation="vertical"
         android:gravity="end"
+        android:visibility="gone"
         app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior">
 
         <!-- Sub-actions (Hidden by default) -->

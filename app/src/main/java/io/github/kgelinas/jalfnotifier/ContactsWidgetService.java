@@ -82,6 +82,12 @@ public class ContactsWidgetService extends RemoteViewsService {
                 views.setViewVisibility(R.id.widget_contact_last_connection, View.GONE);
             }
 
+            if (contact.isOnfire) {
+                views.setViewVisibility(R.id.widget_fire_icon, View.VISIBLE);
+            } else {
+                views.setViewVisibility(R.id.widget_fire_icon, View.GONE);
+            }
+
             // Synchronous avatar image loading
             boolean avatarLoaded = false;
             if (contact.avatarUrl != null && !contact.avatarUrl.isEmpty()) {
@@ -213,6 +219,7 @@ public class ContactsWidgetService extends RemoteViewsService {
                     contact.isOnline = "1".equals(profile.optString("online", "0")) 
                             || profile.optBoolean("online", false) 
                             || profile.optBoolean("is_online", false);
+                    contact.isOnfire = "1".equals(profile.optString("onfire", "0"));
                     contact.lastConnection = profile.optString("last_connection", profile.optString("last_connected", ""));
 
                     // Filter: Online only
@@ -263,6 +270,7 @@ public class ContactsWidgetService extends RemoteViewsService {
                     }
                     contact.name = namesObj.optString(userLink, "User " + otherUserId);
                     contact.isOnline = false;
+                    contact.isOnfire = false;
                     contact.details = "Offline";
                     contact.avatarUrl = "";
                     contact.lastConnection = "";
@@ -417,8 +425,9 @@ public class ContactsWidgetService extends RemoteViewsService {
         String userLink;
         String name;
         String details;
-        String avatarUrl;
-        boolean isOnline;
         String lastConnection;
+        boolean isOnline;
+        boolean isOnfire;
+        String avatarUrl;
     }
 }
