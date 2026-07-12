@@ -493,6 +493,7 @@ Sans elle, Android mettrait le service en veille et vous rateriez des notificati
     <string name="settings_ai_unlock_steps">Vous êtes maintenant à %1$d étapes de déverrouiller les paramètres IA.</string>
     <string name="settings_ai_unlocked">Paramètres IA déverrouillés ! 🚀</string>
     <string name="settings_ai_already_unlocked">Les paramètres IA sont déjà déverrouillés.</string>
+    <string name="edit_profile">Modifier le profil</string>
 
     <string name="pref_ai_intro_prompt_title">Modèle de prompt (Introduction)</string>
     <string name="pref_ai_reply_prompt_title">Modèle de prompt (Réponse)</string>

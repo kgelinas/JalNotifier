@@ -433,9 +433,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:text="@string/profile_action_onfire"
+        android:text="@string/edit_profile"
         android:visibility="gone"
-        app:icon="@drawable/ic_fire_24"
+        app:icon="@drawable/ic_edit_profile_24"
         app:iconTint="?attr/colorOnPrimary"
         app:layout_behavior="com.google.android.material.behavior.HideBottomViewOnScrollBehavior"
         tools:visibility="visible" />

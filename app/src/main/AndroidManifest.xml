@@ -87,6 +87,11 @@
             android:exported="false" />
 
         <activity
+            android:name="io.github.kgelinas.jalfnotifier.ProfileWebViewActivity"
+            android:label="@string/edit_profile"
+            android:exported="false" />
+
+        <activity
             android:name="io.github.kgelinas.jalfnotifier.ConversationActivity"
             android:exported="false"
             android:resizeableActivity="true"

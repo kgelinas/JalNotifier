@@ -606,7 +606,7 @@ public class ProfileFragment extends Fragment {
 
         fabOnfire = v.findViewById(R.id.fab_onfire);
         if (fabOnfire != null) {
-            fabOnfire.setOnClickListener(view -> toggleOnfire());
+            fabOnfire.setOnClickListener(view -> openEditProfile());
         }
 
         fabMenu = v.findViewById(R.id.fab_menu);
@@ -644,62 +644,15 @@ public class ProfileFragment extends Fragment {
         }
     }
 
-    private void toggleOnfire() {
-        String url = ApiConstants.BASE_URL + "/ct/online/4";
-        RequestBody body = new FormBody.Builder()
-                .add("action", "toggle")
-                .build();
-
-        Request request = new Request.Builder()
-                .url(url)
-                .post(body)
-                .addHeader("Cookie", fullCookie)
-                .addHeader("x-requested-with", "XMLHttpRequest")
-                .addHeader("User-Agent", ApiConstants.USER_AGENT)
-                .build();
-
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                new Handler(Looper.getMainLooper()).post(() ->
-                        Toast.makeText(getContext(), "Failed to toggle onfire", Toast.LENGTH_SHORT).show()
-                );
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) {
-                boolean isSuccessful = response.isSuccessful();
-                response.close();
-                new Handler(Looper.getMainLooper()).post(() -> {
-                    if (isSuccessful) {
-                        Toast.makeText(getContext(), "Onfire toggled", Toast.LENGTH_SHORT).show();
-                        // Instead of full fetchProfile which resets scroll, we could just toggle locally,
-                        // but fetchProfile() ensures accuracy.
-                        fetchProfile();
-                    } else {
-                        Toast.makeText(getContext(), "Server error while toggling onfire", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
+    private void openEditProfile() {
+        if (getContext() != null) {
+            android.content.Intent intent = new android.content.Intent(getContext(), ProfileWebViewActivity.class);
+            startActivity(intent);
+        }
     }
 
     private void updateOnfireUi() {
-        if (fabOnfire == null || currentProfileData == null) return;
-        boolean isOnfire = "1".equals(currentProfileData.optString("onfire", "0"));
-        Context context = getContext();
-        if (context == null) return;
-        if (isOnfire) {
-            fabOnfire.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFFFF5722)); // Orange/Red
-            fabOnfire.setTextColor(0xFFFFFFFF);
-            fabOnfire.setIconTint(android.content.res.ColorStateList.valueOf(0xFFFFFFFF));
-        } else {
-            int surfaceVariant = com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurfaceVariant, 0xFFE0E0E0);
-            int onSurface = com.google.android.material.color.MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurfaceVariant, 0xFF000000);
-            fabOnfire.setBackgroundTintList(android.content.res.ColorStateList.valueOf(surfaceVariant));
-            fabOnfire.setTextColor(onSurface);
-            fabOnfire.setIconTint(android.content.res.ColorStateList.valueOf(onSurface));
-        }
+        // No-op: FAB is now static "Edit Profile"
     }
 
     private boolean onMenuItemClick(MenuItem item) {

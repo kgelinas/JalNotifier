@@ -494,6 +494,7 @@ Without it, Android would put the service to sleep and you would miss notificati
     <string name="settings_ai_unlock_steps">You are now %1$d steps away from unlocking AI settings.</string>
     <string name="settings_ai_unlocked">AI Settings unlocked! 🚀</string>
     <string name="settings_ai_already_unlocked">AI settings are already unlocked.</string>
+    <string name="edit_profile">Edit Profile</string>
 
     <string name="pref_ai_intro_prompt_title">Intro Prompt Template</string>
     <string name="pref_ai_reply_prompt_title">Reply Prompt Template</string>
