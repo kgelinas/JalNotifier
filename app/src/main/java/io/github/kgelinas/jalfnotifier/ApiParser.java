@@ -907,6 +907,9 @@ public class ApiParser {
             if (href.isEmpty() && ratingEl.hasAttr("src")) href = ratingEl.attr("src");
             item.nsfwRank = StringUtils.extractRankFromLink(href);
         }
+
+        // 6. Extract Sex Now / On Fire status
+        item.isOnfire = card.selectFirst("img[src*=ic_sexnow]") != null;
     }
 
     /**

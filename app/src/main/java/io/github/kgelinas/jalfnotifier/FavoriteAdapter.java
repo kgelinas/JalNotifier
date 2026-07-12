@@ -36,6 +36,7 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
         public boolean isNotified;
         public boolean isBookmarked;
         public boolean isCertified;
+        public boolean isOnfire;
         public String userLink;
         public String otherUserId;
         public String sexLink;
@@ -134,6 +135,7 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
         holder.badgeBell.setVisibility(item.isNotified ? View.VISIBLE : View.GONE);
         holder.badgeBookmark.setVisibility(item.isBookmarked ? View.VISIBLE : View.GONE);
         holder.badgeCertified.setVisibility(item.isCertified ? View.VISIBLE : View.GONE);
+        holder.badgeFire.setVisibility(item.isOnfire ? View.VISIBLE : View.GONE);
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
@@ -159,6 +161,7 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
         ImageView badgeBell;
         ImageView badgeBookmark;
         ImageView badgeCertified;
+        ImageView badgeFire;
         View avatarSectionLayout;
         View textSectionLayout;
 
@@ -175,6 +178,7 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
             badgeBell = itemView.findViewById(R.id.fav_badge_bell);
             badgeBookmark = itemView.findViewById(R.id.fav_badge_bookmark);
             badgeCertified = itemView.findViewById(R.id.fav_badge_certified);
+            badgeFire = itemView.findViewById(R.id.fav_badge_fire);
             avatarSectionLayout = itemView.findViewById(R.id.fav_avatar_section_layout);
             textSectionLayout = itemView.findViewById(R.id.fav_text_section_layout);
         }

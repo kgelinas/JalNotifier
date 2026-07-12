@@ -6,58 +6,45 @@
 
 ## English
 
-Welcome to **JalNotifier**! This guide helps you install the application using **Obtainium**.
+Welcome to **JalNotifier**! This guide helps you install the application and stay up to date.
 
-### 1. Installation and Automatic Updates via Obtainium 📦
-[Obtainium](https://github.com/ImranR98/Obtainium) allows you to install and update open-source Android apps directly from their GitHub release pages, bypassing the Google Play Store.
+### 1. Direct Installation & In-App Updates (Recommended) 📱🔄
+For the best experience, install the app directly and use the built-in update mechanism:
+1. **Download the APK**: Go to the [Releases page](https://github.com/kgelinas/JalNotifier/releases) of this repository and download `JalNotifier-release.apk` from the latest release.
+2. **Allow Unknown Sources**: If prompted by your browser or file manager, enable the permission to install apps from unknown sources.
+3. **Install**: Tap the downloaded file to complete the installation on your Android device.
+4. **Get Updates**: JalNotifier includes a built-in update mechanism that checks for new releases on launch or from the Settings menu. When a new update is available, you will receive a notification prompting you to download and install the latest APK directly from within the app.
 
-#### How to install JalNotifier:
-1. **Download Obtainium**: If you haven't already, download and install the latest release of [Obtainium on Github](https://github.com/ImranR98/Obtainium/releases).
-2. **Add JalNotifier to Obtainium**:
-   * Open Obtainium and click on **Add App**.
-   * In the **App Source URL** field, paste our repository link:
-     ```text
-     https://github.com/kgelinas/JalNotifier
-     ```
-   * Click **Add**.
-3. **Install**: Obtainium will fetch the latest `v0.1` release APK directly from our GitHub Actions pipeline and prompt you to install it.
-4. **Get Updates**: In the future, simply open Obtainium and tap **Update All** to automatically download and install the latest versions seamlessly.
-
-### 2. Manual Installation (Alternative) 📱
-If you prefer not to use Obtainium, you can install the APK manually:
-1. **Download the APK**: Go to the [Releases page](https://github.com/kgelinas/JalNotifier/releases) of this repository.
-2. **Select the Version**: Download the `JalNotifier-release.apk` from the latest release assets.
-3. **Allow Unknown Sources**: If prompted by your browser or file manager, enable the permission to install apps from unknown sources.
-4. **Install**: Tap the downloaded file to complete the installation on your Android device.
+### 2. Alternative: Installation and Updates via Obtainium 📦
+If you prefer managing updates externally, you can use [Obtainium](https://github.com/ImranR98/Obtainium) to install and update JalNotifier:
+1. **Download Obtainium**: Download and install [Obtainium on Github](https://github.com/ImranR98/Obtainium/releases).
+2. **Add JalNotifier**: Open Obtainium, click on **Add App**, and paste our repository link:
+   ```text
+   https://github.com/kgelinas/JalNotifier
+   ```
+3. **Install & Update**: Click **Add**. Obtainium will download and install the app, and you can use Obtainium's **Update All** button in the future to keep it updated.
 
 ---
 
-
 ## Français
 
-Bienvenue sur **JalNotifier** ! Ce guide vous explique comment installer l'application à l'aide d'**Obtainium**.
+Bienvenue sur **JalNotifier** ! Ce guide vous explique comment installer l'application et la maintenir à jour.
 
-### 1. Installation et mises à jour automatiques via Obtainium 📦
-[Obtainium](https://github.com/ImranR98/Obtainium) vous permet d'installer et de mettre à jour des applications Android open-source directement depuis leurs pages de publication GitHub, sans passer par le Google Play Store.
+### 1. Installation directe et Mises à jour intégrées (Recommandé) 📱🔄
+Pour une expérience optimale, installez l'application directement et utilisez son système de mise à jour intégré :
+1. **Télécharger l'APK** : Rendez-vous sur la [page des Releases](https://github.com/kgelinas/JalNotifier/releases) de ce dépôt et téléchargez le fichier `JalNotifier-release.apk` de la dernière version.
+2. **Autoriser les sources inconnues** : Si votre navigateur ou gestionnaire de fichiers vous le demande, activez l'autorisation d'installer des applications issues de sources inconnues.
+3. **Installer** : Appuyez sur le fichier téléchargé pour finaliser l'installation sur votre appareil Android.
+4. **Mises à jour** : JalNotifier intègre son propre mécanisme de vérification. Au démarrage ou depuis les Paramètres, l'application recherche les nouvelles versions et vous invite à les télécharger et à les installer directement.
 
-#### Comment installer JalNotifier :
-1. **Télécharger Obtainium** : Si ce n'est pas déjà fait, téléchargez et installez la dernière version d '[Obtainium sur Github](https://github.com/ImranR98/Obtainium/releases).
-2. **Ajouter JalNotifier à Obtainium** :
-   * Ouvrez Obtainium et cliquez sur **Add App** (Ajouter une application).
-   * Dans le champ **App Source URL**, collez le lien de notre dépôt :
-     ```text
-     https://github.com/kgelinas/JalNotifier
-     ```
-   * Cliquez sur **Add** (Ajouter).
-3. **Installer** : Obtainium récupérera l'APK de la dernière version `v0.1` directement depuis notre pipeline GitHub Actions et vous proposera de l'installer.
-4. **Mises à jour futures** : Pour mettre à jour l'application, ouvrez simplement Obtainium et appuyez sur **Update All** pour télécharger et installer automatiquement les nouvelles versions.
-
-### 2. Installation manuelle (Alternative) 📱
-Si vous préférez ne pas utiliser Obtainium, vous pouvez installer l'APK manuellement :
-1. **Télécharger l'APK** : Rendez-vous sur la [page des Releases](https://github.com/kgelinas/JalNotifier/releases) de ce dépôt.
-2. **Sélectionner la version** : Téléchargez le fichier `JalNotifier-release.apk` depuis les ressources de la dernière version.
-3. **Autoriser les sources inconnues** : Si votre navigateur ou gestionnaire de fichiers vous le demande, activez l'autorisation d'installer des applications issues de sources inconnues.
-4. **Installer** : Appuyez sur le fichier téléchargé pour finaliser l'installation sur votre appareil Android.
+### 2. Alternative : Installation et mises à jour via Obtainium 📦
+Si vous préférez gérer vos applications de manière externe, vous pouvez utiliser [Obtainium](https://github.com/ImranR98/Obtainium) pour installer et mettre à jour JalNotifier :
+1. **Télécharger Obtainium** : Téléchargez et installez [Obtainium sur Github](https://github.com/ImranR98/Obtainium/releases).
+2. **Ajouter JalNotifier** : Ouvrez Obtainium, cliquez sur **Add App** (Ajouter une application) et collez le lien de notre dépôt :
+   ```text
+   https://github.com/kgelinas/JalNotifier
+   ```
+3. **Installer et Mettre à jour** : Cliquez sur **Add** (Ajouter). Obtainium téléchargera et installera l'application, et vous pourrez utiliser le bouton **Update All** d'Obtainium à l'avenir pour la maintenir à jour.
 
 ---
 

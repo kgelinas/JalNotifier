@@ -9,6 +9,14 @@ The application follows a **Scrape-first, Enrich-later** pattern:
 2.  **Enrichment (REST)**: For each discovered user ID, trigger an asynchronous background fetch to the `/rest/users/{userId}` endpoint.
 3.  **Refinement**: Merge the authoritative REST data (name, avatar, online status) with the unique HTML-only data (distance, city fallback).
 
+### Pagination Quirks
+Pagination on legacy HTML list endpoints (such as `/ct/online/11` and `/ct/online/2`) operates under a unique, non-standard mechanism:
+1. **Initial Load (GET)**: The first page is fetched via a standard `GET` request. It returns the first 20 items inline and includes a hidden input `<input type="hidden" id="offset" value="[timestamp]">`.
+2. **Subsequent Pages (POST)**: To load more items, a `POST` request must be sent with `x-requested-with: XMLHttpRequest` and a form-urlencoded body (e.g., `tab=11&offset=[timestamp]&limit=[index]`).
+3. **The `limit` Parameter**: The `limit` parameter does *not* dictate the number of items to return; it actually acts as the starting index (`startIndex`). To fetch page 2, you pass `limit=20`. For page 3, `limit=40`, scaling as `depth * 20`.
+4. **The `offset` Parameter**: The offset is a static timestamp identifying the search session. It remains identical across all pagination requests and is not updated in the POST responses.
+5. **Response Format**: While the initial GET request returns standard HTML, the pagination POST requests return a JSON object (e.g., `{"userList": "<html>..."}`) containing the raw HTML fragment for the next batch of users. This JSON wrapper must be parsed before the HTML can be processed.
+
 ---
 
 ## 2. Documented Parsers

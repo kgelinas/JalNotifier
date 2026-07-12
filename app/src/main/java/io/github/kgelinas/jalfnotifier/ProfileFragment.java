@@ -986,7 +986,6 @@ public class ProfileFragment extends Fragment {
     }
 
     private void fetchProfile() {
-        JSONObject cached = ProfileCacheManager.getInstance().getProfile(userId);
         boolean blur = true;
         if (getContext() != null) {
             blur = getContext().getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
@@ -994,17 +993,6 @@ public class ProfileFragment extends Fragment {
         }
 
         fetchHtmlData();
-
-        if (cached != null) {
-            Log.d(TAG, "Loading profile from cache for: " + userId);
-            if (photoAdapter != null)
-                photoAdapter.setBlurNsfw(blur);
-            populateProfile(cached);
-            if (ProfileCacheManager.getInstance().isStatusStale(userId)) {
-                fetchStatusOnly();
-            }
-            return;
-        }
 
         if (progressBar != null)
             progressBar.setVisibility(View.VISIBLE);
@@ -1044,9 +1032,6 @@ public class ProfileFragment extends Fragment {
                         try {
                             String body = NetworkUtils.responseToString(r);
                             JSONObject data = new JSONObject(body);
-
-                            // Save to cache
-                            ProfileCacheManager.getInstance().putProfile(getContext(), userId, data);
 
                             new Handler(Looper.getMainLooper()).post(() -> {
                                 if (getContext() == null || !isAdded())

@@ -106,6 +106,7 @@ import java.util.function.Consumer;
 import androidx.appcompat.app.AlertDialog;
 import java.util.HashSet;
 import okhttp3.MediaType;
+import okhttp3.FormBody;
 import okhttp3.RequestBody;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -1392,7 +1393,7 @@ public class MainActivity extends AppCompatActivity {
         SecurePrefs secure = SecurePrefs.get(this);
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
-        Log.d(TAG, "scrapeFavoritesHtml started");
+        Log.d(TAG, "scrapeFavoritesHtml started via GET");
 
         Request req = new Request.Builder()
                 .url(ApiConstants.BASE_URL + "/ct/online/2")
@@ -1411,8 +1412,11 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (Response r = response) {
+                    Log.d(TAG, "scrapeFavoritesHtml HTTP response code: " + r.code());
                     if (r.isSuccessful() && r.body() != null) {
                         String body = NetworkUtils.responseToString(r);
+                        Log.d(TAG, "scrapeFavoritesHtml body length: " + body.length() + ", starts with: " + body.substring(0, Math.min(200, body.length())));
+
                         List<FavoriteAdapter.FavoriteItem> scraped = ApiParser.parseFavoritesHtml(body);
                         Log.d(TAG, "scrapeFavoritesHtml found " + scraped.size() + " favorites");
 
@@ -1468,22 +1472,42 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchBookmarks(final List<FavoriteAdapter.FavoriteItem> listToMerge, final Runnable onDone) {
+        fetchBookmarksPage(null, listToMerge, 0, onDone);
+    }
+
+    private void fetchBookmarksPage(final String offset, final List<FavoriteAdapter.FavoriteItem> listToMerge, final int depth, final Runnable onDone) {
+        if (depth >= 5) { // Load up to 100 bookmarks (5 pages of 20)
+            if (onDone != null) onDone.run();
+            return;
+        }
         SecurePrefs secure = SecurePrefs.get(this);
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
-        Log.d(TAG, "fetchBookmarks started");
-
-        Request req = new Request.Builder()
-                .url(ApiConstants.BASE_URL + "/ct/online/11")
+        String url = ApiConstants.BASE_URL + "/ct/online/11";
+        okhttp3.Request.Builder reqBuilder = new okhttp3.Request.Builder()
+                .url(url)
                 .addHeader("Cookie", fullCookie)
                 .addHeader("x-csrftoken", suid)
-                .addHeader("User-Agent", ApiConstants.USER_AGENT)
-                .build();
+                .addHeader("User-Agent", ApiConstants.USER_AGENT);
+
+        if (offset != null && !offset.isEmpty()) {
+            int limit = depth * 20;
+            Log.d(TAG, "fetchBookmarksPage started via POST, offset=" + offset + ", depth=" + depth + ", limit=" + limit);
+            String postData = "tab=11&offset=" + offset + "&limit=" + limit;
+            okhttp3.RequestBody requestBody = okhttp3.RequestBody.create(okhttp3.MediaType.parse("application/x-www-form-urlencoded; charset=UTF-8"), postData);
+            reqBuilder.post(requestBody)
+                      .addHeader("x-requested-with", "XMLHttpRequest");
+        } else {
+            Log.d(TAG, "fetchBookmarksPage started via GET, offset=null, depth=" + depth);
+            reqBuilder.get();
+        }
+
+        okhttp3.Request req = reqBuilder.build();
 
         client.newCall(req).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                AppLogger.log("JalfBookmarks", "fetchBookmarks failed", e);
+                AppLogger.log("JalfBookmarks", "fetchBookmarksPage failed", e);
                 if (onDone != null)
                     onDone.run();
             }
@@ -1491,13 +1515,25 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (Response r = response) {
-                    Log.d(TAG, "fetchBookmarks HTTP response code: " + r.code());
+                    Log.d(TAG, "fetchBookmarksPage HTTP response code: " + r.code());
                     if (r.isSuccessful() && r.body() != null) {
                         String body = NetworkUtils.responseToString(r);
+                        Log.d(TAG, "fetchBookmarksPage body length: " + body.length() + ", starts with: " + body.substring(0, Math.min(200, body.length())));
 
-                        Log.d(TAG, "HTML Body length: " + body.length());
-                        List<FavoriteAdapter.FavoriteItem> scrapedItems = ApiParser.parseBookmarkHtml(body);
-                        Log.d(TAG, "Scraper found " + scrapedItems.size() + " bookmarked users");
+                        String htmlToParse = body;
+                        if (body.trim().startsWith("{")) {
+                            try {
+                                org.json.JSONObject json = new org.json.JSONObject(body);
+                                if (json.has("userList")) {
+                                    htmlToParse = json.getString("userList");
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Failed to parse JSON response for bookmarks", e);
+                            }
+                        }
+
+                        List<FavoriteAdapter.FavoriteItem> scrapedItems = ApiParser.parseBookmarkHtml(htmlToParse);
+                        Log.d(TAG, "Scraper found " + scrapedItems.size() + " bookmarked users on page " + depth);
 
                         SecurePrefs secure = SecurePrefs.get(MainActivity.this);
                         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
@@ -1546,16 +1582,30 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
 
-                        runOnUiThread(() -> {
-                            swipeRefreshFavorites.setRefreshing(false);
-                        });
+                        org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(body);
+                        org.jsoup.nodes.Element offsetEl = doc.selectFirst("input#offset");
+                        String nextOffset = offset;
+                        if (offsetEl != null && offsetEl.val() != null && !offsetEl.val().isEmpty()) {
+                            nextOffset = offsetEl.val();
+                        }
+
+                        if (scrapedItems.size() >= 20 && nextOffset != null && !nextOffset.isEmpty()) {
+                            fetchBookmarksPage(nextOffset, listToMerge, depth + 1, onDone);
+                        } else {
+                            runOnUiThread(() -> {
+                                swipeRefreshFavorites.setRefreshing(false);
+                            });
+                            if (onDone != null)
+                                onDone.run();
+                        }
                     } else {
                         runOnUiThread(() -> swipeRefreshFavorites.setRefreshing(false));
+                        if (onDone != null)
+                            onDone.run();
                     }
                 } catch (Exception e) {
-                    Log.e(TAG, "Error in fetchBookmarks onResponse", e);
+                    Log.e(TAG, "Error in fetchBookmarksPage onResponse", e);
                     runOnUiThread(() -> swipeRefreshFavorites.setRefreshing(false));
-                } finally {
                     if (onDone != null)
                         onDone.run();
                 }
@@ -1940,6 +1990,7 @@ public class MainActivity extends AppCompatActivity {
                             ProfileCacheManager.getInstance().putProfile(MainActivity.this, otherUserId, profile);
                             item.name = profile.optString("name", profile.optString("pseudo", item.name));
                             item.isCertified = profile.optBoolean("certified", false);
+                            item.isOnfire = "1".equals(profile.optString("onfire", "0")) || profile.optBoolean("onfire", false);
                             item.lastConnection = profile.optString("last_connection", profile.optString("last_connected", ""));
 
                             String onlineVal = profile.optString("online", "0");
@@ -2035,6 +2086,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         item.isCertified = profile.optBoolean("certified", false);
+        item.isOnfire = "1".equals(profile.optString("onfire", "0")) || profile.optBoolean("onfire", false);
         item.sexLink = profile.optString("sex_link", "");
         if (!item.sexLink.isEmpty()) {
             item.sexIconUrl = MetadataManager.getInstance().resolveIcon(item.sexLink);
