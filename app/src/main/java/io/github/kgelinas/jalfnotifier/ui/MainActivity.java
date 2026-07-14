@@ -4666,6 +4666,7 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
                             NavigationManager.appendItems(additional);
+                            NavigationManager.setHasMoreItems(hasMoreSearchResults);
                         }
 
                         for (SearchAdapter.SearchItem item : newItems) {
@@ -6393,7 +6394,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
-        NavigationManager.setNavigationList("search", navList, idx);
+        NavigationManager.setNavigationList("search", navList, idx, hasMoreSearchResults);
 
         NavigationManager.setListener(onDone -> {
             if (!isSearchingUnified && hasMoreSearchResults) {
@@ -6423,6 +6424,6 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
-        NavigationManager.setNavigationList("favorites", navList, idx);
+        NavigationManager.setNavigationList("favorites", navList, idx, false);
     }
 }

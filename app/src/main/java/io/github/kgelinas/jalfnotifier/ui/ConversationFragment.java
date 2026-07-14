@@ -2467,11 +2467,12 @@ public class ConversationFragment extends Fragment {
         // Update UI - Count-only layout as name is already on the toolbar
         int current = NavigationManager.getCurrentIndex() + 1;
         int total = NavigationManager.getTotalCount();
-        tvIndicator.setText(current + " / " + total);
+        String totalStr = total + (NavigationManager.hasMoreItems() ? "+" : "");
+        tvIndicator.setText(current + " / " + totalStr);
 
         btnPrev.setEnabled(NavigationManager.getCurrentIndex() > 0);
         // Next button is enabled either if there is another item OR if we can paginate more search results
-        boolean canLoadMore = "search".equals(NavigationManager.getCurrentSource()) && MainActivity.class.isInstance(getActivity()) && ((MainActivity) getActivity()).hasMoreSearchResults;
+        boolean canLoadMore = NavigationManager.hasMoreItems();
         btnNext.setEnabled(NavigationManager.getCurrentIndex() < total - 1 || canLoadMore);
 
         btnPrev.setAlpha(btnPrev.isEnabled() ? 1.0f : 0.4f);

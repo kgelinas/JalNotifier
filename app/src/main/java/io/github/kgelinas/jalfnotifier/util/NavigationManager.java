@@ -31,15 +31,25 @@ public class NavigationManager {
     private static int currentIndex = -1;
     private static String currentSource = ""; // "search", "favorites", etc.
     private static NavigationListener listener;
+    private static boolean hasMoreItems = false;
 
     public static void setListener(NavigationListener l) {
         listener = l;
     }
 
-    public static void setNavigationList(String source, List<NavigationItem> items, int startIndex) {
+    public static void setNavigationList(String source, List<NavigationItem> items, int startIndex, boolean hasMore) {
         currentSource = source;
         navigationItems = items != null ? items : new ArrayList<>();
         currentIndex = startIndex;
+        hasMoreItems = hasMore;
+    }
+
+    public static boolean hasMoreItems() {
+        return hasMoreItems;
+    }
+
+    public static void setHasMoreItems(boolean hasMore) {
+        hasMoreItems = hasMore;
     }
 
     public static List<NavigationItem> getNavigationItems() {
