@@ -2409,15 +2409,15 @@ public class ProfileFragment extends Fragment {
         android.widget.ImageButton btnNext = pillView.findViewById(R.id.btn_nav_next);
         android.widget.TextView tvIndicator = pillView.findViewById(R.id.tv_nav_indicator);
 
-        // Update UI
+        // Update UI - Count-only layout as name is already on the card
         int current = NavigationManager.getCurrentIndex() + 1;
         int total = NavigationManager.getTotalCount();
-        NavigationManager.NavigationItem item = NavigationManager.getCurrentItem();
-        String nameStr = item != null ? item.name : "";
-        tvIndicator.setText(nameStr + " " + current + "/" + total);
+        tvIndicator.setText(current + " / " + total);
 
         btnPrev.setEnabled(NavigationManager.getCurrentIndex() > 0);
-        btnNext.setEnabled(NavigationManager.getCurrentIndex() < total - 1);
+        // Next button is enabled either if there is another item OR if we can paginate more search results
+        boolean canLoadMore = "search".equals(NavigationManager.getCurrentSource()) && MainActivity.class.isInstance(getActivity()) && ((MainActivity) getActivity()).hasMoreSearchResults;
+        btnNext.setEnabled(NavigationManager.getCurrentIndex() < total - 1 || canLoadMore);
 
         btnPrev.setAlpha(btnPrev.isEnabled() ? 1.0f : 0.4f);
         btnNext.setAlpha(btnNext.isEnabled() ? 1.0f : 0.4f);
@@ -2426,15 +2426,51 @@ public class ProfileFragment extends Fragment {
             NavigationManager.NavigationItem prevItem = NavigationManager.prev();
             if (prevItem != null) {
                 userId = prevItem.userId;
+                allPhotoItems.clear();
+                if (prevItem.avatarUrl != null && !prevItem.avatarUrl.isEmpty()) {
+                    addPhotoItem(prevItem.avatarUrl, null);
+                }
+                if (photoAdapter != null) {
+                    photoAdapter.notifyDataSetChanged();
+                }
                 fetchProfile();
                 setupNavigationPill(view);
             }
         });
 
         btnNext.setOnClickListener(v -> {
-            NavigationManager.NavigationItem nextItem = NavigationManager.next();
+            btnNext.setEnabled(false);
+            btnNext.setAlpha(0.4f);
+
+            NavigationManager.NavigationItem nextItem = NavigationManager.next(() -> {
+                if (getActivity() == null || !isAdded()) return;
+                
+                NavigationManager.NavigationItem loadedNextItem = NavigationManager.navigateTo(NavigationManager.getCurrentIndex() + 1);
+                if (loadedNextItem != null) {
+                    userId = loadedNextItem.userId;
+                    allPhotoItems.clear();
+                    if (loadedNextItem.avatarUrl != null && !loadedNextItem.avatarUrl.isEmpty()) {
+                        addPhotoItem(loadedNextItem.avatarUrl, null);
+                    }
+                    if (photoAdapter != null) {
+                        photoAdapter.notifyDataSetChanged();
+                    }
+                    fetchProfile();
+                    setupNavigationPill(view);
+                } else {
+                    setupNavigationPill(view);
+                }
+            });
+
             if (nextItem != null) {
                 userId = nextItem.userId;
+                allPhotoItems.clear();
+                if (nextItem.avatarUrl != null && !nextItem.avatarUrl.isEmpty()) {
+                    addPhotoItem(nextItem.avatarUrl, null);
+                }
+                if (photoAdapter != null) {
+                    photoAdapter.notifyDataSetChanged();
+                }
                 fetchProfile();
                 setupNavigationPill(view);
             }

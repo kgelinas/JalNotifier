@@ -441,7 +441,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private boolean hasMoreSearchResults = true;
+    boolean hasMoreSearchResults = true;
 
     private boolean weightsLoaded = false;
     private boolean heightsLoaded = false;
@@ -609,7 +609,7 @@ public class MainActivity extends AppCompatActivity {
         searchAdapter = new SearchAdapter(searchItems, () -> {
             if (!isSearchingUnified && hasMoreSearchResults) {
                 currentSearchPageUnified++;
-                performSearchUnified(currentSearchPageUnified);
+                performSearchUnified(currentSearchPageUnified, null);
             }
         }, item -> {
             setupSearchNavigation(item.userId);
@@ -787,7 +787,7 @@ public class MainActivity extends AppCompatActivity {
                 currentSearchPageUnified = 1;
                 searchItems.clear();
                 searchAdapter.notifyDataSetChanged();
-                performSearchUnified(1);
+                performSearchUnified(1, null);
             }
         });
 
@@ -4257,7 +4257,7 @@ public class MainActivity extends AppCompatActivity {
                 if (searchAdapter != null) searchAdapter.notifyDataSetChanged();
                 currentSearchPageUnified = 1;
                 showSearchResultsSheet();
-                performSearchUnified(1);
+                performSearchUnified(1, null);
             });
         }
 
@@ -4491,7 +4491,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void performSearchUnified(int page) {
-        if (isSearchingUnified) return;
+        performSearchUnified(page, null);
+    }
+
+    private void performSearchUnified(int page, final Runnable onDone) {
+        if (isSearchingUnified) {
+            if (onDone != null) onDone.run();
+            return;
+        }
         isSearchingUnified = true;
         setSearchLoading(true);
 
@@ -4599,6 +4606,7 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     setSearchLoading(false);
                     Toast.makeText(MainActivity.this, R.string.search_failed, Toast.LENGTH_SHORT).show();
+                    if (onDone != null) onDone.run();
                 });
             }
 
@@ -4606,7 +4614,12 @@ public class MainActivity extends AppCompatActivity {
                 try (Response r = response) {
                     isSearchingUnified = false;
                     runOnUiThread(() -> setSearchLoading(false));
-                    if (!r.isSuccessful() || r.body() == null) return;
+                    if (!r.isSuccessful() || r.body() == null) {
+                        runOnUiThread(() -> {
+                            if (onDone != null) onDone.run();
+                        });
+                        return;
+                    }
                     String html = NetworkUtils.responseToString(r);
                     List<SearchAdapter.SearchItem> newItems = parseSearchResults(html);
 
@@ -4641,11 +4654,27 @@ public class MainActivity extends AppCompatActivity {
                         }
                         searchAdapter.notifyDataSetChanged();
 
+                        if ("search".equals(NavigationManager.getCurrentSource())) {
+                            List<NavigationManager.NavigationItem> additional = new ArrayList<>();
+                            for (SearchAdapter.SearchItem item : newItems) {
+                                if (item.type != SearchAdapter.TYPE_LOAD_MORE && item.userId != null) {
+                                    NavigationManager.NavigationItem navItem = new NavigationManager.NavigationItem(item.userId, item.name, item.avatarUrl);
+                                    navItem.conversationLink = findConversationForUser(item.userId);
+                                    navItem.sexIconUrl = item.sexIconUrl;
+                                    navItem.isOnline = item.isOnline;
+                                    additional.add(navItem);
+                                }
+                            }
+                            NavigationManager.appendItems(additional);
+                        }
+
                         for (SearchAdapter.SearchItem item : newItems) {
                             if (item.userId != null && !item.userId.isEmpty()) {
                                 fetchProfileDetailsForSearch(item);
                             }
                         }
+
+                        if (onDone != null) onDone.run();
                     });
                 }
             }
@@ -6365,6 +6394,15 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         NavigationManager.setNavigationList("search", navList, idx);
+
+        NavigationManager.setListener(onDone -> {
+            if (!isSearchingUnified && hasMoreSearchResults) {
+                currentSearchPageUnified++;
+                performSearchUnified(currentSearchPageUnified, onDone);
+            } else {
+                if (onDone != null) onDone.run();
+            }
+        });
     }
 
     private void setupFavoritesNavigation(String selectedUserId) {

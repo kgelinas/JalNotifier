@@ -23,14 +23,37 @@ public class NavigationManager {
         }
     }
 
+    public interface NavigationListener {
+        void onLoadMoreRequested(Runnable onDone);
+    }
+
     private static List<NavigationItem> navigationItems = new ArrayList<>();
     private static int currentIndex = -1;
     private static String currentSource = ""; // "search", "favorites", etc.
+    private static NavigationListener listener;
+
+    public static void setListener(NavigationListener l) {
+        listener = l;
+    }
 
     public static void setNavigationList(String source, List<NavigationItem> items, int startIndex) {
         currentSource = source;
         navigationItems = items != null ? items : new ArrayList<>();
         currentIndex = startIndex;
+    }
+
+    public static List<NavigationItem> getNavigationItems() {
+        return navigationItems;
+    }
+
+    public static void appendItems(List<NavigationItem> items) {
+        if (items != null) {
+            navigationItems.addAll(items);
+        }
+    }
+
+    public static String getCurrentSource() {
+        return currentSource;
     }
 
     public static boolean hasNavigation() {
@@ -60,10 +83,12 @@ public class NavigationManager {
         return null;
     }
 
-    public static NavigationItem next() {
+    public static NavigationItem next(Runnable onLoadMoreDone) {
         if (currentIndex < navigationItems.size() - 1) {
             currentIndex++;
             return navigationItems.get(currentIndex);
+        } else if (listener != null) {
+            listener.onLoadMoreRequested(onLoadMoreDone);
         }
         return null;
     }
@@ -80,5 +105,6 @@ public class NavigationManager {
         navigationItems.clear();
         currentIndex = -1;
         currentSource = "";
+        listener = null;
     }
 }
