@@ -612,6 +612,7 @@ public class MainActivity extends AppCompatActivity {
                 performSearchUnified(currentSearchPageUnified);
             }
         }, item -> {
+            setupSearchNavigation(item.userId);
             openProfile(item.userId, item.name, item.avatarUrl);
         }, this::fetchProfileDetailsForSearch);
 
@@ -665,6 +666,7 @@ public class MainActivity extends AppCompatActivity {
         // MetadataManager is initialized in onCreate
         recyclerFavorites.setLayoutManager(new LinearLayoutManager(this));
         favoriteAdapter = new FavoriteAdapter(favoriteItems, item -> {
+            setupFavoritesNavigation(item.otherUserId);
             openProfile(item.otherUserId, item.name, item.avatarUrl);
         });
         recyclerFavorites.setAdapter(favoriteAdapter);
@@ -6342,5 +6344,47 @@ public class MainActivity extends AppCompatActivity {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
+    }
+
+    private void setupSearchNavigation(String selectedUserId) {
+        List<NavigationManager.NavigationItem> navList = new ArrayList<>();
+        for (SearchAdapter.SearchItem item : searchItems) {
+            if (item.type != SearchAdapter.TYPE_LOAD_MORE && item.userId != null) {
+                NavigationManager.NavigationItem navItem = new NavigationManager.NavigationItem(item.userId, item.name, item.avatarUrl);
+                navItem.conversationLink = findConversationForUser(item.userId);
+                navItem.sexIconUrl = item.sexIconUrl;
+                navItem.isOnline = item.isOnline;
+                navList.add(navItem);
+            }
+        }
+        int idx = -1;
+        for (int i = 0; i < navList.size(); i++) {
+            if (navList.get(i).userId.equals(selectedUserId)) {
+                idx = i;
+                break;
+            }
+        }
+        NavigationManager.setNavigationList("search", navList, idx);
+    }
+
+    private void setupFavoritesNavigation(String selectedUserId) {
+        List<NavigationManager.NavigationItem> navList = new ArrayList<>();
+        for (FavoriteAdapter.FavoriteItem item : favoriteItems) {
+            if (item.otherUserId != null) {
+                NavigationManager.NavigationItem navItem = new NavigationManager.NavigationItem(item.otherUserId, item.name, item.avatarUrl);
+                navItem.conversationLink = findConversationForUser(item.otherUserId);
+                navItem.sexIconUrl = item.sexIconUrl;
+                navItem.isOnline = item.isOnline;
+                navList.add(navItem);
+            }
+        }
+        int idx = -1;
+        for (int i = 0; i < navList.size(); i++) {
+            if (navList.get(i).userId.equals(selectedUserId)) {
+                idx = i;
+                break;
+            }
+        }
+        NavigationManager.setNavigationList("favorites", navList, idx);
     }
 }

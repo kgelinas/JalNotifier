@@ -266,6 +266,8 @@ public class ProfileFragment extends Fragment {
             return;
         }
 
+        setupNavigationPill(view);
+
         if (getArguments() != null) {
             String intentAvatarUrl = getArguments().getString("avatarUrl");
             if (intentAvatarUrl != null && !intentAvatarUrl.isEmpty() && allPhotoItems.isEmpty()) {
@@ -2395,5 +2397,62 @@ public class ProfileFragment extends Fragment {
             return "Privilège Requis";
         }
         return value;
+    }
+
+    private void setupNavigationPill(View view) {
+        if (!NavigationManager.hasNavigation()) return;
+
+        androidx.coordinatorlayout.widget.CoordinatorLayout root = (androidx.coordinatorlayout.widget.CoordinatorLayout) view;
+        View pillView = LayoutInflater.from(getContext()).inflate(R.layout.layout_navigation_pill, root, false);
+
+        android.widget.ImageButton btnPrev = pillView.findViewById(R.id.btn_nav_prev);
+        android.widget.ImageButton btnNext = pillView.findViewById(R.id.btn_nav_next);
+        android.widget.TextView tvIndicator = pillView.findViewById(R.id.tv_nav_indicator);
+
+        // Update UI
+        int current = NavigationManager.getCurrentIndex() + 1;
+        int total = NavigationManager.getTotalCount();
+        NavigationManager.NavigationItem item = NavigationManager.getCurrentItem();
+        String nameStr = item != null ? item.name : "";
+        tvIndicator.setText(nameStr + " " + current + "/" + total);
+
+        btnPrev.setEnabled(NavigationManager.getCurrentIndex() > 0);
+        btnNext.setEnabled(NavigationManager.getCurrentIndex() < total - 1);
+
+        btnPrev.setAlpha(btnPrev.isEnabled() ? 1.0f : 0.4f);
+        btnNext.setAlpha(btnNext.isEnabled() ? 1.0f : 0.4f);
+
+        btnPrev.setOnClickListener(v -> {
+            NavigationManager.NavigationItem prevItem = NavigationManager.prev();
+            if (prevItem != null) {
+                userId = prevItem.userId;
+                fetchProfile();
+                setupNavigationPill(view);
+            }
+        });
+
+        btnNext.setOnClickListener(v -> {
+            NavigationManager.NavigationItem nextItem = NavigationManager.next();
+            if (nextItem != null) {
+                userId = nextItem.userId;
+                fetchProfile();
+                setupNavigationPill(view);
+            }
+        });
+
+        // Add to CoordinatorLayout
+        androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams lp =
+            new androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams(
+                androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams.WRAP_CONTENT,
+                androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams.WRAP_CONTENT
+            );
+        lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
+        lp.bottomMargin = (int) (80 * getResources().getDisplayMetrics().density);
+
+        // Remove existing pill if any
+        View oldPill = root.findViewById(R.id.nav_pill_root);
+        if (oldPill != null) root.removeView(oldPill);
+
+        root.addView(pillView, lp);
     }
 }

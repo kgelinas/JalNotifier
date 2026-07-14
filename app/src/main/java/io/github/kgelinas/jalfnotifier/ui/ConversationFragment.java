@@ -153,6 +153,7 @@ public class ConversationFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+        setupNavigationPill(view);
 
         String avatarUrl = getArguments() != null ? getArguments().getString(ARG_AVATAR_URL) : null;
         String sexIconUrl = getArguments() != null ? getArguments().getString(ARG_SEX_ICON_URL) : null;
@@ -2451,5 +2452,90 @@ public class ConversationFragment extends Fragment {
             btn.setIconTint(android.content.res.ColorStateList.valueOf(normalTint));
             container.setBackgroundColor(normalBg);
         }
+    }
+
+    private void setupNavigationPill(View view) {
+        if (!NavigationManager.hasNavigation()) return;
+
+        androidx.coordinatorlayout.widget.CoordinatorLayout root = (androidx.coordinatorlayout.widget.CoordinatorLayout) view;
+        View pillView = LayoutInflater.from(getContext()).inflate(R.layout.layout_navigation_pill, root, false);
+
+        android.widget.ImageButton btnPrev = pillView.findViewById(R.id.btn_nav_prev);
+        android.widget.ImageButton btnNext = pillView.findViewById(R.id.btn_nav_next);
+        android.widget.TextView tvIndicator = pillView.findViewById(R.id.tv_nav_indicator);
+
+        // Update UI
+        int current = NavigationManager.getCurrentIndex() + 1;
+        int total = NavigationManager.getTotalCount();
+        NavigationManager.NavigationItem item = NavigationManager.getCurrentItem();
+        String nameStr = item != null ? item.name : "";
+        tvIndicator.setText(nameStr + " " + current + "/" + total);
+
+        btnPrev.setEnabled(NavigationManager.getCurrentIndex() > 0);
+        btnNext.setEnabled(NavigationManager.getCurrentIndex() < total - 1);
+
+        btnPrev.setAlpha(btnPrev.isEnabled() ? 1.0f : 0.4f);
+        btnNext.setAlpha(btnNext.isEnabled() ? 1.0f : 0.4f);
+
+        btnPrev.setOnClickListener(v -> {
+            NavigationManager.NavigationItem prevItem = NavigationManager.prev();
+            if (prevItem != null) {
+                conversationLink = prevItem.conversationLink;
+                otherUserId = prevItem.userId;
+                otherName = prevItem.name;
+
+                setupToolbar(view, otherName, prevItem.avatarUrl, prevItem.sexIconUrl);
+                messageList.clear();
+                messageAdapter.notifyDataSetChanged();
+                visibleMessagesCount = 0;
+                totalMessagesCount = 0;
+                oldestMessageTimestamp = null;
+                
+                if (conversationLink != null && !conversationLink.isEmpty()) {
+                    fetchMessages(null);
+                } else if (otherUserId != null && !otherUserId.isEmpty()) {
+                    searchConversationLinkAndFetch(otherUserId, 0);
+                }
+                setupNavigationPill(view);
+            }
+        });
+
+        btnNext.setOnClickListener(v -> {
+            NavigationManager.NavigationItem nextItem = NavigationManager.next();
+            if (nextItem != null) {
+                conversationLink = nextItem.conversationLink;
+                otherUserId = nextItem.userId;
+                otherName = nextItem.name;
+
+                setupToolbar(view, otherName, nextItem.avatarUrl, nextItem.sexIconUrl);
+                messageList.clear();
+                messageAdapter.notifyDataSetChanged();
+                visibleMessagesCount = 0;
+                totalMessagesCount = 0;
+                oldestMessageTimestamp = null;
+
+                if (conversationLink != null && !conversationLink.isEmpty()) {
+                    fetchMessages(null);
+                } else if (otherUserId != null && !otherUserId.isEmpty()) {
+                    searchConversationLinkAndFetch(otherUserId, 0);
+                }
+                setupNavigationPill(view);
+            }
+        });
+
+        // Add to CoordinatorLayout
+        androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams lp =
+            new androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams(
+                androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams.WRAP_CONTENT,
+                androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams.WRAP_CONTENT
+            );
+        lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
+        lp.bottomMargin = (int) (140 * getResources().getDisplayMetrics().density);
+
+        // Remove existing pill if any
+        View oldPill = root.findViewById(R.id.nav_pill_root);
+        if (oldPill != null) root.removeView(oldPill);
+
+        root.addView(pillView, lp);
     }
 }
