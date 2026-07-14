@@ -2456,6 +2456,7 @@ public class ConversationFragment extends Fragment {
 
     private void setupNavigationPill(View view) {
         if (!NavigationManager.hasNavigation()) return;
+        if (!"favorites".equals(NavigationManager.getCurrentSource())) return;
 
         androidx.coordinatorlayout.widget.CoordinatorLayout root = (androidx.coordinatorlayout.widget.CoordinatorLayout) view;
         View pillView = LayoutInflater.from(getContext()).inflate(R.layout.layout_navigation_pill, root, false);
