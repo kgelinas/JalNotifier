@@ -163,14 +163,18 @@ public class ProfileFragment extends Fragment {
     public ProfileFragment() {
     }
 
-    public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite,
-            boolean isBookmarked) {
+    public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite, boolean isBookmarked) {
+        return newInstance(userId, avatarUrl, isFavorite, isBookmarked, false);
+    }
+
+    public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite, boolean isBookmarked, boolean fromChat) {
         ProfileFragment fragment = new ProfileFragment();
         Bundle args = new Bundle();
         args.putString("userId", userId);
         args.putString("avatarUrl", avatarUrl);
         args.putBoolean("isFavorite", isFavorite);
         args.putBoolean("isBookmarked", isBookmarked);
+        args.putBoolean("fromChat", fromChat);
         fragment.setArguments(args);
         return fragment;
     }
@@ -2401,6 +2405,8 @@ public class ProfileFragment extends Fragment {
 
     private void setupNavigationPill(View view) {
         if (!NavigationManager.hasNavigation()) return;
+        boolean fromChat = getArguments() != null && getArguments().getBoolean("fromChat", false);
+        if (fromChat) return;
 
         androidx.coordinatorlayout.widget.CoordinatorLayout root = (androidx.coordinatorlayout.widget.CoordinatorLayout) view;
         View pillView = LayoutInflater.from(getContext()).inflate(R.layout.layout_navigation_pill, root, false);

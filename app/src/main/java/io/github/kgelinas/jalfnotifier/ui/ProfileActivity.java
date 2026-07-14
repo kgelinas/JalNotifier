@@ -34,8 +34,9 @@ public class ProfileActivity extends AppCompatActivity {
             String avatarUrl = getIntent().getStringExtra("avatarUrl");
             boolean isFavorite = getIntent().getBooleanExtra("isFavorite", false);
             boolean isBookmarked = getIntent().getBooleanExtra("isBookmarked", false);
+            boolean fromChat = getIntent().getBooleanExtra("fromChat", false);
 
-            ProfileFragment fragment = ProfileFragment.newInstance(userId, avatarUrl, isFavorite, isBookmarked);
+            ProfileFragment fragment = ProfileFragment.newInstance(userId, avatarUrl, isFavorite, isBookmarked, fromChat);
 
             getSupportFragmentManager().beginTransaction()
                     .replace(R.id.fragment_container_root, fragment)

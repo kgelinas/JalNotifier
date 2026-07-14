@@ -690,7 +690,7 @@ public class MainActivity extends AppCompatActivity {
                 openConversation(item);
             }
         }, item -> {
-            openProfile(item.otherUserId, item.name, item.avatarUrl);
+            openProfile(item.otherUserId, item.name, item.avatarUrl, true);
         }, item -> {
             enterSelectionMode(item);
             return true;
@@ -916,6 +916,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void openProfile(String userId, String name, String avatarUrl) {
+        openProfile(userId, name, avatarUrl, false);
+    }
+
+    void openProfile(String userId, String name, String avatarUrl, boolean fromChat) {
         Log.d(TAG, "openProfile called for ID: " + userId + ", name: " + name);
         if (userId == null || userId.isEmpty()) {
             Log.w(TAG, "openProfile aborted: userId is null or empty");
@@ -934,7 +938,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         if (isTablet && detailContainer != null) {
-            ProfileFragment fragment = ProfileFragment.newInstance(userId, avatarUrl, isFav, isBook);
+            ProfileFragment fragment = ProfileFragment.newInstance(userId, avatarUrl, isFav, isBook, fromChat);
             loadDetailFragment(fragment);
         } else {
             Intent intent = new Intent(this, ProfileActivity.class);
@@ -943,6 +947,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("avatarUrl", avatarUrl);
             intent.putExtra("isFavorite", isFav);
             intent.putExtra("isBookmarked", isBook);
+            intent.putExtra("fromChat", fromChat);
             startActivity(intent);
         }
     }
