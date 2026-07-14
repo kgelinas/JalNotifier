@@ -1782,8 +1782,7 @@ public class ConversationFragment extends Fragment {
                                 if (options != null && options.length > 0) {
                                     if (options.length == 1) {
                                         if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                                        editMessage.setText(options[0]);
-                                        editMessage.setSelection(editMessage.getText().length());
+                                        appendOrSetEditMessage(options[0]);
                                     } else {
                                         if (isResumed()) {
                                             showAiOptionsBottomSheet(options);
@@ -1793,8 +1792,7 @@ public class ConversationFragment extends Fragment {
                                     }
                                 } else {
                                     if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                                    editMessage.setText(finalAiText.trim());
-                                    editMessage.setSelection(editMessage.getText().length());
+                                    appendOrSetEditMessage(finalAiText);
                                 }
                             });
                         } catch (Exception e) {
@@ -1860,6 +1858,26 @@ public class ConversationFragment extends Fragment {
             }
         });
         }).start();
+    }
+
+    private void appendOrSetEditMessage(String newText) {
+        if (newText == null) return;
+        newText = newText.trim();
+        if (newText.isEmpty()) return;
+
+        CharSequence existingText = editMessage.getText();
+        if (existingText != null && existingText.length() > 0) {
+            String current = existingText.toString().trim();
+            if (!current.isEmpty()) {
+                // If it ends with punctuation, append with a space, else add punctuation or a space
+                editMessage.setText(current + " " + newText);
+            } else {
+                editMessage.setText(newText);
+            }
+        } else {
+            editMessage.setText(newText);
+        }
+        editMessage.setSelection(editMessage.getText().length());
     }
 
     private String[] parseAiOptions(String text) {
@@ -1951,8 +1969,7 @@ public class ConversationFragment extends Fragment {
 
             card.setOnClickListener(v -> {
                 aiBottomSheet.dismiss();
-                editMessage.setText(cleanOpt);
-                editMessage.setSelection(editMessage.getText().length());
+                appendOrSetEditMessage(cleanOpt);
             });
 
             container.addView(card);
