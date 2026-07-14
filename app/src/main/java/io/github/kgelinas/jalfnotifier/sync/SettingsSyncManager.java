@@ -1,4 +1,10 @@
 package io.github.kgelinas.jalfnotifier.sync;
+import io.github.kgelinas.jalfnotifier.ui.*;
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.data.repository.*;
+import io.github.kgelinas.jalfnotifier.worker.*;
+import io.github.kgelinas.jalfnotifier.util.*;
+
 
 import android.content.Context;
 import android.util.Log;
@@ -21,8 +27,10 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import io.github.kgelinas.jalfnotifier.ApiConstants;
-import io.github.kgelinas.jalfnotifier.JalfNotifierApplication;
+import io.github.kgelinas.jalfnotifier.data.NetworkConstants;
+import io.github.kgelinas.jalfnotifier.data.PreferenceKeys;
+import io.github.kgelinas.jalfnotifier.data.IntentConstants;
+import io.github.kgelinas.jalfnotifier.util.JalfNotifierApplication;
 
 /**
  * Manages backup and restore of app settings to Google Drive App Data folder.

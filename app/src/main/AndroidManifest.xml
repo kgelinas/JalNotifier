@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
-        android:name=".JalfNotifierApplication"
+        android:name=".util.JalfNotifierApplication"
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
@@ -31,7 +31,7 @@
             android:name="com.google.android.gms.car.application"
             android:resource="@xml/automotive_app_desc" />
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.MainActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|density"
             android:windowSoftInputMode="adjustResize">
@@ -42,75 +42,75 @@
         </activity>
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.LoginActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.LoginActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.PermissionsActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.PermissionsActivity"
             android:label="@string/permissions_title"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.SettingsActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.SettingsActivity"
             android:label="Settings"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.SettingsNotificationActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.SettingsNotificationActivity"
             android:label="Notification by Sexes"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.SettingsCloudActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.SettingsCloudActivity"
             android:label="Cloud Sync"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.SettingsIntelligenceActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.SettingsIntelligenceActivity"
             android:label="Intelligence Configuration"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.LogActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.LogActivity"
             android:label="App Logs"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.SettingsSecurityActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.SettingsSecurityActivity"
             android:label="Sécurité"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.SettingsWidgetActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.SettingsWidgetActivity"
             android:label="Widget Settings"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.ProfileWebViewActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.ProfileWebViewActivity"
             android:label="@string/edit_profile"
             android:exported="false" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.ConversationActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.ConversationActivity"
             android:exported="false"
             android:resizeableActivity="true"
             android:documentLaunchMode="always"
-            android:parentActivityName="io.github.kgelinas.jalfnotifier.MainActivity"
+            android:parentActivityName="io.github.kgelinas.jalfnotifier.ui.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.ProfileActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.ProfileActivity"
             android:exported="false"
-            android:parentActivityName="io.github.kgelinas.jalfnotifier.MainActivity" />
+            android:parentActivityName="io.github.kgelinas.jalfnotifier.ui.MainActivity" />
 
         <activity
-            android:name="io.github.kgelinas.jalfnotifier.FullscreenImageActivity"
+            android:name="io.github.kgelinas.jalfnotifier.ui.FullscreenImageActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.NoActionBar" />
 
         <receiver
-            android:name=".ReplyReceiver"
+            android:name=".worker.ReplyReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="io.github.kgelinas.jalfnotifier.ACTION_REPLY" />
@@ -118,7 +118,7 @@
         </receiver>
 
         <receiver
-            android:name=".MarkAsReadReceiver"
+            android:name=".worker.MarkAsReadReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="io.github.kgelinas.jalfnotifier.ACTION_MARK_AS_READ" />
@@ -127,7 +127,7 @@
 
         <!-- Widget Receiver -->
         <receiver
-            android:name=".ContactsWidgetProvider"
+            android:name=".worker.ContactsWidgetProvider"
             android:label="@string/widget_title"
             android:exported="true">
             <intent-filter>
@@ -142,17 +142,17 @@
 
         <!-- Widget RemoteViewsService -->
         <service
-            android:name=".ContactsWidgetService"
+            android:name=".worker.ContactsWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 
         <service
-            android:name=".JalfSseService"
+            android:name=".worker.JalfSseService"
             android:foregroundServiceType="remoteMessaging"
             android:exported="false" />
 
         <activity
-            android:name=".VideoActivity"
+            android:name=".ui.VideoActivity"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout|smallestScreenSize|density"
             android:screenOrientation="sensor"
             android:supportsPictureInPicture="true"
