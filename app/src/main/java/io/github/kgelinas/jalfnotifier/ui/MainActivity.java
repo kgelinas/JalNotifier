@@ -699,7 +699,7 @@ public class MainActivity extends AppCompatActivity {
 
         recyclerEvents.setLayoutManager(new LinearLayoutManager(this));
         eventAdapter = new EventAdapter(eventItems, item -> {
-            openProfile(item.otherUserId, item.title.replaceAll("<[^>]*>", ""), item.avatarUrl);
+            openProfile(item.otherUserId, item.title.replaceAll("<[^>]*>", ""), item.avatarUrl, true);
         });
         recyclerEvents.setAdapter(eventAdapter);
 
