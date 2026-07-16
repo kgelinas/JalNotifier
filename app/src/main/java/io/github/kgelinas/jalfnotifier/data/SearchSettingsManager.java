@@ -264,6 +264,7 @@ public class SearchSettingsManager {
         json.put("isAdvancedSearch", settings.isAdvancedSearch);
         json.put("orderByDet", settings.orderByDet);
         json.put("ethnicDet", settings.ethnicDet);
+        json.put("excludeChatted", settings.excludeChatted);
         return json;
     }
 
@@ -314,6 +315,7 @@ public class SearchSettingsManager {
         settings.isAdvancedSearch = json.optBoolean("isAdvancedSearch", false);
         settings.orderByDet = json.optString("orderByDet", "1");
         settings.ethnicDet = json.optString("ethnicDet", "");
+        settings.excludeChatted = json.optBoolean("excludeChatted", false);
         return settings;
     }
 
