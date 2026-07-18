@@ -232,25 +232,84 @@ public class ProfileUpdateTask {
                                     if (rr.isSuccessful() && rr.body() != null) {
                                         try {
                                             org.json.JSONObject profile = new org.json.JSONObject(NetworkUtils.responseToString(rr));
+
+                                            // ── Helper: extract numeric tail from a REST link ──────
+                                            // e.g. "/rest/goals/3" → "3"
+
+                                            // ── fantasies_links → fant_list (comma-separated) ─────
                                             org.json.JSONArray fantLinks = profile.optJSONArray("fantasies_links");
                                             if (fantLinks != null && fantLinks.length() > 0) {
                                                 StringBuilder sb = new StringBuilder();
                                                 for (int i = 0; i < fantLinks.length(); i++) {
-                                                    // Link format: "/rest/fantasies/FANTASYID"
-                                                    String link = fantLinks.optString(i, "");
-                                                    String id = link.replaceAll(".*/", "").trim();
+                                                    String id = fantLinks.optString(i, "").replaceAll(".*/", "").trim();
                                                     if (!id.isEmpty() && id.matches("\\d+")) {
                                                         if (sb.length() > 0) sb.append(",");
                                                         sb.append(id);
                                                     }
                                                 }
                                                 fantListRef.set(sb.toString());
-                                                Log.d(TAG, "[GHOST] Resolved fant_list from REST: " + fantListRef.get());
+                                                Log.d(TAG, "[GHOST] fant_list from REST: " + fantListRef.get());
                                             } else {
                                                 Log.w(TAG, "[GHOST] fantasies_links empty/null in REST response");
                                             }
+
+                                            // ── Single-value link fields ──────────────────────────
+                                            // REST field → HTML form field name
+                                            String[][] singleMappings = {
+                                                {"sex_link",                  "Sexe"},
+                                                {"sexual_orientation_link",   "Ornt"},
+                                                {"social_status_link",        "Marit"},
+                                                {"occupation_link",           "Occp"},
+                                                {"ethnic_group_link",         "Ethn"},
+                                                {"schedule_available_link",   "Dispo"},
+                                                {"smoking_link",              "Fumr"},
+                                                {"zodiac_sign_link",          "Sign"},
+                                                {"alcohol_use_link",          "Alcl"},
+                                                {"drug_use_link",             "Drog"},
+                                                {"height_link",               "Hght"},
+                                                {"weight_link",               "Wght"},
+                                            };
+                                            for (String[] mapping : singleMappings) {
+                                                String restField = mapping[0];
+                                                String formField = mapping[1];
+                                                if (updateFields.containsKey(formField)) continue; // caller is explicitly setting this
+                                                String link = profile.optString(restField, "");
+                                                if (!link.isEmpty()) {
+                                                    String id = link.replaceAll(".*/", "").trim();
+                                                    if (!id.isEmpty() && id.matches("\\d+")) {
+                                                        finalParams.removeIf(p -> p.name.equals(formField));
+                                                        finalParams.add(new Param(formField, id));
+                                                        Log.d(TAG, "[GHOST] REST override: " + formField + "=" + id);
+                                                    }
+                                                }
+                                            }
+
+                                            // ── Multi-value link fields ───────────────────────────
+                                            String[][] multiMappings = {
+                                                {"goals_links",          "Goals"},
+                                                {"sexes_interested_links", "OrntRev"},
+                                            };
+                                            for (String[] mapping : multiMappings) {
+                                                String restField = mapping[0];
+                                                String formField = mapping[1];
+                                                if (updateFields.containsKey(formField)) continue;
+                                                org.json.JSONArray links = profile.optJSONArray(restField);
+                                                if (links != null && links.length() > 0) {
+                                                    List<String> ids = new ArrayList<>();
+                                                    for (int i = 0; i < links.length(); i++) {
+                                                        String id = links.optString(i, "").replaceAll(".*/", "").trim();
+                                                        if (!id.isEmpty() && id.matches("\\d+")) ids.add(id);
+                                                    }
+                                                    if (!ids.isEmpty()) {
+                                                        finalParams.removeIf(p -> p.name.equals(formField));
+                                                        for (String id : ids) finalParams.add(new Param(formField, id));
+                                                        Log.d(TAG, "[GHOST] REST override (multi): " + formField + "=" + ids);
+                                                    }
+                                                }
+                                            }
+
                                         } catch (Exception ex) {
-                                            Log.w(TAG, "[GHOST] Error parsing REST profile for fantasies", ex);
+                                            Log.w(TAG, "[GHOST] Error parsing REST profile response", ex);
                                         }
                                     } else {
                                         Log.w(TAG, "[GHOST] REST profile fetch returned " + rr.code());
