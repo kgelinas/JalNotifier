@@ -2404,11 +2404,23 @@ public class ProfileFragment extends Fragment {
     }
 
     private void setupNavigationPill(View view) {
+        androidx.coordinatorlayout.widget.CoordinatorLayout root = (androidx.coordinatorlayout.widget.CoordinatorLayout) view;
+        // Remove existing pill if any
+        View oldPill = root.findViewById(R.id.nav_pill_root);
+        if (oldPill != null) root.removeView(oldPill);
+
         if (!NavigationManager.hasNavigation()) return;
         boolean fromChat = getArguments() != null && getArguments().getBoolean("fromChat", false);
         if (fromChat) return;
 
-        androidx.coordinatorlayout.widget.CoordinatorLayout root = (androidx.coordinatorlayout.widget.CoordinatorLayout) view;
+        if (getContext() != null) {
+            String myId = getContext().getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(ApiConstants.KEY_USER_ID, "");
+            if (userId != null && userId.equals(myId)) {
+                return;
+            }
+        }
+
         View pillView = LayoutInflater.from(getContext()).inflate(R.layout.layout_navigation_pill, root, false);
 
         android.widget.ImageButton btnPrev = pillView.findViewById(R.id.btn_nav_prev);
@@ -2491,10 +2503,7 @@ public class ProfileFragment extends Fragment {
             );
         lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
         lp.bottomMargin = (int) (80 * getResources().getDisplayMetrics().density);
-
-        // Remove existing pill if any
-        View oldPill = root.findViewById(R.id.nav_pill_root);
-        if (oldPill != null) root.removeView(oldPill);
+        lp.setBehavior(new com.google.android.material.behavior.HideBottomViewOnScrollBehavior<>());
 
         root.addView(pillView, lp);
     }
