@@ -32,8 +32,7 @@
         android:layout_gravity="top|start"
         android:layout_margin="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_menu"
-        android:rotation="45"
+        android:src="@drawable/ic_back"
         app:tint="@android:color/white" />
 
 </FrameLayout>

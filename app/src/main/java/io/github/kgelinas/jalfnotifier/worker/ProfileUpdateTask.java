@@ -148,75 +148,119 @@ public class ProfileUpdateTask {
                         }
                     }
 
-                    // --- FANT_LIST RECONSTRUCTION (Crucial for JALF server) ---
-                    // If fant_list is empty, the server rejects the update with "Vous devez sélectionner au moins un fantasme!"
-                    boolean hasFantList = false;
-                    for (Param p : params) {
-                        if (p.name.equals("fant_list") && !p.value.isEmpty()) {
-                            hasFantList = true;
-                            break;
-                        }
-                    }
-                    if (!hasFantList) {
-                        // 1. Try to find checked checkboxes (even if they lack a 'name' attribute)
-                        Elements checkedFants = profileForm.select("input[type=checkbox][checked]");
-                        StringBuilder fantBuilder = new StringBuilder();
-                        for (Element chk : checkedFants) {
-                            String val = chk.attr("value");
-                            if (!val.isEmpty() && val.matches("\\d+")) {
-                                if (fantBuilder.length() > 0) fantBuilder.append(",");
-                                fantBuilder.append(val);
-                            }
-                        }
-                        
-                        String builtFant = fantBuilder.toString();
-                        if (!builtFant.isEmpty()) {
-                            // Remove empty fant_list if present
-                            params.removeIf(p -> p.name.equals("fant_list"));
-                            params.add(new Param("fant_list", builtFant));
+                    // --- FANT_LIST: fetch from REST to avoid overwriting user's fantasy selection ---
+                    // The HTML form's fantasy checkboxes are unreliable for reconstruction.
+                    // We read the real list from GET /rest/users/{userId} → fantasies_links.
+                    String myUserId = context.getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                            .getString(ApiConstants.KEY_USER_ID, "");
+
+                    // Remove any fant_list already in params (may be empty/wrong from HTML)
+                    params.removeIf(p -> p.name.equals("fant_list"));
+
+                    // Build the final list reference so the inner callback can use it
+                    final List<Param> finalParams = params;
+
+                    java.util.concurrent.atomic.AtomicReference<String> fantListRef =
+                            new java.util.concurrent.atomic.AtomicReference<>("");
+
+                    // Helper to fire the actual POST once we have (or failed to get) fant_list
+                    Runnable doPost = () -> {
+                        String fantValue = fantListRef.get();
+                        if (!fantValue.isEmpty()) {
+                            finalParams.add(new Param("fant_list", fantValue));
                         } else {
-                            Log.w(TAG, "[GHOST] fant_list could not be reconstructed, server may reject this POST");
-                        }
-                    }
-                    // -----------------------------------------------------------
-
-                    // 3. POST the full form back using ISO-8859-1
-                    RequestBody formBody = NetworkUtils.createIsoFormBody(params);
-
-                    Request postRequest = new Request.Builder()
-                            .url(ApiConstants.BASE_URL + ApiConstants.PATH_PROFILE_EDIT)
-                            .post(formBody)
-                            .addHeader("Cookie", fullCookie)
-                            .addHeader("User-Agent", ApiConstants.USER_AGENT)
-                            .addHeader("Referer", ApiConstants.BASE_URL + ApiConstants.PATH_PROFILE_EDIT)
-                            .addHeader("Origin", "https://m-app.jalf.com")
-                            .build();
-
-                    client.newCall(postRequest).enqueue(new Callback() {
-                        @Override
-                        public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                            Log.e(TAG, "Profile post update failed", e);
-                            if (callback != null) callback.onFailure(e.getMessage());
+                            Log.w(TAG, "[GHOST] fant_list could not be resolved from REST, server may reject POST");
                         }
 
-                        @Override
-                        public void onResponse(@NonNull Call call, @NonNull Response postResponse) throws IOException {
-                            try (Response r = postResponse) {
-                                if (r.isSuccessful()) {
-                                    String responseHtml = NetworkUtils.responseToString(r);
-                                    Document resDoc = Jsoup.parse(responseHtml);
-                                    Elements errors = resDoc.select(".error, .alert, .message");
-                                    if (!errors.isEmpty()) {
-                                        Log.e(TAG, "[GHOST] Profile update server error: " + errors.text());
+                        RequestBody formBody = NetworkUtils.createIsoFormBody(finalParams);
+                        Request postRequest = new Request.Builder()
+                                .url(ApiConstants.BASE_URL + ApiConstants.PATH_PROFILE_EDIT)
+                                .post(formBody)
+                                .addHeader("Cookie", fullCookie)
+                                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                                .addHeader("Referer", ApiConstants.BASE_URL + ApiConstants.PATH_PROFILE_EDIT)
+                                .addHeader("Origin", "https://m-app.jalf.com")
+                                .build();
+
+                        client.newCall(postRequest).enqueue(new Callback() {
+                            @Override
+                            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                                Log.e(TAG, "Profile post update failed", e);
+                                if (callback != null) callback.onFailure(e.getMessage());
+                            }
+
+                            @Override
+                            public void onResponse(@NonNull Call call, @NonNull Response postResponse) throws IOException {
+                                try (Response r = postResponse) {
+                                    if (r.isSuccessful()) {
+                                        String responseHtml = NetworkUtils.responseToString(r);
+                                        Document resDoc = Jsoup.parse(responseHtml);
+                                        Elements errors = resDoc.select(".error, .alert, .message");
+                                        if (!errors.isEmpty()) {
+                                            Log.e(TAG, "[GHOST] Profile update server error: " + errors.text());
+                                        }
+                                        if (callback != null) callback.onSuccess();
+                                    } else {
+                                        Log.e(TAG, "Profile update failed: " + r.code());
+                                        if (callback != null) callback.onFailure("HTTP " + r.code());
                                     }
-                                    if (callback != null) callback.onSuccess();
-                                } else {
-                                    Log.e(TAG, "Profile update failed: " + r.code());
-                                    if (callback != null) callback.onFailure("HTTP " + r.code());
                                 }
                             }
-                        }
-                    });
+                        });
+                    };
+
+                    if (myUserId.isEmpty()) {
+                        Log.w(TAG, "[GHOST] Own userId not known, cannot fetch fantasies from REST");
+                        doPost.run();
+                    } else {
+                        String restUrl = ApiConstants.BASE_URL + "/rest/users/" + myUserId;
+                        Request restReq = new Request.Builder()
+                                .url(restUrl)
+                                .addHeader("Cookie", fullCookie)
+                                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                                .build();
+                        client.newCall(restReq).enqueue(new Callback() {
+                            @Override
+                            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                                Log.w(TAG, "[GHOST] REST profile fetch failed, posting without fant_list: " + e.getMessage());
+                                doPost.run();
+                            }
+
+                            @Override
+                            public void onResponse(@NonNull Call call, @NonNull Response restResponse) throws IOException {
+                                try (Response rr = restResponse) {
+                                    if (rr.isSuccessful() && rr.body() != null) {
+                                        try {
+                                            org.json.JSONObject profile = new org.json.JSONObject(NetworkUtils.responseToString(rr));
+                                            org.json.JSONArray fantLinks = profile.optJSONArray("fantasies_links");
+                                            if (fantLinks != null && fantLinks.length() > 0) {
+                                                StringBuilder sb = new StringBuilder();
+                                                for (int i = 0; i < fantLinks.length(); i++) {
+                                                    // Link format: "/rest/fantasies/FANTASYID"
+                                                    String link = fantLinks.optString(i, "");
+                                                    String id = link.replaceAll(".*/", "").trim();
+                                                    if (!id.isEmpty() && id.matches("\\d+")) {
+                                                        if (sb.length() > 0) sb.append(",");
+                                                        sb.append(id);
+                                                    }
+                                                }
+                                                fantListRef.set(sb.toString());
+                                                Log.d(TAG, "[GHOST] Resolved fant_list from REST: " + fantListRef.get());
+                                            } else {
+                                                Log.w(TAG, "[GHOST] fantasies_links empty/null in REST response");
+                                            }
+                                        } catch (Exception ex) {
+                                            Log.w(TAG, "[GHOST] Error parsing REST profile for fantasies", ex);
+                                        }
+                                    } else {
+                                        Log.w(TAG, "[GHOST] REST profile fetch returned " + rr.code());
+                                    }
+                                }
+                                doPost.run();
+                            }
+                        });
+                    }
+                    // -----------------------------------------------------------
                 }
             }
         });
