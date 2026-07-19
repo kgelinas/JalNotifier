@@ -517,6 +517,7 @@ public class ConversationFragment extends Fragment {
                 intent.putExtra("userId", otherUserId);
                 intent.putExtra("name", name);
                 intent.putExtra("avatarUrl", avatar);
+                intent.putExtra("fromChat", true);
                 startActivity(intent);
             }
         });
