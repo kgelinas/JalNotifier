@@ -998,7 +998,52 @@ public class ProfileFragment extends Fragment {
                                                 p.optString("large_url", ""))))));
     }
 
+    private void resetProfileData() {
+        isFavorite = false;
+        isBookmarked = false;
+        isNotified = false;
+        isBlocked = false;
+
+        cityFromHtml = null;
+        age = null;
+        sexLink = null;
+        lastConnectedFromHtml = null;
+        lastStatusFromHtml = null;
+        registrationDateFromHtml = null;
+        commonMatchesFromHtml = null;
+        currentProfileData = null;
+
+        synchronized (orientationFromHtml) {
+            orientationFromHtml.clear();
+        }
+
+        allVideos.clear();
+        if (videoAdapter != null) {
+            videoAdapter.notifyDataSetChanged();
+        }
+        if (cardVideos != null) {
+            cardVideos.setVisibility(View.GONE);
+        }
+        if (cardLastStatus != null) {
+            cardLastStatus.setVisibility(View.GONE);
+        }
+        if (descriptionContainer != null) {
+            descriptionContainer.setVisibility(View.GONE);
+        }
+        if (toolbarCertifiedBadge != null) {
+            toolbarCertifiedBadge.setVisibility(View.GONE);
+        }
+        if (chipGroupInterests != null) {
+            chipGroupInterests.removeAllViews();
+            View cardInterests = getView() != null ? getView().findViewById(R.id.card_interests) : null;
+            if (cardInterests != null) {
+                cardInterests.setVisibility(View.GONE);
+            }
+        }
+    }
+
     private void fetchProfile() {
+        resetProfileData();
         boolean blur = true;
         if (getContext() != null) {
             blur = getContext().getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
@@ -1015,6 +1060,7 @@ public class ProfileFragment extends Fragment {
             photoAdapter.setBlurNsfw(blur);
 
         String url = ApiConstants.BASE_URL + "/rest/users/" + userId;
+        final String requestUrl = url;
         Log.d(TAG, "Fetching profile from: " + url);
         Request request = new Request.Builder()
                 .url(url)
@@ -1030,6 +1076,10 @@ public class ProfileFragment extends Fragment {
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (getContext() == null || !isAdded())
                         return;
+                    String currentUrl = ApiConstants.BASE_URL + "/rest/users/" + userId;
+                    if (!requestUrl.equals(currentUrl)) {
+                        return;
+                    }
                     if (progressBar != null)
                         progressBar.setVisibility(View.GONE);
                     if (contentLayout != null)
@@ -1049,6 +1099,10 @@ public class ProfileFragment extends Fragment {
                             new Handler(Looper.getMainLooper()).post(() -> {
                                 if (getContext() == null || !isAdded())
                                     return;
+                                String currentUrl = ApiConstants.BASE_URL + "/rest/users/" + userId;
+                                if (!requestUrl.equals(currentUrl)) {
+                                    return;
+                                }
                                 populateProfile(data);
                             });
                         } catch (JSONException e) {
@@ -1841,6 +1895,7 @@ public class ProfileFragment extends Fragment {
         }
 
         String url = ApiConstants.BASE_URL + "/ct/memberProfile/" + userId;
+        final String requestUrl = url;
         Request request = new Request.Builder()
                 .url(url)
                 .addHeader("Cookie", fullCookie)
@@ -1940,6 +1995,10 @@ public class ProfileFragment extends Fragment {
                         new Handler(Looper.getMainLooper()).post(() -> {
                             if (!isAdded())
                                 return;
+                            String currentUrl = ApiConstants.BASE_URL + "/ct/memberProfile/" + userId;
+                            if (!requestUrl.equals(currentUrl)) {
+                                return;
+                            }
                             updateMenuIcons();
                             updateDetailsUi();
                             updateInterestsUi();
