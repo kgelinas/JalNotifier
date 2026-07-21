@@ -287,7 +287,7 @@ public class ProfileUpdateTask {
                                             // ── Multi-value link fields ───────────────────────────
                                             String[][] multiMappings = {
                                                 {"goals_links",          "Goals"},
-                                                {"sexes_interested_links", "OrntRev"},
+                                                {"sexes_interested_links", "Want"},
                                             };
                                             for (String[] mapping : multiMappings) {
                                                 String restField = mapping[0];
