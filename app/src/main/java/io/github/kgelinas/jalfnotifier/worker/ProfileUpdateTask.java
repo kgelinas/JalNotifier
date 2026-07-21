@@ -83,7 +83,7 @@ public class ProfileUpdateTask {
                         if (callback != null) callback.onFailure("Form not found");
                         return;
                     }
-                    
+
                     Element profileForm = forms.first();
                     // Try to find the actual profile form if there are multiple (e.g. name="frmProfile")
                     for (Element f : forms) {
@@ -92,7 +92,7 @@ public class ProfileUpdateTask {
                             break;
                         }
                     }
-                    
+
                     Log.d(TAG, "[GHOST] Updating fields: " + updateFields.keySet());
 
                     // 2. Extract all fields from the selected form
@@ -133,7 +133,7 @@ public class ProfileUpdateTask {
                                     }
                                 }
                             } else if (tagName.equals("textarea")) {
-                                params.add(new Param(name, input.text()));
+                                params.add(new Param(name, input.wholeOwnText()));
                             } else if (!type.equals("submit") && !type.equals("button")) {
                                 String inputVal = input.attr("value");
                                 params.add(new Param(name, inputVal));
