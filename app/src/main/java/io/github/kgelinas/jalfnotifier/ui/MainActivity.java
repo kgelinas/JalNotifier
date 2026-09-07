@@ -732,6 +732,9 @@ public class MainActivity extends AppCompatActivity {
                 eventsContainer.setVisibility(View.GONE);
                 favoritesContainer.setVisibility(View.GONE);
                 searchContainer.setVisibility(View.GONE);
+                if (persistentSearchBehavior != null) {
+                    persistentSearchBehavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HIDDEN);
+                }
                 fetchAllUnreadCounts();
                 refreshData();
                 invalidateOptionsMenu();
@@ -743,6 +746,9 @@ public class MainActivity extends AppCompatActivity {
                 eventsContainer.setVisibility(View.VISIBLE);
                 favoritesContainer.setVisibility(View.GONE);
                 searchContainer.setVisibility(View.GONE);
+                if (persistentSearchBehavior != null) {
+                    persistentSearchBehavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HIDDEN);
+                }
                 fetchEvents();
                 invalidateOptionsMenu();
                 return true;
@@ -762,6 +768,9 @@ public class MainActivity extends AppCompatActivity {
                 eventsContainer.setVisibility(View.GONE);
                 favoritesContainer.setVisibility(View.VISIBLE);
                 searchContainer.setVisibility(View.GONE);
+                if (persistentSearchBehavior != null) {
+                    persistentSearchBehavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_HIDDEN);
+                }
                 fetchFavorites();
                 invalidateOptionsMenu();
                 return true;
@@ -785,6 +794,7 @@ public class MainActivity extends AppCompatActivity {
                 fetchFavorites();
             } else if (id == R.id.nav_search) {
                 currentSearchPageUnified = 1;
+                hasMoreSearchResults = true;
                 searchItems.clear();
                 searchAdapter.notifyDataSetChanged();
                 performSearchUnified(1, null);
@@ -928,17 +938,19 @@ public class MainActivity extends AppCompatActivity {
 
         boolean isFav = false;
         boolean isBook = false;
+        boolean isNotif = false;
         // Search in cached favorites for existing status
         for (FavoriteAdapter.FavoriteItem fi : allFavoriteItems) {
             if (userId.equals(fi.otherUserId)) {
                 isFav = fi.isFavorite;
                 isBook = fi.isBookmarked;
+                isNotif = fi.isNotified;
                 break;
             }
         }
 
         if (isTablet && detailContainer != null) {
-            ProfileFragment fragment = ProfileFragment.newInstance(userId, avatarUrl, isFav, isBook, fromChat);
+            ProfileFragment fragment = ProfileFragment.newInstance(userId, avatarUrl, isFav, isBook, isNotif, fromChat);
             loadDetailFragment(fragment);
         } else {
             Intent intent = new Intent(this, ProfileActivity.class);
@@ -947,6 +959,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("avatarUrl", avatarUrl);
             intent.putExtra("isFavorite", isFav);
             intent.putExtra("isBookmarked", isBook);
+            intent.putExtra("isNotified", isNotif);
             intent.putExtra("fromChat", fromChat);
             startActivity(intent);
         }
@@ -984,6 +997,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
+        runOnUiThread(this::applyContactsFilter);
     }
 
     public void updateUserBookmarkStatus(String userId, boolean isBook) {
@@ -993,6 +1007,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
+        runOnUiThread(this::applyContactsFilter);
     }
 
     public void updateUserNotifiedStatus(String userId, boolean isNotified) {
@@ -1002,6 +1017,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
+        runOnUiThread(this::applyContactsFilter);
     }
 
 
@@ -1208,6 +1224,9 @@ public class MainActivity extends AppCompatActivity {
                             if (!eventsLink.isEmpty()) {
                                 getAppPrefs().getRaw()
                                         .edit().putString(ApiConstants.KEY_SSE_URL, eventsLink).apply();
+                                // Start (or restart) the SSE service now that we have the URL.
+                                // startSseService() is a no-op if the stream is already connected.
+                                runOnUiThread(() -> startSseService());
                             }
 
                             String onlineVal = profile.optString("online", "0");
@@ -4261,6 +4280,7 @@ public class MainActivity extends AppCompatActivity {
                 searchItems.clear();
                 if (searchAdapter != null) searchAdapter.notifyDataSetChanged();
                 currentSearchPageUnified = 1;
+                hasMoreSearchResults = true;
                 showSearchResultsSheet();
                 performSearchUnified(1, null);
             });
@@ -4500,7 +4520,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void performSearchUnified(int page, final Runnable onDone) {
-        if (isSearchingUnified) {
+        performSearchUnified(page, onDone, 0);
+    }
+
+    private void performSearchUnified(int page, final Runnable onDone, final int emptyPageStreak) {
+        if (isSearchingUnified && emptyPageStreak == 0) {
             if (onDone != null) onDone.run();
             return;
         }
@@ -4611,22 +4635,26 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     setSearchLoading(false);
                     Toast.makeText(MainActivity.this, R.string.search_failed, Toast.LENGTH_SHORT).show();
+                    searchAdapter.notifyDataSetChanged();
                     if (onDone != null) onDone.run();
                 });
             }
 
             @Override public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                 try (Response r = response) {
-                    isSearchingUnified = false;
-                    runOnUiThread(() -> setSearchLoading(false));
                     if (!r.isSuccessful() || r.body() == null) {
+                        isSearchingUnified = false;
                         runOnUiThread(() -> {
+                            setSearchLoading(false);
+                            searchAdapter.notifyDataSetChanged();
                             if (onDone != null) onDone.run();
                         });
                         return;
                     }
                     String html = NetworkUtils.responseToString(r);
-                    List<SearchAdapter.SearchItem> newItems = parseSearchResults(html);
+                    List<SearchAdapter.SearchItem> rawItems = parseSearchResults(html);
+                    final boolean rawHasResults = !rawItems.isEmpty();
+                    List<SearchAdapter.SearchItem> newItems = new ArrayList<>(rawItems);
 
                     if (excludeChatted) {
                         android.content.SharedPreferences convoPrefs = getSharedPreferences("ConversationLinks", MODE_PRIVATE);
@@ -4642,9 +4670,23 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
 
+                    // If server returned results on this page, but all were filtered out by excludeChatted,
+                    // automatically advance to the next page (up to 5 consecutive pages)
+                    if (rawHasResults && newItems.isEmpty() && emptyPageStreak < 5) {
+                        currentSearchPageUnified = page + 1;
+                        performSearchUnified(page + 1, onDone, emptyPageStreak + 1);
+                        return;
+                    }
+
+                    isSearchingUnified = false;
+                    hasMoreSearchResults = rawHasResults;
+
                     runOnUiThread(() -> {
-                        if (newItems.isEmpty() && page == 1)
+                        setSearchLoading(false);
+
+                        if (searchItems.isEmpty() && newItems.isEmpty() && !hasMoreSearchResults) {
                             Toast.makeText(MainActivity.this, R.string.no_results_found, Toast.LENGTH_SHORT).show();
+                        }
 
                         currentSearchPageUnified = page;
                         if (!searchItems.isEmpty()
@@ -4652,7 +4694,7 @@ public class MainActivity extends AppCompatActivity {
                             searchItems.remove(searchItems.size() - 1);
                         }
                         searchItems.addAll(newItems);
-                        if (!newItems.isEmpty()) {
+                        if (hasMoreSearchResults && !searchItems.isEmpty()) {
                             SearchAdapter.SearchItem lm = new SearchAdapter.SearchItem();
                             lm.type = SearchAdapter.TYPE_LOAD_MORE;
                             searchItems.add(lm);

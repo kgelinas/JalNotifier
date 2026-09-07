@@ -265,6 +265,17 @@ public class SearchSettingsManager {
         json.put("orderByDet", settings.orderByDet);
         json.put("ethnicDet", settings.ethnicDet);
         json.put("excludeChatted", settings.excludeChatted);
+        // Simple-mode age range (used by the unified search slider)
+        json.put("ageMinSimple", settings.ageMinSimple);
+        json.put("ageMaxSimple", settings.ageMaxSimple);
+        json.put("onlineSimple", settings.onlineSimple);
+        json.put("photoSimple", settings.photoSimple);
+        json.put("myRegionSimple", settings.myRegionSimple);
+        json.put("orderBySimple", settings.orderBySimple);
+        json.put("pseudoSimple", settings.pseudoSimple);
+        json.put("seekSimple", settings.seekSimple);
+        json.put("wantedSimple", settings.wantedSimple);
+        json.put("orientSimple", settings.orientSimple);
         return json;
     }
 
@@ -316,6 +327,17 @@ public class SearchSettingsManager {
         settings.orderByDet = json.optString("orderByDet", "1");
         settings.ethnicDet = json.optString("ethnicDet", "");
         settings.excludeChatted = json.optBoolean("excludeChatted", false);
+        // Simple-mode fields — fall back to Det values so old saves still work
+        settings.ageMinSimple = json.optString("ageMinSimple", settings.ageMinDet);
+        settings.ageMaxSimple = json.optString("ageMaxSimple", settings.ageMaxDet);
+        settings.onlineSimple = json.optBoolean("onlineSimple", false);
+        settings.photoSimple = json.optBoolean("photoSimple", false);
+        settings.myRegionSimple = json.optBoolean("myRegionSimple", false);
+        settings.orderBySimple = json.optString("orderBySimple", settings.orderByDet);
+        settings.pseudoSimple = json.optString("pseudoSimple", "");
+        settings.seekSimple = json.optString("seekSimple", !settings.seekDet.isEmpty() ? settings.seekDet.get(0) : "");
+        settings.wantedSimple = json.optString("wantedSimple", !settings.wantedDet.isEmpty() ? settings.wantedDet.get(0) : "");
+        settings.orientSimple = json.optString("orientSimple", !settings.orientDet.isEmpty() ? settings.orientDet.get(0) : "");
         return settings;
     }
 

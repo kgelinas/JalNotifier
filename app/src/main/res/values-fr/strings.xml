@@ -353,9 +353,39 @@
     <string name="action_reply">Répondre</string>
     <string name="action_mark_as_read">Marquer comme lu</string>
     <string name="settings_language">Langue de l\'application</string>
-    <string name="gemini_status_introduction">Génération d\'introduction...</string>
-    <string name="gemini_status_reply">Génération de réponse...</string>
-    <string name="gemini_status_targeted">Génération de réponse ciblée...</string>
+    <!-- Messages de chargement personnalisés : intros -->
+    <string-array name="gemini_status_intros">
+        <item>Création d\'une première impression...</item>
+        <item>Des mots pour faire fondre les cœurs...</item>
+        <item>Un secret murmuré...</item>
+        <item>Une intro à couper le souffle...</item>
+    </string-array>
+
+    <!-- Messages de chargement personnalisés : réponses (incluant coquin) -->
+    <string-array name="gemini_status_replies">
+        <item>Préparation d\'une réponse coquine...</item>
+        <item>En quête de mots interdits...</item>
+        <item>Trouver le moyen de les rendre fous...</item>
+        <item>Tisser vos désirs en mots...</item>
+        <item>Trouver le rythme de vos échanges...</item>
+        <item>Plus de suspense... plus de plaisir...</item>
+        <item>Déverrouillage du donjon...</item>
+        <item>Les liens se resserrent...</item>
+        <item>Harmonisation du trio...</item>
+    </string-array>
+
+    <!-- Messages de chargement personnalisés : ciblés (incluant coquin) -->
+    <string-array name="gemini_status_targeted">
+        <item>Préparation d\'une réponse coquine...</item>
+        <item>En quête de mots interdits...</item>
+        <item>Trouver le moyen de les rendre fous...</item>
+        <item>Tisser vos désirs en mots...</item>
+        <item>Trouver le rythme de vos échanges...</item>
+        <item>Plus de suspense... plus de plaisir...</item>
+        <item>Déverrouillage du donjon...</item>
+        <item>Les liens se resserrent...</item>
+        <item>Harmonisation du trio...</item>
+    </string-array>
     <string name="gemini_error_no_token">Veuillez d\'abord configurer un jeton de fournisseur d\'IA.</string>
     <string name="gemini_error_api_failure">Échec de l\'API IA</string>
     <string name="gemini_error_api_error">Erreur de l\'API IA</string>
@@ -363,7 +393,18 @@
     <string name="gemini_error_exception">Exception lors de l\'appel à l\'API IA</string>
     <string name="gemini_menu_introduction">Introduction</string>
     <string name="gemini_menu_reply">Répondre</string>
-    <string name="gemini_choose_option">Choisissez une option</string>
+        <string name="gemini_choose_option">Choisissez une option</string>
+    <string name="send">Envoyer</string>
+    <string name="assistant_panel_title">Assistant &amp; Réponses rapides</string>
+    <string name="assistant_dialog_subtitle">Discussion avec %s</string>
+    <string name="assistant_generate_intro">Générer une intro</string>
+    <string name="assistant_generate_reply">Générer une réponse</string>
+    <string name="assistant_reply_subtitle">Répondre à : « %s »</string>
+    <string name="assistant_get_more_answers">Obtenir d\'autres réponses</string>
+    <string name="assistant_model_selector_label">Modèle d\'IA</string>
+    <string name="assistant_ai_section_title">Suggestions IA</string>
+    <string name="assistant_cancel_generation">Annuler</string>
+    <string name="content_description_assistant">Assistant &amp; Réponses rapides</string>
     <string name="error_fetching_profile_ai">Échec de la récupération du profil pour l\'IA</string>
     <string name="error_parsing_profile">Erreur lors de l\'analyse du profil</string>
     <string name="error_fetching_profile">Erreur lors de la récupération du profil</string>

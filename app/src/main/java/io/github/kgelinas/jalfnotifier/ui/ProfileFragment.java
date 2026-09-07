@@ -164,16 +164,21 @@ public class ProfileFragment extends Fragment {
     }
 
     public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite, boolean isBookmarked) {
-        return newInstance(userId, avatarUrl, isFavorite, isBookmarked, false);
+        return newInstance(userId, avatarUrl, isFavorite, isBookmarked, false, false);
     }
 
     public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite, boolean isBookmarked, boolean fromChat) {
+        return newInstance(userId, avatarUrl, isFavorite, isBookmarked, false, fromChat);
+    }
+
+    public static ProfileFragment newInstance(String userId, String avatarUrl, boolean isFavorite, boolean isBookmarked, boolean isNotified, boolean fromChat) {
         ProfileFragment fragment = new ProfileFragment();
         Bundle args = new Bundle();
         args.putString("userId", userId);
         args.putString("avatarUrl", avatarUrl);
         args.putBoolean("isFavorite", isFavorite);
         args.putBoolean("isBookmarked", isBookmarked);
+        args.putBoolean("isNotified", isNotified);
         args.putBoolean("fromChat", fromChat);
         fragment.setArguments(args);
         return fragment;
@@ -186,6 +191,7 @@ public class ProfileFragment extends Fragment {
             userId = getArguments().getString("userId");
             isFavorite = getArguments().getBoolean("isFavorite", false);
             isBookmarked = getArguments().getBoolean("isBookmarked", false);
+            isNotified = getArguments().getBoolean("isNotified", false);
         }
 
         fullscreenImageLauncher = registerForActivityResult(
@@ -295,6 +301,14 @@ public class ProfileFragment extends Fragment {
             prefs.edit().remove(ApiConstants.KEY_ONLINE_NOTIF_USERS).apply();
         }
         isNotified = notifUsers.contains("/rest/users/" + userId);
+
+        // Also refresh isFavorite and isBookmarked from MainActivity's cached list
+        // (populated from the REST favorites endpoint — most reliable local source).
+        if (getActivity() instanceof MainActivity) {
+            MainActivity ma = (MainActivity) getActivity();
+            if (ma.isUserFavorite(userId)) isFavorite = true;
+            if (ma.isUserBookmarked(userId)) isBookmarked = true;
+        }
 
         if (getActivity() instanceof MainActivity) {
             String link = ((MainActivity) getActivity()).findConversationForUser(userId);
@@ -999,9 +1013,12 @@ public class ProfileFragment extends Fragment {
     }
 
     private void resetProfileData() {
-        isFavorite = false;
-        isBookmarked = false;
-        isNotified = false;
+        // NOTE: isFavorite, isBookmarked, isNotified are NOT reset here.
+        // They are relationship flags with their own authoritative sources:
+        //   isFavorite  -> REST favorites list (allFavoriteItems) + REST profile is_favorite
+        //   isBookmarked -> allFavoriteItems + HTML profile page button state
+        //   isNotified  -> SharedPreferences (KEY_ONLINE_NOTIF_USERS)
+        // Resetting them here would cause a flash of wrong state before async responses arrive.
         isBlocked = false;
 
         cityFromHtml = null;
@@ -1316,7 +1333,11 @@ public class ProfileFragment extends Fragment {
         updateGridUi();
         updateOnfireUi();
 
-        isFavorite = data.optBoolean("is_favorite", isFavorite);
+        // Only upgrade isFavorite (REST profile can't be trusted to set false —
+        // the authoritative source is the favorites-list endpoint in allFavoriteItems).
+        if (data.optBoolean("is_favorite", false)) {
+            isFavorite = true;
+        }
         updateMenuIcons();
     }
 

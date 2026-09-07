@@ -49,6 +49,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -80,7 +82,7 @@ public class ConversationFragment extends Fragment {
     private final OkHttpClient client = JalfNotifierApplication.httpClient();
     private boolean isLoadingMore = false;
     private okhttp3.OkHttpClient aiClient;
-    private com.google.android.material.bottomsheet.BottomSheetDialog aiBottomSheet;
+    private volatile okhttp3.Call activeAiCall;
 
     // Caching for LLM Retries/Fallbacks
     private JSONObject lastMyProfile;
@@ -103,8 +105,11 @@ public class ConversationFragment extends Fragment {
     private RecyclerView recyclerMessages;
     private TextInputEditText editMessage;
     private MaterialButton btnSend;
-    private MaterialButton btnQuickResponse;
     private MaterialButton btnGeminiGenerate;
+    private final List<String> accumulatedAiSuggestions = new ArrayList<>();
+    private BottomSheetDialog assistantDialog;
+    private View assistantSheetView;
+    private MessageAdapter.MessageItem targetedReplyItem = null;
     private MaterialButton btnQueueMessage;
     private TextView txtTypingIndicator;
     private View imgOnlineIndicator;
@@ -171,13 +176,15 @@ public class ConversationFragment extends Fragment {
         recyclerMessages = view.findViewById(R.id.recycler_messages);
         editMessage = view.findViewById(R.id.edit_message);
         btnSend = view.findViewById(R.id.btn_send);
-        btnQuickResponse = view.findViewById(R.id.btn_quick_response);
         btnGeminiGenerate = view.findViewById(R.id.btn_gemini_generate);
         btnQueueMessage = view.findViewById(R.id.btn_queue_message);
         txtTypingIndicator = view.findViewById(R.id.txt_typing_indicator);
 
-        btnQuickResponse.setOnClickListener(v -> showQuickResponseMenu());
-        btnGeminiGenerate.setOnClickListener(v -> checkTokenAndGenerate(false));
+        btnGeminiGenerate.setOnClickListener(v -> {
+            targetedReplyItem = null;
+            accumulatedAiSuggestions.clear();
+            showAssistantBottomSheet();
+        });
         btnQueueMessage.setOnClickListener(v -> queueAutoMessage());
 
         editMessage.addTextChangedListener(new android.text.TextWatcher() {
@@ -221,7 +228,9 @@ public class ConversationFragment extends Fragment {
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(new SwipeToReplyCallback(context(), position -> {
             if (position != RecyclerView.NO_POSITION && position < messageList.size()) {
                 MessageAdapter.MessageItem item = messageList.get(position);
-                onGeminiGenerateSpecific(item);
+                targetedReplyItem = item;
+                accumulatedAiSuggestions.clear();
+                showAssistantBottomSheet();
                 // Reset the swiped view state
                 mainHandler.postDelayed(() -> messageAdapter.notifyItemChanged(position), 100);
             }
@@ -398,7 +407,13 @@ public class ConversationFragment extends Fragment {
                         }
                     }
                     AppLogger.log(TAG, "SSE Received event: " + type + ", data contains link: " + link);
-                    if (link != null && isSameConversation(link, conversationLink)) {
+
+                    // convo_all_unread_messages_count_changed carries no conversation_link,
+                    // so it must be handled outside the isSameConversation guard.
+                    if ("convo_all_unread_messages_count_changed".equals(type)) {
+                        fetchMessages(null);
+                        sendReadReceipt();
+                    } else if (link != null && isSameConversation(link, conversationLink)) {
                         AppLogger.log(TAG, "SSE event matched current conversation: " + type);
                         if ("convo_typing".equals(type)) {
                             showTypingIndicator();
@@ -407,8 +422,8 @@ public class ConversationFragment extends Fragment {
                             if (!readUntil.isEmpty()) {
                                 updateReadReceipts(readUntil);
                             }
-                        } else if ("convo_all_unread_messages_count_changed".equals(type)
-                                || "convo_new_message".equals(type) || "message".equals(type)) {
+                        } else if ("convo_new".equals(type) || "convo_new_message".equals(type)
+                                || "message".equals(type)) {
                             fetchMessages(null);
                             sendReadReceipt();
                         }
@@ -430,7 +445,7 @@ public class ConversationFragment extends Fragment {
             messageAdapter.notifyDataSetChanged();
         }
         if (pendingAiOptions != null) {
-            showAiOptionsBottomSheet(pendingAiOptions);
+            onAiOptionsReceived(pendingAiOptions);
             pendingAiOptions = null;
         }
         updateAiButtonVisibility();
@@ -448,6 +463,15 @@ public class ConversationFragment extends Fragment {
         super.onPause();
         requireContext().unregisterReceiver(sseReceiver);
         mainHandler.removeCallbacks(clearTypingRunnable);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        if (activeAiCall != null) {
+            activeAiCall.cancel();
+            activeAiCall = null;
+        }
     }
 
     private void setupToolbar(View view, String name, String avatar, String sexIcon) {
@@ -829,132 +853,16 @@ public class ConversationFragment extends Fragment {
     private void updateAiButtonVisibility() {
         if (getContext() == null || btnGeminiGenerate == null) return;
         AppPrefs prefs = AppPrefs.getInstance(getContext());
-        String provider = prefs.getString(ApiConstants.KEY_AI_PROVIDER, "Google Gemini").trim();
-        String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
-        String model = prefs.getString(ApiConstants.KEY_GEMINI_MODEL, "").trim();
+        boolean isAiUnlocked = prefs.getBoolean(ApiConstants.KEY_AI_UNLOCKED, false);
 
-        boolean needsToken = "Google Gemini".equals(provider) || "OpenRouter".equals(provider);
-        boolean isConfigured;
-        if (!needsToken) {
-            isConfigured = !model.isEmpty();
+        btnGeminiGenerate.setVisibility(View.VISIBLE);
+        if (isAiUnlocked) {
+            btnGeminiGenerate.setIconResource(R.drawable.ic_sparkle_24);
+            btnGeminiGenerate.setContentDescription(getString(R.string.assistant_panel_title));
         } else {
-            isConfigured = !savedToken.isEmpty() || !ApiConstants.GEMINI_API_KEY.isEmpty();
+            btnGeminiGenerate.setIconResource(R.drawable.ic_bolt_24);
+            btnGeminiGenerate.setContentDescription(getString(R.string.quick_responses_title));
         }
-
-        btnGeminiGenerate.setVisibility(isConfigured ? View.VISIBLE : View.GONE);
-    }
-
-    private void showAiLoadingBottomSheet(String status) {
-        if (!isAdded() || getContext() == null) return;
-        if (aiBottomSheet != null) {
-            try { aiBottomSheet.dismiss(); } catch (Exception ignored) {}
-        }
-        aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
-        aiBottomSheet.setCancelable(true);
-
-        android.widget.LinearLayout container = new android.widget.LinearLayout(context());
-        container.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-        container.setGravity(android.view.Gravity.CENTER);
-        int padding = (int) (24 * getResources().getDisplayMetrics().density);
-        container.setPadding(padding, padding, padding, padding);
-        container.setMinimumHeight((int) (200 * getResources().getDisplayMetrics().density));
-
-        android.widget.ImageView loadingIcon = new android.widget.ImageView(context());
-        loadingIcon.setImageResource(R.drawable.ic_sparkle_24);
-        int iconSize = (int) (24 * getResources().getDisplayMetrics().density);
-        android.widget.LinearLayout.LayoutParams iconParams = new android.widget.LinearLayout.LayoutParams(iconSize, iconSize);
-        
-        android.util.TypedValue outValue = new android.util.TypedValue();
-        context().getTheme().resolveAttribute(android.R.attr.colorPrimary, outValue, true);
-        loadingIcon.setColorFilter(outValue.data, android.graphics.PorterDuff.Mode.SRC_IN);
-        loadingIcon.setLayoutParams(iconParams);
-
-        android.view.animation.AlphaAnimation anim = new android.view.animation.AlphaAnimation(0.3f, 1.0f);
-        anim.setDuration(1000);
-        anim.setRepeatMode(android.view.animation.Animation.REVERSE);
-        anim.setRepeatCount(android.view.animation.Animation.INFINITE);
-        loadingIcon.startAnimation(anim);
-        
-        container.addView(loadingIcon);
-
-        android.widget.TextView text = new android.widget.TextView(context());
-        text.setText(status);
-        text.setTextSize(16f);
-        text.setPadding(padding / 2, 0, 0, 0);
-        container.addView(text);
-
-        aiBottomSheet.setContentView(container);
-        try { aiBottomSheet.show(); } catch (Exception ignored) {}
-    }
-
-    private void showAiErrorBottomSheet(String errorMsg, boolean hasNextLlm) {
-        if (!isAdded() || getContext() == null) return;
-        if (aiBottomSheet != null) {
-            try { aiBottomSheet.dismiss(); } catch (Exception ignored) {}
-        }
-        aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
-        aiBottomSheet.setCancelable(true);
-
-        android.widget.LinearLayout container = new android.widget.LinearLayout(context());
-        container.setOrientation(android.widget.LinearLayout.VERTICAL);
-        container.setGravity(android.view.Gravity.CENTER);
-        int padding = (int) (24 * getResources().getDisplayMetrics().density);
-        container.setPadding(padding, padding, padding, padding);
-        container.setMinimumHeight((int) (200 * getResources().getDisplayMetrics().density));
-
-        android.widget.TextView text = new android.widget.TextView(context());
-        text.setText(errorMsg);
-        text.setTextSize(16f);
-        text.setTextColor(0xFFD32F2F); // Red
-        text.setGravity(android.view.Gravity.CENTER);
-        container.addView(text);
-
-        String[] slotNames = getAiSlotNames();
-        
-        android.widget.LinearLayout btnContainer = new android.widget.LinearLayout(context());
-        btnContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-        btnContainer.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        android.widget.LinearLayout.LayoutParams btnParams = new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-        btnParams.setMargins(0, padding, 0, 0);
-        btnContainer.setLayoutParams(btnParams);
-
-        android.widget.Spinner llmSpinner = new android.widget.Spinner(context());
-        android.widget.ArrayAdapter<String> spinnerAdapter = new android.widget.ArrayAdapter<>(context(), android.R.layout.simple_spinner_dropdown_item, slotNames);
-        llmSpinner.setAdapter(spinnerAdapter);
-        if (currentLlmIndex >= 0 && currentLlmIndex < slotNames.length) {
-            llmSpinner.setSelection(currentLlmIndex);
-        }
-        
-        android.widget.LinearLayout.LayoutParams spinnerParams = new android.widget.LinearLayout.LayoutParams(
-                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-        llmSpinner.setLayoutParams(spinnerParams);
-
-        com.google.android.material.button.MaterialButton btnRetry = new com.google.android.material.button.MaterialButton(context(), null, com.google.android.material.R.attr.materialButtonStyle);
-        btnRetry.setText("Retry");
-        btnRetry.setOnClickListener(v -> {
-            currentLlmIndex = llmSpinner.getSelectedItemPosition();
-            String status = getString(R.string.gemini_status_reply);
-            if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
-                status = getString(R.string.gemini_status_targeted);
-            } else if (lastHistory == null || lastHistory.trim().isEmpty()) {
-                status = getString(R.string.gemini_status_introduction);
-            }
-            setAiGeneratingState(true, status);
-            callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
-        });
-
-        btnContainer.addView(llmSpinner);
-        btnContainer.addView(btnRetry);
-
-        container.addView(btnContainer);
-
-        androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(context());
-        scrollView.addView(container);
-
-        aiBottomSheet.setContentView(scrollView);
-        try { aiBottomSheet.show(); } catch (Exception ignored) {}
     }
 
     private void setAiGeneratingState(boolean generating, String status) {
@@ -962,10 +870,44 @@ public class ConversationFragment extends Fragment {
             if (btnGeminiGenerate != null) {
                 btnGeminiGenerate.setEnabled(!generating);
             }
-            if (generating) {
-                showAiLoadingBottomSheet(status);
+            if (generating && (assistantDialog == null || !assistantDialog.isShowing())) {
+                showAssistantBottomSheet();
+            }
+            if (assistantSheetView != null) {
+                View loadingLayout = assistantSheetView.findViewById(R.id.layout_assistant_loading);
+                TextView txtStatus = assistantSheetView.findViewById(R.id.txt_assistant_loading_status);
+                TextView txtPreview = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
+                View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
+                View errorLayout = assistantSheetView.findViewById(R.id.layout_assistant_error);
+                View btnIntro = assistantSheetView.findViewById(R.id.btn_action_intro);
+                View btnMore = assistantSheetView.findViewById(R.id.btn_get_more_answers);
+
+                if (loadingLayout != null) {
+                    loadingLayout.setVisibility(generating ? View.VISIBLE : View.GONE);
+                }
+                if (txtPreview != null && generating) {
+                    txtPreview.setText("");
+                    txtPreview.setVisibility(View.GONE);
+                }
+                if (cancelBtn != null && !generating) {
+                    cancelBtn.setVisibility(View.GONE);
+                }
+                if (errorLayout != null && generating) {
+                    errorLayout.setVisibility(View.GONE);
+                }
+                if (txtStatus != null && status != null) {
+                    txtStatus.setText(status);
+                }
+                if (btnIntro != null) btnIntro.setEnabled(!generating);
+                if (btnMore != null) btnMore.setEnabled(!generating);
             }
         });
+    }
+    /** Returns a random item from a string-array resource. */
+    private String randomLoadingMessage(int arrayResId) {
+        String[] items = getResources().getStringArray(arrayResId);
+        if (items.length == 0) return "";
+        return items[new java.util.Random().nextInt(items.length)];
     }
 
     private void injectPendingMessageIfAny() {
@@ -1269,7 +1211,7 @@ public class ConversationFragment extends Fragment {
         if (otherUserId == null || otherUserId.isEmpty())
             return;
 
-        setAiGeneratingState(true, isReply ? getString(R.string.gemini_status_reply) : getString(R.string.gemini_status_introduction));
+        setAiGeneratingState(true, isReply ? randomLoadingMessage(R.array.gemini_status_replies) : randomLoadingMessage(R.array.gemini_status_intros));
 
         String history = "";
         if (isReply) {
@@ -1401,7 +1343,7 @@ public class ConversationFragment extends Fragment {
 
     private void onGeminiGenerateSpecific(MessageAdapter.MessageItem item) {
         String specificMessage = item.text;
-        setAiGeneratingState(true, getString(R.string.gemini_status_targeted));
+        setAiGeneratingState(true, randomLoadingMessage(R.array.gemini_status_targeted));
 
         AppPrefs prefs = AppPrefs.getInstance(context());
         JSONObject myCached = myUserId.isEmpty() ? null : ProfileCacheManager.getInstance().getProfile(myUserId);
@@ -1652,6 +1594,7 @@ public class ConversationFragment extends Fragment {
             JSONObject payload = new JSONObject();
             try {
                 payload.put("model", model);
+                payload.put("stream", true);
 
                 JSONArray messages = new JSONArray();
                 JSONObject message = new JSONObject();
@@ -1737,78 +1680,178 @@ public class ConversationFragment extends Fragment {
             AppLogger.log(TAG, "Sending AI Request to: " + finalApiUrl);
             AppLogger.log(TAG, "AI Request Payload Length: " + payload.toString().length());
 
-            okhttp3.OkHttpClient aiClient = client.newBuilder()
-                    .connectTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(300, java.util.concurrent.TimeUnit.SECONDS)
+            okhttp3.OkHttpClient streamingClient = client.newBuilder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
                     .build();
 
-            aiClient.newCall(request).enqueue(new Callback() {
+            activeAiCall = streamingClient.newCall(request);
+
+            // Wire cancel button and reset streaming preview in the assistant sheet
+            mainHandler.post(() -> {
+                if (assistantSheetView != null) {
+                    View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
+                    if (cancelBtn != null) {
+                        cancelBtn.setVisibility(View.VISIBLE);
+                        cancelBtn.setOnClickListener(v -> {
+                            okhttp3.Call c = activeAiCall;
+                            if (c != null) c.cancel();
+                        });
+                    }
+                    TextView previewTxt = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
+                    if (previewTxt != null) {
+                        previewTxt.setText("");
+                        previewTxt.setVisibility(View.GONE);
+                    }
+                }
+            });
+
+            activeAiCall.enqueue(new Callback() {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                activeAiCall = null;
+                // Hide streaming UI on failure/cancel
+                mainHandler.post(() -> {
+                    if (assistantSheetView != null) {
+                        View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
+                        if (cancelBtn != null) cancelBtn.setVisibility(View.GONE);
+                        TextView previewTxt = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
+                        if (previewTxt != null) previewTxt.setVisibility(View.GONE);
+                    }
+                });
+                if (call.isCanceled()) {
+                    // User-initiated cancel — silently reset state
+                    mainHandler.post(() -> {
+                        if (!isAdded() || getContext() == null) return;
+                        setAiGeneratingState(false, null);
+                    });
+                    return;
+                }
                 AppLogger.log(TAG, "AI API request failed", e);
                 mainHandler.post(() -> {
                     if (!isAdded() || getContext() == null) return;
                     setAiGeneratingState(false, null);
                     String errMsg = getString(R.string.gemini_error_api_failure) + " (" + e.getMessage() + ")";
-                    showAiErrorBottomSheet(errMsg, hasNextLlm);
+                    showAssistantError(errMsg, hasNextLlm);
                 });
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                // Always clean up streaming UI when done
+                mainHandler.post(() -> {
+                    if (assistantSheetView != null) {
+                        View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
+                        if (cancelBtn != null) cancelBtn.setVisibility(View.GONE);
+                        TextView previewTxt = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
+                        if (previewTxt != null) previewTxt.setVisibility(View.GONE);
+                    }
+                });
+
                 try (Response r = response) {
                     if (r.isSuccessful() && r.body() != null) {
-                        String bodyString = r.body().string();
-                        try {
-                            JSONObject root = new JSONObject(bodyString);
-                            String aiText = "";
-                            if (root.has("choices")) {
-                                aiText = root.getJSONArray("choices")
-                                        .getJSONObject(0)
-                                        .getJSONObject("message")
-                                        .getString("content");
-                            } else if (root.has("candidates")) {
-                                aiText = root.getJSONArray("candidates")
-                                        .getJSONObject(0)
-                                        .getJSONObject("content")
-                                        .getJSONArray("parts")
-                                        .getJSONObject(0)
-                                        .getString("text");
-                            }
+                        StringBuilder accumulatedText = new StringBuilder();
+                        StringBuilder fallbackBuffer = new StringBuilder();
+                        boolean isStreaming = false;
 
-                            final String finalAiText = aiText;
-                            mainHandler.post(() -> {
-                                if (!isAdded() || getContext() == null) return;
-                                setAiGeneratingState(false, null);
-                                String[] options = parseAiOptions(finalAiText);
-                                if (options != null && options.length > 0) {
-                                    if (options.length == 1) {
-                                        if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                                        appendOrSetEditMessage(options[0]);
-                                    } else {
-                                        if (isResumed()) {
-                                            showAiOptionsBottomSheet(options);
-                                        } else {
-                                            pendingAiOptions = options;
+                        try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                                new java.io.InputStreamReader(r.body().byteStream(), "UTF-8"))) {
+                            String line;
+                            while ((line = reader.readLine()) != null) {
+                                if (line.startsWith("data: ")) {
+                                    isStreaming = true;
+                                    String data = line.substring(6).trim();
+                                    if (data.equals("[DONE]")) break;
+                                    try {
+                                        JSONObject chunk = new JSONObject(data);
+                                        String token = "";
+                                        if (chunk.has("choices")) {
+                                            org.json.JSONArray choices = chunk.getJSONArray("choices");
+                                            if (choices.length() > 0) {
+                                                JSONObject choice0 = choices.getJSONObject(0);
+                                                JSONObject delta = choice0.optJSONObject("delta");
+                                                if (delta != null && !delta.isNull("content")) {
+                                                    token = delta.optString("content", "");
+                                                }
+                                                // llama.cpp text field fallback
+                                                if ((token.isEmpty() || "null".equals(token)) && !choice0.isNull("text")) {
+                                                    token = choice0.optString("text", "");
+                                                }
+                                            }
                                         }
-                                    }
-                                } else {
-                                    if (aiBottomSheet != null && aiBottomSheet.isShowing()) aiBottomSheet.dismiss();
-                                    appendOrSetEditMessage(finalAiText);
+                                        if ("null".equals(token)) {
+                                            token = "";
+                                        }
+                                        if (!token.isEmpty()) {
+                                            accumulatedText.append(token);
+                                            final String preview = accumulatedText.toString();
+                                            mainHandler.post(() -> {
+                                                if (!isAdded() || assistantSheetView == null) return;
+                                                TextView txtPreview = assistantSheetView
+                                                        .findViewById(R.id.txt_assistant_streaming_preview);
+                                                if (txtPreview != null) {
+                                                    txtPreview.setVisibility(View.VISIBLE);
+                                                    txtPreview.setText(preview);
+                                                }
+                                            });
+                                        }
+                                    } catch (Exception ignored) {}
+                                } else if (!line.isEmpty()) {
+                                    fallbackBuffer.append(line);
                                 }
-                            });
-                        } catch (Exception e) {
-                            AppLogger.log(TAG, "Error parsing Gemini response: " + bodyString, e);
-                            mainHandler.post(() -> {
-                                if (!isAdded() || getContext() == null) return;
-                                setAiGeneratingState(false, null);
-                                showAiErrorBottomSheet(getString(R.string.gemini_error_blocked), hasNextLlm);
-                            });
+                            }
                         }
+
+                        // Non-streaming fallback: server ignored stream:true and returned plain JSON
+                        if (!isStreaming && fallbackBuffer.length() > 0) {
+                            try {
+                                JSONObject root = new JSONObject(fallbackBuffer.toString());
+                                if (root.has("choices")) {
+                                    accumulatedText.append(
+                                            root.getJSONArray("choices")
+                                                    .getJSONObject(0)
+                                                    .getJSONObject("message")
+                                                    .getString("content"));
+                                } else if (root.has("candidates")) {
+                                    accumulatedText.append(
+                                            root.getJSONArray("candidates")
+                                                    .getJSONObject(0)
+                                                    .getJSONObject("content")
+                                                    .getJSONArray("parts")
+                                                    .getJSONObject(0)
+                                                    .getString("text"));
+                                }
+                            } catch (Exception e) {
+                                AppLogger.log(TAG, "Error parsing non-streaming AI response", e);
+                            }
+                        }
+
+                        String processedAiText = accumulatedText.toString().trim();
+                        if (processedAiText.startsWith("null")) {
+                            processedAiText = processedAiText.substring(4).trim();
+                        }
+                        final String finalAiText = processedAiText;
+                        activeAiCall = null;
+                        mainHandler.post(() -> {
+                            if (!isAdded() || getContext() == null) return;
+                            setAiGeneratingState(false, null);
+                            if (finalAiText.isEmpty()) {
+                                showAssistantError(getString(R.string.gemini_error_blocked), hasNextLlm);
+                                return;
+                            }
+                            String[] options = parseAiOptions(finalAiText);
+                            String[] finalOptions = (options != null && options.length > 0) ? options : new String[]{finalAiText};
+                            if (isResumed()) {
+                                onAiOptionsReceived(finalOptions);
+                            } else {
+                                pendingAiOptions = finalOptions;
+                            }
+                        });
+
                     } else {
                         String errorBody = r.body() != null ? r.body().string() : "";
                         AppLogger.log(TAG, "AI API returned error code: " + r.code() + ", body: " + errorBody);
-                        
+
                         String parsedErrorMsg = "";
                         try {
                             String errorBodyTrimmed = errorBody.trim();
@@ -1842,19 +1885,20 @@ public class ConversationFragment extends Fragment {
                         }
 
                         final String errorMsgToDisplay = finalError;
-
+                        activeAiCall = null;
                         mainHandler.post(() -> {
                             if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);
-                            showAiErrorBottomSheet(errorMsgToDisplay, hasNextLlm);
+                            showAssistantError(errorMsgToDisplay, hasNextLlm);
                         });
                     }
                 } catch (Exception e) {
+                    activeAiCall = null;
                     AppLogger.log(TAG, "Exception during Gemini request", e);
                     mainHandler.post(() -> {
                         if (!isAdded() || getContext() == null) return;
                         setAiGeneratingState(false, null);
-                        showAiErrorBottomSheet(getString(R.string.gemini_error_exception), hasNextLlm);
+                        showAssistantError(getString(R.string.gemini_error_exception), hasNextLlm);
                     });
                 }
             }
@@ -1929,98 +1973,303 @@ public class ConversationFragment extends Fragment {
         return new String[]{text.trim()};
     }
 
-    private void showAiOptionsBottomSheet(String[] options) {
+    private void showAssistantBottomSheet() {
         if (!isAdded() || getContext() == null) return;
-        if (aiBottomSheet != null) {
-            try { aiBottomSheet.dismiss(); } catch (Exception ignored) {}
+        if (assistantDialog != null) {
+            try { assistantDialog.dismiss(); } catch (Exception ignored) {}
         }
-        aiBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(context());
-        aiBottomSheet.setCancelable(true);
-        
-        android.widget.LinearLayout container = new android.widget.LinearLayout(context());
-        container.setOrientation(android.widget.LinearLayout.VERTICAL);
-        int padding = (int) (16 * getResources().getDisplayMetrics().density);
-        container.setPadding(padding, padding, padding, padding);
+        assistantDialog = new BottomSheetDialog(context());
+        BottomSheetUtils.setupFullHeight(assistantDialog);
 
-        android.widget.TextView title = new android.widget.TextView(context());
-        title.setText(R.string.gemini_choose_option);
-        title.setTextSize(18f);
-        title.setTypeface(null, android.graphics.Typeface.BOLD);
-        title.setPadding(0, 0, 0, padding);
-        container.addView(title);
+        assistantSheetView = getLayoutInflater().inflate(R.layout.bottom_sheet_conversation_assistant, null);
 
-        for (String opt : options) {
-            final String cleanOpt = opt.trim();
-            if (cleanOpt.isEmpty()) continue;
+        TextView txtTitle = assistantSheetView.findViewById(R.id.txt_assistant_title);
+        TextView txtSubtitle = assistantSheetView.findViewById(R.id.txt_assistant_subtitle);
+        View layoutAiSection = assistantSheetView.findViewById(R.id.layout_ai_section);
+        ChipGroup chipGroupModels = assistantSheetView.findViewById(R.id.chip_group_ai_models);
+        MaterialButton btnActionIntro = assistantSheetView.findViewById(R.id.btn_action_intro);
+        MaterialButton btnGetMore = assistantSheetView.findViewById(R.id.btn_get_more_answers);
+        LinearLayout layoutSuggestionsContainer = assistantSheetView.findViewById(R.id.layout_ai_suggestions_container);
+        LinearLayout layoutSuggestionsList = assistantSheetView.findViewById(R.id.layout_ai_suggestions_list);
+        LinearLayout layoutQuickResponsesList = assistantSheetView.findViewById(R.id.layout_quick_responses_list);
+        TextView txtEmptyQuickResponses = assistantSheetView.findViewById(R.id.txt_empty_quick_responses);
 
-            com.google.android.material.card.MaterialCardView card = new com.google.android.material.card.MaterialCardView(context());
-            android.widget.LinearLayout.LayoutParams cardParams = new android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-            cardParams.setMargins(0, 0, 0, padding);
-            card.setLayoutParams(cardParams);
-            card.setClickable(true);
-            card.setFocusable(true);
-            card.setCardElevation(4f);
-            card.setRadius(8f * getResources().getDisplayMetrics().density);
+        boolean isReplyMode = (targetedReplyItem != null);
+        String partnerName = (otherName != null && !otherName.isEmpty()) ? otherName : "";
 
-            android.widget.TextView text = new android.widget.TextView(context());
-            text.setText(cleanOpt);
-            text.setPadding(padding, padding, padding, padding);
-            text.setTextSize(16f);
-            card.addView(text);
-
-            card.setOnClickListener(v -> {
-                aiBottomSheet.dismiss();
-                appendOrSetEditMessage(cleanOpt);
-            });
-
-            container.addView(card);
-        }
-
-        String[] slotNames = getAiSlotNames();
-
-        android.widget.LinearLayout regenContainer = new android.widget.LinearLayout(context());
-        regenContainer.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-        regenContainer.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        android.widget.LinearLayout.LayoutParams regenParams = new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-        regenParams.setMargins(0, padding, 0, 0);
-        regenContainer.setLayoutParams(regenParams);
-
-        android.widget.Spinner llmSpinner = new android.widget.Spinner(context());
-        android.widget.ArrayAdapter<String> spinnerAdapter = new android.widget.ArrayAdapter<>(context(), android.R.layout.simple_spinner_dropdown_item, slotNames);
-        llmSpinner.setAdapter(spinnerAdapter);
-        if (currentLlmIndex >= 0 && currentLlmIndex < slotNames.length) {
-            llmSpinner.setSelection(currentLlmIndex);
-        }
-        
-        android.widget.LinearLayout.LayoutParams spinnerParams = new android.widget.LinearLayout.LayoutParams(
-                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
-        llmSpinner.setLayoutParams(spinnerParams);
-
-        com.google.android.material.button.MaterialButton btnRegenerate = new com.google.android.material.button.MaterialButton(context(), null, com.google.android.material.R.attr.materialButtonStyle);
-        btnRegenerate.setText("Get new intro / reply");
-        btnRegenerate.setOnClickListener(v -> {
-            currentLlmIndex = llmSpinner.getSelectedItemPosition();
-            String status = getString(R.string.gemini_status_reply);
-            if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
-                status = getString(R.string.gemini_status_targeted);
-            } else if (lastHistory == null || lastHistory.trim().isEmpty()) {
-                status = getString(R.string.gemini_status_introduction);
+        if (txtSubtitle != null) {
+            if (isReplyMode && targetedReplyItem.text != null && !targetedReplyItem.text.isEmpty()) {
+                String snippet = targetedReplyItem.text.trim().replace("\n", " ");
+                if (snippet.length() > 35) {
+                    snippet = snippet.substring(0, 32) + "...";
+                }
+                txtSubtitle.setText(getString(R.string.assistant_reply_subtitle, snippet));
+                txtSubtitle.setVisibility(View.VISIBLE);
+            } else if (!partnerName.isEmpty()) {
+                txtSubtitle.setText(getString(R.string.assistant_dialog_subtitle, partnerName));
+                txtSubtitle.setVisibility(View.VISIBLE);
+            } else {
+                txtSubtitle.setVisibility(View.GONE);
             }
-            setAiGeneratingState(true, status);
-            callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
+        }
+
+        AppPrefs prefs = AppPrefs.getInstance(context());
+        boolean isAiUnlocked = prefs.getBoolean(ApiConstants.KEY_AI_UNLOCKED, false);
+
+        if (!isAiUnlocked) {
+            if (layoutAiSection != null) layoutAiSection.setVisibility(View.GONE);
+            if (txtTitle != null) txtTitle.setText(R.string.quick_responses_title);
+        } else {
+            if (layoutAiSection != null) layoutAiSection.setVisibility(View.VISIBLE);
+            if (txtTitle != null) txtTitle.setText(R.string.assistant_panel_title);
+
+            if (chipGroupModels != null) {
+                chipGroupModels.removeAllViews();
+                String[] slotNames = getAiSlotNames();
+                for (int i = 0; i < slotNames.length; i++) {
+                    Chip chip = new Chip(context());
+                    chip.setText(slotNames[i]);
+                    chip.setCheckable(true);
+                    chip.setId(View.generateViewId());
+                    final int slotIndex = i;
+                    chip.setOnClickListener(v -> currentLlmIndex = slotIndex);
+                    chipGroupModels.addView(chip);
+                    if (i == currentLlmIndex) {
+                        chipGroupModels.check(chip.getId());
+                    }
+                }
+                chipGroupModels.setOnCheckedStateChangeListener((group, checkedIds) -> {
+                    if (checkedIds != null && !checkedIds.isEmpty()) {
+                        int checkedId = checkedIds.get(0);
+                        for (int i = 0; i < group.getChildCount(); i++) {
+                            if (group.getChildAt(i).getId() == checkedId) {
+                                currentLlmIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (btnActionIntro != null) {
+                if (isReplyMode) {
+                    btnActionIntro.setText(R.string.assistant_generate_reply);
+                    btnActionIntro.setOnClickListener(v -> triggerAssistantAiReply(targetedReplyItem));
+                } else {
+                    btnActionIntro.setText(R.string.assistant_generate_intro);
+                    btnActionIntro.setOnClickListener(v -> triggerAssistantAiIntro());
+                }
+            }
+
+            renderAccumulatedSuggestions(layoutSuggestionsContainer, layoutSuggestionsList, btnGetMore);
+
+            if (btnGetMore != null) {
+                btnGetMore.setOnClickListener(v -> {
+                    if (targetedReplyItem != null) {
+                        triggerAssistantAiReply(targetedReplyItem);
+                    } else if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
+                        setAiGeneratingState(true, randomLoadingMessage(R.array.gemini_status_targeted));
+                        callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
+                    } else {
+                        triggerAssistantAiIntro();
+                    }
+                });
+            }
+        }
+
+        populateQuickResponses(layoutQuickResponsesList, txtEmptyQuickResponses);
+
+        assistantDialog.setOnDismissListener(dialog -> {
+            targetedReplyItem = null;
+        });
+        assistantDialog.setContentView(assistantSheetView);
+        try { assistantDialog.show(); } catch (Exception ignored) {}
+    }
+
+    private void triggerAssistantAiIntro() {
+        AppPrefs prefs = AppPrefs.getInstance(context());
+        String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
+        if (savedToken.isEmpty() && ApiConstants.GEMINI_API_KEY.isEmpty()) {
+            Toast.makeText(context(), R.string.gemini_error_no_token, Toast.LENGTH_LONG).show();
+            startActivity(new Intent(context(), SettingsIntelligenceActivity.class));
+            return;
+        }
+        setAiGeneratingState(true, randomLoadingMessage(R.array.gemini_status_intros));
+        onGeminiGenerate(false);
+    }
+
+    private void triggerAssistantAiReply(MessageAdapter.MessageItem item) {
+        if (item == null) return;
+        AppPrefs prefs = AppPrefs.getInstance(context());
+        String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
+        if (savedToken.isEmpty() && ApiConstants.GEMINI_API_KEY.isEmpty()) {
+            Toast.makeText(context(), R.string.gemini_error_no_token, Toast.LENGTH_LONG).show();
+            startActivity(new Intent(context(), SettingsIntelligenceActivity.class));
+            return;
+        }
+        onGeminiGenerateSpecific(item);
+    }
+
+    private void showAssistantError(String errMsg, boolean hasNextLlm) {
+        if (assistantDialog == null || !assistantDialog.isShowing()) {
+            showAssistantBottomSheet();
+        }
+        if (assistantSheetView != null) {
+            View loadingLayout = assistantSheetView.findViewById(R.id.layout_assistant_loading);
+            View errorLayout = assistantSheetView.findViewById(R.id.layout_assistant_error);
+            TextView txtError = assistantSheetView.findViewById(R.id.txt_assistant_error_message);
+            View btnRetry = assistantSheetView.findViewById(R.id.btn_assistant_retry);
+
+            if (loadingLayout != null) loadingLayout.setVisibility(View.GONE);
+            if (errorLayout != null) errorLayout.setVisibility(View.VISIBLE);
+            if (txtError != null) txtError.setText(errMsg);
+            if (btnRetry != null) {
+                btnRetry.setOnClickListener(v -> {
+                    errorLayout.setVisibility(View.GONE);
+                    String status = randomLoadingMessage(R.array.gemini_status_intros);
+                    if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
+                        status = randomLoadingMessage(R.array.gemini_status_targeted);
+                    } else if (lastHistory != null && !lastHistory.trim().isEmpty()) {
+                        status = randomLoadingMessage(R.array.gemini_status_replies);
+                    }
+                    setAiGeneratingState(true, status);
+                    callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
+                });
+            }
+        }
+    }
+
+    private void onAiOptionsReceived(String[] options) {
+        if (options == null || options.length == 0) return;
+        for (String opt : options) {
+            String trimmed = opt.trim();
+            if (!trimmed.isEmpty() && !accumulatedAiSuggestions.contains(trimmed)) {
+                accumulatedAiSuggestions.add(trimmed);
+            }
+        }
+
+        if (assistantDialog == null || !assistantDialog.isShowing()) {
+            showAssistantBottomSheet();
+        } else if (assistantSheetView != null) {
+            LinearLayout container = assistantSheetView.findViewById(R.id.layout_ai_suggestions_container);
+            LinearLayout list = assistantSheetView.findViewById(R.id.layout_ai_suggestions_list);
+            MaterialButton btnMore = assistantSheetView.findViewById(R.id.btn_get_more_answers);
+            renderAccumulatedSuggestions(container, list, btnMore);
+
+            View scrollView = assistantSheetView;
+            if (scrollView instanceof androidx.core.widget.NestedScrollView && list != null) {
+                scrollView.post(() -> ((androidx.core.widget.NestedScrollView) scrollView).smoothScrollTo(0, list.getBottom()));
+            }
+        }
+    }
+
+    private void renderAccumulatedSuggestions(View container, LinearLayout list, View btnMore) {
+        if (container == null || list == null) return;
+        if (accumulatedAiSuggestions.isEmpty()) {
+            container.setVisibility(View.GONE);
+            if (btnMore != null) btnMore.setVisibility(View.GONE);
+            return;
+        }
+        container.setVisibility(View.VISIBLE);
+        if (btnMore != null) btnMore.setVisibility(View.VISIBLE);
+        list.removeAllViews();
+        for (String suggestion : accumulatedAiSuggestions) {
+            addSuggestionCard(list, null, suggestion);
+        }
+    }
+
+    private void addSuggestionCard(LinearLayout parent, String badgeText, String messageText) {
+        if (parent == null || getContext() == null) return;
+        View cardView = getLayoutInflater().inflate(R.layout.item_assistant_card, parent, false);
+        TextView txtBadge = cardView.findViewById(R.id.item_card_badge);
+        TextView txtMessage = cardView.findViewById(R.id.item_card_text);
+
+        if (badgeText != null && !badgeText.isEmpty()) {
+            txtBadge.setText(badgeText);
+            txtBadge.setVisibility(View.VISIBLE);
+        } else {
+            txtBadge.setVisibility(View.GONE);
+        }
+
+        txtMessage.setText(messageText);
+
+        cardView.setOnClickListener(v -> {
+            if (assistantDialog != null && assistantDialog.isShowing()) {
+                assistantDialog.dismiss();
+            }
+            appendOrSetEditMessage(messageText);
+            if (editMessage != null) {
+                editMessage.requestFocus();
+                if (editMessage.getText() != null) {
+                    editMessage.setSelection(editMessage.getText().length());
+                }
+            }
         });
 
-        regenContainer.addView(llmSpinner);
-        regenContainer.addView(btnRegenerate);
-        container.addView(regenContainer);
+        parent.addView(cardView);
+    }
 
-        androidx.core.widget.NestedScrollView scrollView = new androidx.core.widget.NestedScrollView(context());
-        scrollView.addView(container);
-        
-        aiBottomSheet.setContentView(scrollView);
-        try { aiBottomSheet.show(); } catch (Exception ignored) {}
+    private void populateQuickResponses(LinearLayout layoutList, TextView txtEmpty) {
+        if (layoutList == null || getContext() == null) return;
+        layoutList.removeAllViews();
+        Context ctx = context();
+        AppPrefs prefs = AppPrefs.getInstance(ctx);
+        String myId = prefs.getString(ApiConstants.KEY_USER_ID, "");
+        String key = ApiConstants.KEY_QUICK_RESPONSES;
+        if (!myId.isEmpty()) {
+            key = ApiConstants.KEY_QUICK_RESPONSES + "_" + myId;
+        }
+        String json = prefs.getString(key, "[]");
+        try {
+            JSONArray arr = new JSONArray(json);
+            if (arr.length() == 0) {
+                if (txtEmpty != null) txtEmpty.setVisibility(View.VISIBLE);
+                return;
+            }
+            if (txtEmpty != null) txtEmpty.setVisibility(View.GONE);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                String label = obj.optString("label", "");
+                String message = obj.optString("message", "");
+                if (label.isEmpty() || message.isEmpty()) continue;
+
+                String formattedMsg = message;
+                if (otherName != null && !otherName.isEmpty()) {
+                    formattedMsg = formattedMsg.replace("{name}", otherName);
+                }
+
+                addQuickResponseCard(layoutList, label, formattedMsg);
+            }
+        } catch (Exception e) {
+            AppLogger.log(TAG, "Error populating quick responses", e);
+            if (txtEmpty != null) txtEmpty.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void addQuickResponseCard(LinearLayout parent, String label, String formattedMessage) {
+        if (parent == null || getContext() == null) return;
+        View cardView = getLayoutInflater().inflate(R.layout.item_assistant_card, parent, false);
+        TextView txtBadge = cardView.findViewById(R.id.item_card_badge);
+        TextView txtMessage = cardView.findViewById(R.id.item_card_text);
+
+        txtBadge.setText(label);
+        txtBadge.setVisibility(View.VISIBLE);
+        txtMessage.setText(formattedMessage);
+
+        cardView.setOnClickListener(v -> {
+            if (assistantDialog != null && assistantDialog.isShowing()) {
+                assistantDialog.dismiss();
+            }
+            if (editMessage != null) {
+                editMessage.setText(formattedMessage);
+                if (editMessage.getText() != null) {
+                    editMessage.setSelection(editMessage.getText().length());
+                }
+                editMessage.requestFocus();
+            }
+        });
+
+        parent.addView(cardView);
     }
 
     private String[] getAiSlotNames() {
@@ -2042,78 +2291,7 @@ public class ConversationFragment extends Fragment {
         }
     }
 
-    private void showQuickResponseMenu() {
-        Context ctx = context();
-        AppPrefs prefs = AppPrefs.getInstance(ctx);
-        String myId = prefs.getString(ApiConstants.KEY_USER_ID, "");
-        String key = ApiConstants.KEY_QUICK_RESPONSES;
-        if (!myId.isEmpty()) {
-            key = ApiConstants.KEY_QUICK_RESPONSES + "_" + myId;
-        }
-        String json = prefs.getString(key, "[]");
 
-        try {
-            JSONArray arr = new JSONArray(json);
-            if (arr.length() == 0) {
-                Toast.makeText(ctx, R.string.settings_quick_responses_none, Toast.LENGTH_LONG).show();
-                return;
-            }
-
-            BottomSheetDialog dialog = new BottomSheetDialog(ctx);
-            BottomSheetUtils.setupFullHeight(dialog);
-            LinearLayout layout = new LinearLayout(ctx);
-            layout.setOrientation(LinearLayout.VERTICAL);
-            layout.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
-
-            TextView title = new TextView(ctx);
-            title.setText(R.string.quick_responses_title);
-            TextViewCompat.setTextAppearance(title,
-                    com.google.android.material.R.style.TextAppearance_Material3_TitleLarge);
-            title.setPadding(0, 0, 0, dpToPx(16));
-            layout.addView(title);
-
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject obj = arr.getJSONObject(i);
-                String label = obj.optString("label", "");
-                String message = obj.optString("message", "");
-
-                if (label.isEmpty() || message.isEmpty())
-                    continue;
-
-                MaterialButton btn = new MaterialButton(ctx, null,
-                        com.google.android.material.R.attr.materialButtonStyle);
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                lp.setMargins(0, 0, 0, dpToPx(8));
-                btn.setLayoutParams(lp);
-                btn.setText(label);
-                btn.setAllCaps(false);
-                btn.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-
-                btn.setOnClickListener(v -> {
-                    String finalMsg = message;
-                    if (otherName != null) {
-                        finalMsg = finalMsg.replace("{name}", otherName);
-                    }
-                    editMessage.setText(finalMsg);
-                    if (editMessage.getText() != null) {
-                        editMessage.setSelection(editMessage.getText().length());
-                    }
-                    dialog.dismiss();
-                });
-
-                layout.addView(btn);
-            }
-
-            ScrollView scrollView = new ScrollView(ctx);
-            scrollView.addView(layout);
-            dialog.setContentView(scrollView);
-            dialog.show();
-
-        } catch (Exception e) {
-            AppLogger.log("ConversationFragment", "Error showing quick responses", e);
-        }
-    }
 
     private int dpToPx(int dp) {
         return Math.round(TypedValue.applyDimension(

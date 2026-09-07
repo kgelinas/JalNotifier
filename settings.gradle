@@ -1,13 +1,11 @@
 pluginManagement {
     repositories {
         google()
-        gradlePluginPortal()
         mavenCentral()
+        gradlePluginPortal()
     }
 }
-plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
-}
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -18,3 +16,29 @@ dependencyResolutionManagement {
 
 rootProject.name = "JalfNotifier"
 include ':app'
+
+// OS-Aware SDK Path Selector for NAS Shared Environment (Safe Merge Version)
+import org.apache.tools.ant.taskdefs.condition.Os
+
+def computedSdkDir = ""
+if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+    computedSdkDir = "C:\\Users\\iamloco\\AppData\\Local\\Android\\Sdk"
+} else if (Os.isFamily(Os.FAMILY_UNIX)) {
+    computedSdkDir = "/home/gelke01/Android/Sdk"
+}
+
+if (!computedSdkDir.isEmpty()) {
+    def localPropsFile = new File(rootDir, "local.properties")
+    def props = new Properties()
+    
+    // Load existing values first so we don't lose anything
+    if (localPropsFile.exists()) {
+        localPropsFile.withInputStream { stream -> props.load(stream) }
+    }
+    
+    // Only overwrite or add the sdk.dir property
+    props.setProperty("sdk.dir", computedSdkDir)
+    
+    // Save everything back to the NAS file
+    localPropsFile.withOutputStream { stream -> props.store(stream, "Updated dynamically by settings.gradle") }
+}

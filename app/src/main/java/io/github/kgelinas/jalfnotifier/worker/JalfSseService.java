@@ -107,6 +107,15 @@ public class JalfSseService extends Service {
             }
             currentUrl = url;
             connectToSse(url);
+        } else if (currentEventSource == null) {
+            // Restarted by the OS with a null intent (START_STICKY restart after kill).
+            // Recover the saved SSE URL from SharedPreferences and reconnect.
+            String savedUrl = AppPrefs.getInstance(this).getRaw()
+                    .getString(ApiConstants.KEY_SSE_URL, "");
+            if (!savedUrl.isEmpty()) {
+                currentUrl = savedUrl;
+                connectToSse(savedUrl);
+            }
         }
 
         return START_STICKY;
@@ -316,8 +325,10 @@ public class JalfSseService extends Service {
                             }
                         }
                         if (!alreadyNotified) {
+                            // Extract the numeric user ID from the user_link for deep-linking
+                            String senderUserId = StringUtils.extractNumericId(userLink);
                             JalfNotificationTask.showChatNotification(getApplicationContext(), senderName,
-                                    msgText, convLink, "", "", "");
+                                    msgText, convLink, senderUserId, "", "");
                             Set<String> updated = new java.util.HashSet<>();
                             for (String entry : notifiedLinks) {
                                 if (!entry.equals(notifKey) && !entry.endsWith(":" + notifKey)) {

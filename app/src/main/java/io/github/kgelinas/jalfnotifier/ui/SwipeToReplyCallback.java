@@ -108,20 +108,9 @@ public class SwipeToReplyCallback extends ItemTouchHelper.SimpleCallback {
     @Override
     public int getSwipeDirs(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
         android.content.SharedPreferences prefs = recyclerView.getContext().getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE);
-        String provider = prefs.getString(ApiConstants.KEY_AI_PROVIDER, "Google Gemini").trim();
-        String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
-        String model = prefs.getString(ApiConstants.KEY_GEMINI_MODEL, "").trim();
-
-        boolean needsToken = "Google Gemini".equals(provider) || "OpenRouter".equals(provider);
-        boolean isConfigured;
-        if (!needsToken) {
-            isConfigured = !model.isEmpty();
-        } else {
-            isConfigured = !savedToken.isEmpty() || !ApiConstants.GEMINI_API_KEY.isEmpty();
-        }
-
-        if (!isConfigured) {
-            return 0; // Disable swipe-to-reply completely
+        boolean isAiUnlocked = prefs.getBoolean(ApiConstants.KEY_AI_UNLOCKED, false);
+        if (!isAiUnlocked) {
+            return 0; // Disable swipe-to-reply completely when AI is not unlocked
         }
         return super.getSwipeDirs(recyclerView, viewHolder);
     }

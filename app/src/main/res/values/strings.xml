@@ -335,9 +335,39 @@
     <string name="settings_intelligence_profile_fields">Profile fields to include (comma separated)</string>
     <string name="sync_status_title">Drive Synchronization</string>
     <string name="settings_language">App Language</string>
-    <string name="gemini_status_introduction">Generating Introduction...</string>
-    <string name="gemini_status_reply">Generating Reply...</string>
-    <string name="gemini_status_targeted">Generating Targeted Response...</string>
+    <!-- Personality loading messages: intros -->
+    <string-array name="gemini_status_intros">
+        <item>Crafting first impression...</item>
+        <item>Words to melt their heart...</item>
+        <item>Whispering a secret...</item>
+        <item>Breathtaking introduction...</item>
+    </string-array>
+
+    <!-- Personality loading messages: replies (includes kinky) -->
+    <string-array name="gemini_status_replies">
+        <item>Composing a naughty reply...</item>
+        <item>Thinking of something wicked...</item>
+        <item>Searching to drive them wild...</item>
+        <item>Weaving desires into words...</item>
+        <item>Finding the rhythm...</item>
+        <item>More suspense, more pleasure...</item>
+        <item>Unlocking the dungeon...</item>
+        <item>Tightening the restraints...</item>
+        <item>Optimizing trio dynamics...</item>
+    </string-array>
+
+    <!-- Personality loading messages: targeted (includes kinky) -->
+    <string-array name="gemini_status_targeted">
+        <item>Composing a naughty reply...</item>
+        <item>Thinking of something wicked...</item>
+        <item>Searching to drive them wild...</item>
+        <item>Weaving desires into words...</item>
+        <item>Finding the rhythm...</item>
+        <item>More suspense, more pleasure...</item>
+        <item>Unlocking the dungeon...</item>
+        <item>Tightening the restraints...</item>
+        <item>Optimizing trio dynamics...</item>
+    </string-array>
     <string name="gemini_error_no_token">Please configure an AI Provider Token first.</string>
     <string name="gemini_error_api_failure">AI API failure</string>
     <string name="gemini_error_api_error">AI API error</string>
@@ -345,7 +375,18 @@
     <string name="gemini_error_exception">Exception calling AI API</string>
     <string name="gemini_menu_introduction">Introduction</string>
     <string name="gemini_menu_reply">Reply</string>
-    <string name="gemini_choose_option">Choose an option</string>
+        <string name="gemini_choose_option">Choose an option</string>
+    <string name="send">Send</string>
+    <string name="assistant_panel_title">Assistant &amp; Quick Responses</string>
+    <string name="assistant_dialog_subtitle">Conversation with %s</string>
+    <string name="assistant_generate_intro">Generate Intro</string>
+    <string name="assistant_generate_reply">Generate Reply</string>
+    <string name="assistant_reply_subtitle">Reply to: "%s"</string>
+    <string name="assistant_get_more_answers">Get more answers</string>
+    <string name="assistant_model_selector_label">AI Model</string>
+    <string name="assistant_ai_section_title">AI Suggestions</string>
+    <string name="assistant_cancel_generation">Cancel</string>
+    <string name="content_description_assistant">Assistant &amp; Quick Responses</string>
     <string name="error_fetching_profile_ai">Failed to fetch profile for AI</string>
     <string name="error_parsing_profile">Error parsing profile</string>
     <string name="error_fetching_profile">Error fetching profile</string>
