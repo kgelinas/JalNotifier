@@ -83,6 +83,7 @@ public class ConversationFragment extends Fragment {
     private boolean isLoadingMore = false;
     private okhttp3.OkHttpClient aiClient;
     private volatile okhttp3.Call activeAiCall;
+    private android.os.PowerManager.WakeLock aiWakeLock;
 
     // Caching for LLM Retries/Fallbacks
     private JSONObject lastMyProfile;
@@ -91,6 +92,17 @@ public class ConversationFragment extends Fragment {
     private String lastSpecificMessage;
     private int currentLlmIndex = 0;
     private String[] pendingAiOptions = null;
+
+    private enum AiTone {
+        DEFAULT,
+        FORMAL,
+        SHORTEN,
+        LONGER,
+        CUSTOM
+    }
+    private AiTone selectedAiTone = AiTone.DEFAULT;
+    private String customAiToneText = "";
+    private String lastDraftToRefine = null;
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -110,6 +122,8 @@ public class ConversationFragment extends Fragment {
     private BottomSheetDialog assistantDialog;
     private View assistantSheetView;
     private MessageAdapter.MessageItem targetedReplyItem = null;
+    private boolean isAiGenerating = false;
+    private String currentGeneratingStatus = null;
     private MaterialButton btnQueueMessage;
     private TextView txtTypingIndicator;
     private View imgOnlineIndicator;
@@ -181,8 +195,11 @@ public class ConversationFragment extends Fragment {
         txtTypingIndicator = view.findViewById(R.id.txt_typing_indicator);
 
         btnGeminiGenerate.setOnClickListener(v -> {
+            if (isAiGenerating) {
+                showAssistantBottomSheet();
+                return;
+            }
             targetedReplyItem = null;
-            accumulatedAiSuggestions.clear();
             showAssistantBottomSheet();
         });
         btnQueueMessage.setOnClickListener(v -> queueAutoMessage());
@@ -229,7 +246,6 @@ public class ConversationFragment extends Fragment {
             if (position != RecyclerView.NO_POSITION && position < messageList.size()) {
                 MessageAdapter.MessageItem item = messageList.get(position);
                 targetedReplyItem = item;
-                accumulatedAiSuggestions.clear();
                 showAssistantBottomSheet();
                 // Reset the swiped view state
                 mainHandler.postDelayed(() -> messageAdapter.notifyItemChanged(position), 100);
@@ -290,6 +306,11 @@ public class ConversationFragment extends Fragment {
 
         MaterialButton btnAttachPhoto = view.findViewById(R.id.btn_attach_photo);
         btnAttachPhoto.setOnClickListener(v -> showPhotoPicker());
+
+        MaterialButton btnFlirtPicker = view.findViewById(R.id.btn_flirt_picker);
+        if (btnFlirtPicker != null) {
+            btnFlirtPicker.setOnClickListener(v -> showFlirtPicker());
+        }
 
         if (conversationLink == null || conversationLink.isEmpty()) {
             if (getActivity() instanceof MainActivity) {
@@ -468,9 +489,22 @@ public class ConversationFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (activeAiCall != null) {
-            activeAiCall.cancel();
-            activeAiCall = null;
+        // Do not cancel activeAiCall so in-flight generation can complete and be saved in background
+        updateKeepScreenOnFlag(false);
+        if (assistantDialog != null) {
+            try {
+                if (assistantDialog.isShowing()) {
+                    assistantDialog.dismiss();
+                }
+            } catch (Exception ignored) {}
+            assistantDialog = null;
+            assistantSheetView = null;
+        }
+        if (activeAiCall == null || activeAiCall.isCanceled()) {
+            setAiGeneratingState(false, null);
+        } else {
+            isAiGenerating = false;
+            currentGeneratingStatus = null;
         }
     }
 
@@ -675,6 +709,12 @@ public class ConversationFragment extends Fragment {
                             JSONObject content = m.optJSONObject("content");
                             if (content != null) {
                                 item.text = content.optString("text");
+                                if ((item.text == null || item.text.isEmpty()) && content.has("text_template")) {
+                                    String tpl = content.optString("text_template", "");
+                                    boolean isMine = item.fromUserLink != null && item.fromUserLink.endsWith("/" + myUserId);
+                                    String senderName = isMine ? getMyDisplayName() : (otherName != null ? otherName : "");
+                                    item.text = tpl.replace("%%USERNAME%%", senderName);
+                                }
                                 item.photoUrl = content.optString("fullsize_uri",
                                         content.optString("thumbnail_uri", content.optString("image_uri", "")));
                                 item.nsfwRank = StringUtils.extractRankFromLink(content.optString("photo_rating_link", ""));
@@ -865,14 +905,85 @@ public class ConversationFragment extends Fragment {
         }
     }
 
+    private synchronized void acquireAiWakeLock() {
+        try {
+            if (aiWakeLock == null) {
+                Context ctx = context();
+                if (ctx != null) {
+                    android.os.PowerManager pm = (android.os.PowerManager) ctx.getApplicationContext()
+                            .getSystemService(Context.POWER_SERVICE);
+                    if (pm != null) {
+                        aiWakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK,
+                                "JalfNotifier:AiGenerationWakeLock");
+                        aiWakeLock.setReferenceCounted(false);
+                    }
+                }
+            }
+            if (aiWakeLock != null && !aiWakeLock.isHeld()) {
+                // 3-minute safety timeout in case of unexpected hang
+                aiWakeLock.acquire(3 * 60 * 1000L);
+            }
+        } catch (Exception e) {
+            AppLogger.log(TAG, "Failed to acquire AI WakeLock", e);
+        }
+    }
+
+    private synchronized void releaseAiWakeLock() {
+        try {
+            if (aiWakeLock != null && aiWakeLock.isHeld()) {
+                aiWakeLock.release();
+            }
+        } catch (Exception e) {
+            AppLogger.log(TAG, "Failed to release AI WakeLock", e);
+        }
+    }
+
+    private void updateKeepScreenOnFlag(boolean keepOn) {
+        try {
+            if (getActivity() != null && getActivity().getWindow() != null) {
+                if (keepOn) {
+                    getActivity().getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    getActivity().getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            }
+            if (assistantDialog != null && assistantDialog.getWindow() != null) {
+                if (keepOn) {
+                    assistantDialog.getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    assistantDialog.getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+            }
+            if (assistantSheetView != null) {
+                assistantSheetView.setKeepScreenOn(keepOn);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     private void setAiGeneratingState(boolean generating, String status) {
+        isAiGenerating = generating;
+        if (generating) {
+            acquireAiWakeLock();
+            if (status != null) {
+                currentGeneratingStatus = status;
+            }
+        } else {
+            releaseAiWakeLock();
+            currentGeneratingStatus = null;
+        }
         mainHandler.post(() -> {
             if (btnGeminiGenerate != null) {
-                btnGeminiGenerate.setEnabled(!generating);
+                btnGeminiGenerate.setEnabled(true);
             }
-            if (generating && (assistantDialog == null || !assistantDialog.isShowing())) {
-                showAssistantBottomSheet();
+            if (generating) {
+                if (assistantDialog == null || !assistantDialog.isShowing()) {
+                    showAssistantBottomSheet();
+                } else {
+                    BottomSheetUtils.expand(assistantDialog);
+                }
             }
+            updateKeepScreenOnFlag(generating);
             if (assistantSheetView != null) {
                 View loadingLayout = assistantSheetView.findViewById(R.id.layout_assistant_loading);
                 TextView txtStatus = assistantSheetView.findViewById(R.id.txt_assistant_loading_status);
@@ -885,12 +996,20 @@ public class ConversationFragment extends Fragment {
                 if (loadingLayout != null) {
                     loadingLayout.setVisibility(generating ? View.VISIBLE : View.GONE);
                 }
-                if (txtPreview != null && generating) {
+                if (txtPreview != null && generating && (txtPreview.getText() == null || txtPreview.getText().length() == 0)) {
                     txtPreview.setText("");
                     txtPreview.setVisibility(View.GONE);
                 }
-                if (cancelBtn != null && !generating) {
-                    cancelBtn.setVisibility(View.GONE);
+                if (cancelBtn != null) {
+                    cancelBtn.setVisibility(generating ? View.VISIBLE : View.GONE);
+                    if (generating) {
+                        cancelBtn.setOnClickListener(v -> {
+                            if (activeAiCall != null && !activeAiCall.isCanceled()) {
+                                activeAiCall.cancel();
+                            }
+                            setAiGeneratingState(false, null);
+                        });
+                    }
                 }
                 if (errorLayout != null && generating) {
                     errorLayout.setVisibility(View.GONE);
@@ -1195,6 +1314,315 @@ public class ConversationFragment extends Fragment {
         });
     }
 
+    private void showFlirtPicker() {
+        BottomSheetDialog dialog = new BottomSheetDialog(context());
+        BottomSheetUtils.setupFullHeight(dialog);
+        View view = getLayoutInflater().inflate(R.layout.bottom_sheet_flirt_picker, null);
+        dialog.setContentView(view);
+
+        AutoCompleteTextView spinnerCategories = view.findViewById(R.id.spinner_flirt_categories);
+        TextView txtHeader = view.findViewById(R.id.txt_flirt_category_header);
+        View progress = view.findViewById(R.id.progress_flirts);
+        RecyclerView recyclerFlirts = view.findViewById(R.id.recycler_picker_flirts);
+
+        recyclerFlirts.setLayoutManager(new LinearLayoutManager(context()));
+        List<FlirtTemplateItem> flirtItems = new ArrayList<>();
+        FlirtTemplateAdapter adapter = new FlirtTemplateAdapter(flirtItems, flirtLink -> {
+            dialog.dismiss();
+            sendFlirt(flirtLink);
+        });
+        recyclerFlirts.setAdapter(adapter);
+
+        dialog.show();
+        fetchFlirtCategories(spinnerCategories, txtHeader, progress, flirtItems, adapter);
+    }
+
+    private String getMyDisplayName() {
+        if (getActivity() instanceof MainActivity) {
+            String name = ((MainActivity) getActivity()).getMyName();
+            if (name != null && !name.isEmpty()) {
+                return name;
+            }
+        }
+        return isFragmentSafe() ? SecurePrefs.get(context()).getString(ApiConstants.KEY_USERNAME, "") : "";
+    }
+
+    private void fetchFlirtCategories(AutoCompleteTextView spinner, TextView txtHeader, View progress,
+            List<FlirtTemplateItem> flirtItems, FlirtTemplateAdapter adapter) {
+        progress.setVisibility(View.VISIBLE);
+        String url = ApiConstants.BASE_URL + "/rest/flirt/categories";
+        String lang = java.util.Locale.getDefault().getLanguage();
+        String defaultTitle = isFragmentSafe() ? getString(R.string.tab_flirts) : "";
+
+        Request request = new Request.Builder()
+                .url(url)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("Accept-Language", lang)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                mainHandler.post(() -> {
+                    if (!isFragmentSafe()) return;
+                    progress.setVisibility(View.GONE);
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try (Response r = response) {
+                    if (r.isSuccessful() && r.body() != null) {
+                        JSONObject root = new JSONObject(NetworkUtils.responseToString(r));
+                        JSONArray categories = root.optJSONArray("categories");
+                        if (categories == null) categories = new JSONArray();
+
+                        List<String> catTitles = new ArrayList<>();
+                        List<String> catLinks = new ArrayList<>();
+                        List<String> catHeaders = new ArrayList<>();
+
+                        for (int i = 0; i < categories.length(); i++) {
+                            JSONObject c = categories.getJSONObject(i);
+                            catTitles.add(c.optString("title", defaultTitle));
+                            catLinks.add(c.optString("flirt_category_link", ""));
+                            catHeaders.add(c.optString("header", ""));
+                        }
+
+                        mainHandler.post(() -> {
+                            if (!isFragmentSafe()) return;
+                            progress.setVisibility(View.GONE);
+                            if (!catTitles.isEmpty()) {
+                                ArrayAdapter<String> spinAdapter = new ArrayAdapter<>(context(),
+                                        android.R.layout.simple_dropdown_item_1line, catTitles);
+                                spinner.setAdapter(spinAdapter);
+                                spinner.setOnItemClickListener((parent, v, position, id) -> {
+                                    String hdr = catHeaders.get(position);
+                                    if (txtHeader != null) {
+                                        txtHeader.setText(hdr);
+                                        txtHeader.setVisibility(hdr.isEmpty() ? View.GONE : View.VISIBLE);
+                                    }
+                                    fetchFlirtTemplates(catLinks.get(position), progress, flirtItems, adapter);
+                                });
+                                spinner.setText(catTitles.get(0), false);
+                                String firstHdr = catHeaders.get(0);
+                                if (txtHeader != null) {
+                                    txtHeader.setText(firstHdr);
+                                    txtHeader.setVisibility(firstHdr.isEmpty() ? View.GONE : View.VISIBLE);
+                                }
+                                fetchFlirtTemplates(catLinks.get(0), progress, flirtItems, adapter);
+                            }
+                        });
+                    } else {
+                        mainHandler.post(() -> {
+                            if (!isFragmentSafe()) return;
+                            progress.setVisibility(View.GONE);
+                        });
+                    }
+                } catch (Exception e) {
+                    AppLogger.log(TAG, "Error in fetchFlirtCategories", e);
+                    mainHandler.post(() -> {
+                        if (!isFragmentSafe()) return;
+                        progress.setVisibility(View.GONE);
+                    });
+                }
+            }
+        });
+    }
+
+    private void fetchFlirtTemplates(String categoryLink, View progress, List<FlirtTemplateItem> flirtItems,
+            FlirtTemplateAdapter adapter) {
+        if (categoryLink == null || categoryLink.isEmpty()) return;
+        progress.setVisibility(View.VISIBLE);
+        flirtItems.clear();
+        adapter.notifyDataSetChanged();
+        String lang = java.util.Locale.getDefault().getLanguage();
+        String senderName = getMyDisplayName();
+
+        Request request = new Request.Builder()
+                .url(getAbsoluteUrl(categoryLink))
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("Accept-Language", lang)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                mainHandler.post(() -> {
+                    if (!isFragmentSafe()) return;
+                    progress.setVisibility(View.GONE);
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try (Response r = response) {
+                    if (r.isSuccessful() && r.body() != null) {
+                        JSONObject root = new JSONObject(NetworkUtils.responseToString(r));
+                        JSONArray arr = root.optJSONArray("flirt_messages");
+                        if (arr == null) arr = new JSONArray();
+
+                        List<FlirtTemplateItem> parsed = new ArrayList<>();
+                        for (int i = 0; i < arr.length(); i++) {
+                            JSONObject m = arr.getJSONObject(i);
+                            String link = m.optString("flirt_link", "");
+                            String tpl = m.optString("text_template", "");
+                            String display = tpl.replace("%%USERNAME%%", senderName);
+                            if (!link.isEmpty() && !display.isEmpty()) {
+                                parsed.add(new FlirtTemplateItem(link, display));
+                            }
+                        }
+
+                        mainHandler.post(() -> {
+                            if (!isFragmentSafe()) return;
+                            progress.setVisibility(View.GONE);
+                            flirtItems.addAll(parsed);
+                            adapter.notifyDataSetChanged();
+                        });
+                    } else {
+                        mainHandler.post(() -> {
+                            if (!isFragmentSafe()) return;
+                            progress.setVisibility(View.GONE);
+                        });
+                    }
+                } catch (Exception e) {
+                    AppLogger.log(TAG, "Error in fetchFlirtTemplates", e);
+                    mainHandler.post(() -> {
+                        if (!isFragmentSafe()) return;
+                        progress.setVisibility(View.GONE);
+                    });
+                }
+            }
+        });
+    }
+
+    private void sendFlirt(String flirtLink) {
+        if (conversationLink == null || conversationLink.isEmpty()) {
+            if (otherUserId != null && !otherUserId.isEmpty()) {
+                startNewConversation(otherUserId, () -> sendFlirt(flirtLink));
+            }
+            return;
+        }
+
+        JSONObject payload = new JSONObject();
+        try {
+            payload.put("flirt_link", flirtLink);
+            payload.put("ephemeral", isEphemeral);
+        } catch (Exception e) {
+            AppLogger.log(TAG, "Error building payload in sendFlirt", e);
+        }
+
+        RequestBody body = RequestBody.create(payload.toString(),
+                MediaType.parse("application/vnd.jalf.convo.newmessage.flirt+json"));
+
+        Request request = new Request.Builder()
+                .url(getAbsoluteUrl(conversationLink))
+                .post(body)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                mainHandler.post(() -> {
+                    if (!isFragmentSafe()) return;
+                    Toast.makeText(context(), R.string.error_failed_to_send_flirt, Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try (Response r = response) {
+                    if (r.isSuccessful()) {
+                        mainHandler.post(() -> {
+                            if (!isFragmentSafe()) return;
+                            fetchMessages(null);
+                        });
+                    } else {
+                        mainHandler.post(() -> {
+                            if (!isFragmentSafe()) return;
+                            Toast.makeText(context(), R.string.error_failed_to_send_flirt, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    private static class FlirtTemplateItem {
+        final String flirtLink;
+        final String text;
+
+        FlirtTemplateItem(String flirtLink, String text) {
+            this.flirtLink = flirtLink;
+            this.text = text;
+        }
+    }
+
+    private static class FlirtTemplateAdapter extends RecyclerView.Adapter<FlirtTemplateAdapter.VH> {
+        interface OnFlirtClickListener {
+            void onFlirtClick(String flirtLink);
+        }
+
+        private final List<FlirtTemplateItem> items;
+        private final OnFlirtClickListener listener;
+
+        FlirtTemplateAdapter(List<FlirtTemplateItem> items, OnFlirtClickListener listener) {
+            this.items = items;
+            this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            Context ctx = parent.getContext();
+            com.google.android.material.card.MaterialCardView card = new com.google.android.material.card.MaterialCardView(ctx);
+            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            int marginV = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4, ctx.getResources().getDisplayMetrics()));
+            lp.setMargins(0, marginV, 0, marginV);
+            card.setLayoutParams(lp);
+            card.setClickable(true);
+            card.setFocusable(true);
+
+            TextView tv = new TextView(ctx);
+            int padH = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, ctx.getResources().getDisplayMetrics()));
+            int padV = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 14, ctx.getResources().getDisplayMetrics()));
+            tv.setPadding(padH, padV, padH, padV);
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            card.addView(tv);
+            return new VH(card, tv);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull VH holder, int position) {
+            FlirtTemplateItem item = items.get(position);
+            holder.tv.setText(item.text);
+            holder.itemView.setOnClickListener(v -> {
+                if (listener != null) listener.onFlirtClick(item.flirtLink);
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        static class VH extends RecyclerView.ViewHolder {
+            final TextView tv;
+
+            VH(@NonNull View itemView, TextView tv) {
+                super(itemView);
+                this.tv = tv;
+            }
+        }
+    }
+
     private void checkTokenAndGenerate(boolean isReply) {
         AppPrefs prefs = AppPrefs.getInstance(context());
         String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
@@ -1214,7 +1642,7 @@ public class ConversationFragment extends Fragment {
         setAiGeneratingState(true, isReply ? randomLoadingMessage(R.array.gemini_status_replies) : randomLoadingMessage(R.array.gemini_status_intros));
 
         String history = "";
-        if (isReply) {
+        if (isReply || (lastDraftToRefine != null && !lastDraftToRefine.isEmpty())) {
             StringBuilder sb = new StringBuilder();
             int start = Math.max(0, messageList.size() - 10);
             for (int i = start; i < messageList.size(); i++) {
@@ -1303,8 +1731,8 @@ public class ConversationFragment extends Fragment {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 mainHandler.post(() -> {
-                    if (!isFragmentSafe()) return;
                     setAiGeneratingState(false, null);
+                    if (!isFragmentSafe()) return;
                     Toast.makeText(context(), R.string.error_fetching_profile_ai, Toast.LENGTH_SHORT).show();
                 });
             }
@@ -1328,8 +1756,8 @@ public class ConversationFragment extends Fragment {
                         callGeminiApi(myProfile, otherProfile, history, null);
                     } else {
                         mainHandler.post(() -> {
-                            if (!isFragmentSafe()) return;
                             setAiGeneratingState(false, null);
+                            if (!isFragmentSafe()) return;
                             Toast.makeText(context(), R.string.error_fetching_profile, Toast.LENGTH_SHORT).show();
                         });
                     }
@@ -1389,8 +1817,8 @@ public class ConversationFragment extends Fragment {
                 @Override
                 public void onFailure(@NonNull okhttp3.Call call, @NonNull java.io.IOException e) {
                     mainHandler.post(() -> {
-                        if (!isFragmentSafe()) return;
                         setAiGeneratingState(false, null);
+                        if (!isFragmentSafe()) return;
                         Toast.makeText(context(), R.string.error_fetching_profile_ai, Toast.LENGTH_SHORT).show();
                     });
                 }
@@ -1416,15 +1844,15 @@ public class ConversationFragment extends Fragment {
                                 callGeminiApi(myCached, fetchedOther, finalHistory, specificMessage);
                             } catch (Exception e) {
                                 mainHandler.post(() -> {
-                                    if (!isFragmentSafe()) return;
                                     setAiGeneratingState(false, null);
+                                    if (!isFragmentSafe()) return;
                                     Toast.makeText(context(), R.string.error_parsing_profile, Toast.LENGTH_SHORT).show();
                                 });
                             }
                         } else {
                             mainHandler.post(() -> {
-                                if (!isFragmentSafe()) return;
                                 setAiGeneratingState(false, null);
+                                if (!isFragmentSafe()) return;
                                 Toast.makeText(context(), R.string.error_fetching_profile, Toast.LENGTH_SHORT).show();
                             });
                         }
@@ -1494,12 +1922,27 @@ public class ConversationFragment extends Fragment {
         return null;
     }
 
+    private String getLocalizedAiString(boolean isEnglish, int resId, Object... formatArgs) {
+        Context ctx = context();
+        if (ctx == null) return "";
+        android.content.res.Configuration config = new android.content.res.Configuration(ctx.getResources().getConfiguration());
+        config.setLocale(isEnglish ? java.util.Locale.ENGLISH : java.util.Locale.FRENCH);
+        Context localizedContext = ctx.createConfigurationContext(config);
+        return formatArgs.length > 0
+                ? localizedContext.getString(resId, formatArgs)
+                : localizedContext.getString(resId);
+    }
+
     private void callGeminiApi(JSONObject myProfile, JSONObject otherProfile, String history,
             String specificContextMessage) {
         this.lastMyProfile = myProfile;
         this.lastOtherProfile = otherProfile;
         this.lastHistory = history;
         this.lastSpecificMessage = specificContextMessage;
+
+        final String savedPrefsKey = getAiSuggestionsPrefsKey();
+        Context currentCtx = context();
+        final Context appContext = (currentCtx != null ? currentCtx.getApplicationContext() : null);
 
         AppPrefs prefs = AppPrefs.getInstance(context());
         String lang = prefs.getString(ApiConstants.KEY_GEMINI_LANGUAGE, "Français");
@@ -1569,6 +2012,39 @@ public class ConversationFragment extends Fragment {
         boolean includeMainPicture = prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_PICTURE, false);
         boolean includeAllPictures = prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_ALL_PICTURES, false);
         boolean encodeBase64 = prefs.getBoolean(ApiConstants.KEY_AI_ENCODE_BASE64, false);
+
+        boolean isEnglish = "English".equalsIgnoreCase(lang) || "Anglais".equalsIgnoreCase(lang);
+
+        boolean isRefineDraft = lastDraftToRefine != null && !lastDraftToRefine.trim().isEmpty();
+        if (isRefineDraft) {
+            String draftHeader = getLocalizedAiString(isEnglish, R.string.ai_draft_refine_header, lastDraftToRefine.trim());
+            basePrompt = draftHeader + "\n\n" + basePrompt;
+        }
+
+        String styleInstruction = "";
+        switch (selectedAiTone) {
+            case FORMAL:
+                styleInstruction = getLocalizedAiString(isEnglish, R.string.ai_style_formal);
+                break;
+            case SHORTEN:
+                styleInstruction = getLocalizedAiString(isEnglish, R.string.ai_style_shorten);
+                break;
+            case LONGER:
+                styleInstruction = getLocalizedAiString(isEnglish, R.string.ai_style_longer);
+                break;
+            case CUSTOM:
+                if (customAiToneText != null && !customAiToneText.trim().isEmpty()) {
+                    styleInstruction = getLocalizedAiString(isEnglish, R.string.ai_style_custom, customAiToneText.trim());
+                }
+                break;
+            case DEFAULT:
+            default:
+                break;
+        }
+
+        if (!styleInstruction.isEmpty()) {
+            basePrompt = basePrompt.trim() + "\n" + styleInstruction;
+        }
 
         String systemInstruction = "\n\nIMPORTANT: N'inclus aucun bloc de réflexion, de planification ou de chaîne de pensée. Ne sors absolument rien d'autre que le texte des messages finaux, sans guillemets, et sépare CHAQUE option EXACTEMENT par la chaîne '|||' sans rien d'autre.";
         String prompt = basePrompt.trim() + systemInstruction;
@@ -1710,6 +2186,7 @@ public class ConversationFragment extends Fragment {
             activeAiCall.enqueue(new Callback() {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 activeAiCall = null;
+                releaseAiWakeLock();
                 // Hide streaming UI on failure/cancel
                 mainHandler.post(() -> {
                     if (assistantSheetView != null) {
@@ -1719,10 +2196,13 @@ public class ConversationFragment extends Fragment {
                         if (previewTxt != null) previewTxt.setVisibility(View.GONE);
                     }
                 });
-                if (call.isCanceled()) {
+                boolean isCancel = call.isCanceled()
+                        || (e instanceof okhttp3.internal.http2.StreamResetException)
+                        || (e.getMessage() != null && e.getMessage().contains("CANCEL"))
+                        || (e.getCause() != null && e.getCause().getMessage() != null && e.getCause().getMessage().contains("CANCEL"));
+                if (isCancel) {
                     // User-initiated cancel — silently reset state
                     mainHandler.post(() -> {
-                        if (!isAdded() || getContext() == null) return;
                         setAiGeneratingState(false, null);
                     });
                     return;
@@ -1832,6 +2312,35 @@ public class ConversationFragment extends Fragment {
                         }
                         final String finalAiText = processedAiText;
                         activeAiCall = null;
+                        String[] options = parseAiOptions(finalAiText);
+                        String[] finalOptions = (options != null && options.length > 0) ? options : new String[]{finalAiText};
+
+                        // Persist to AppPrefs immediately using application context so it is never lost
+                        if (appContext != null && savedPrefsKey != null && !finalAiText.isEmpty()) {
+                            try {
+                                AppPrefs bgPrefs = AppPrefs.getInstance(appContext);
+                                String existingJson = bgPrefs.getString(savedPrefsKey, "[]");
+                                JSONArray bgArr = new JSONArray(existingJson);
+                                List<String> bgList = new ArrayList<>();
+                                for (int idx = 0; idx < bgArr.length(); idx++) {
+                                    bgList.add(bgArr.getString(idx));
+                                }
+                                for (String opt : finalOptions) {
+                                    String trimmed = opt.trim();
+                                    if (!trimmed.isEmpty() && !bgList.contains(trimmed)) {
+                                        bgList.add(trimmed);
+                                    }
+                                }
+                                JSONArray newBgArr = new JSONArray();
+                                for (String s : bgList) {
+                                    newBgArr.put(s);
+                                }
+                                bgPrefs.putString(savedPrefsKey, newBgArr.toString());
+                            } catch (Exception e) {
+                                AppLogger.log(TAG, "Error persisting AI suggestions in background", e);
+                            }
+                        }
+
                         mainHandler.post(() -> {
                             if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);
@@ -1839,8 +2348,6 @@ public class ConversationFragment extends Fragment {
                                 showAssistantError(getString(R.string.gemini_error_blocked), hasNextLlm);
                                 return;
                             }
-                            String[] options = parseAiOptions(finalAiText);
-                            String[] finalOptions = (options != null && options.length > 0) ? options : new String[]{finalAiText};
                             if (isResumed()) {
                                 onAiOptionsReceived(finalOptions);
                             } else {
@@ -1894,12 +2401,24 @@ public class ConversationFragment extends Fragment {
                     }
                 } catch (Exception e) {
                     activeAiCall = null;
+                    boolean isCancel = call.isCanceled()
+                            || (e instanceof okhttp3.internal.http2.StreamResetException)
+                            || (e.getMessage() != null && e.getMessage().contains("CANCEL"))
+                            || (e.getCause() != null && e.getCause().getMessage() != null && e.getCause().getMessage().contains("CANCEL"));
+                    if (isCancel) {
+                        mainHandler.post(() -> {
+                            setAiGeneratingState(false, null);
+                        });
+                        return;
+                    }
                     AppLogger.log(TAG, "Exception during Gemini request", e);
                     mainHandler.post(() -> {
                         if (!isAdded() || getContext() == null) return;
                         setAiGeneratingState(false, null);
                         showAssistantError(getString(R.string.gemini_error_exception), hasNextLlm);
                     });
+                } finally {
+                    releaseAiWakeLock();
                 }
             }
         });
@@ -1974,7 +2493,14 @@ public class ConversationFragment extends Fragment {
     }
 
     private void showAssistantBottomSheet() {
-        if (!isAdded() || getContext() == null) return;
+        if (!isFragmentSafe() || getActivity() == null || getActivity().isFinishing() || getActivity().isDestroyed()) return;
+        if (assistantDialog != null && assistantDialog.isShowing()) {
+            BottomSheetUtils.expand(assistantDialog);
+            if (isAiGenerating) {
+                setAiGeneratingState(true, currentGeneratingStatus);
+            }
+            return;
+        }
         if (assistantDialog != null) {
             try { assistantDialog.dismiss(); } catch (Exception ignored) {}
         }
@@ -2051,21 +2577,104 @@ public class ConversationFragment extends Fragment {
                 });
             }
 
-            if (btnActionIntro != null) {
-                if (isReplyMode) {
-                    btnActionIntro.setText(R.string.assistant_generate_reply);
-                    btnActionIntro.setOnClickListener(v -> triggerAssistantAiReply(targetedReplyItem));
+            ChipGroup chipGroupTone = assistantSheetView.findViewById(R.id.chip_group_ai_tone);
+            com.google.android.material.textfield.TextInputLayout layoutCustomSteer = assistantSheetView.findViewById(R.id.layout_custom_steer);
+            com.google.android.material.textfield.TextInputEditText editCustomSteer = assistantSheetView.findViewById(R.id.edit_custom_steer);
+            MaterialButton btnActionRefineDraft = assistantSheetView.findViewById(R.id.btn_action_refine_draft);
+
+            if (editCustomSteer != null && !customAiToneText.isEmpty()) {
+                editCustomSteer.setText(customAiToneText);
+            }
+
+            if (chipGroupTone != null) {
+                int chipIdToCheck = R.id.chip_tone_default;
+                if (selectedAiTone == AiTone.FORMAL) chipIdToCheck = R.id.chip_tone_formal;
+                else if (selectedAiTone == AiTone.SHORTEN) chipIdToCheck = R.id.chip_tone_shorten;
+                else if (selectedAiTone == AiTone.LONGER) chipIdToCheck = R.id.chip_tone_longer;
+                else if (selectedAiTone == AiTone.CUSTOM) chipIdToCheck = R.id.chip_tone_custom;
+                chipGroupTone.check(chipIdToCheck);
+
+                if (layoutCustomSteer != null) {
+                    layoutCustomSteer.setVisibility(selectedAiTone == AiTone.CUSTOM ? View.VISIBLE : View.GONE);
+                }
+
+                chipGroupTone.setOnCheckedStateChangeListener((group, checkedIds) -> {
+                    if (checkedIds != null && !checkedIds.isEmpty()) {
+                        int checkedId = checkedIds.get(0);
+                        if (checkedId == R.id.chip_tone_formal) {
+                            selectedAiTone = AiTone.FORMAL;
+                        } else if (checkedId == R.id.chip_tone_shorten) {
+                            selectedAiTone = AiTone.SHORTEN;
+                        } else if (checkedId == R.id.chip_tone_longer) {
+                            selectedAiTone = AiTone.LONGER;
+                        } else if (checkedId == R.id.chip_tone_custom) {
+                            selectedAiTone = AiTone.CUSTOM;
+                        } else {
+                            selectedAiTone = AiTone.DEFAULT;
+                        }
+                    } else {
+                        selectedAiTone = AiTone.DEFAULT;
+                    }
+                    if (layoutCustomSteer != null) {
+                        layoutCustomSteer.setVisibility(selectedAiTone == AiTone.CUSTOM ? View.VISIBLE : View.GONE);
+                    }
+                });
+            }
+
+            String currentDraft = (editMessage != null && editMessage.getText() != null)
+                    ? editMessage.getText().toString().trim() : "";
+            if (btnActionRefineDraft != null) {
+                if (!currentDraft.isEmpty()) {
+                    btnActionRefineDraft.setVisibility(View.VISIBLE);
+                    btnActionRefineDraft.setOnClickListener(v -> {
+                        if (editCustomSteer != null && editCustomSteer.getText() != null) {
+                            customAiToneText = editCustomSteer.getText().toString().trim();
+                        }
+                        triggerAssistantAiRefineDraft(currentDraft);
+                    });
                 } else {
-                    btnActionIntro.setText(R.string.assistant_generate_intro);
-                    btnActionIntro.setOnClickListener(v -> triggerAssistantAiIntro());
+                    btnActionRefineDraft.setVisibility(View.GONE);
                 }
             }
 
+            if (btnActionIntro != null) {
+                if (isReplyMode) {
+                    btnActionIntro.setText(R.string.assistant_generate_reply);
+                    btnActionIntro.setOnClickListener(v -> {
+                        if (editCustomSteer != null && editCustomSteer.getText() != null) {
+                            customAiToneText = editCustomSteer.getText().toString().trim();
+                        }
+                        triggerAssistantAiReply(targetedReplyItem);
+                    });
+                } else {
+                    btnActionIntro.setText(R.string.assistant_generate_intro);
+                    btnActionIntro.setOnClickListener(v -> {
+                        if (editCustomSteer != null && editCustomSteer.getText() != null) {
+                            customAiToneText = editCustomSteer.getText().toString().trim();
+                        }
+                        triggerAssistantAiIntro();
+                    });
+                }
+            }
+
+            if (accumulatedAiSuggestions.isEmpty()) {
+                loadSavedAiSuggestions();
+            }
             renderAccumulatedSuggestions(layoutSuggestionsContainer, layoutSuggestionsList, btnGetMore);
+
+            View btnClearSuggestions = assistantSheetView.findViewById(R.id.btn_clear_ai_suggestions);
+            if (btnClearSuggestions != null) {
+                btnClearSuggestions.setOnClickListener(v -> clearSavedAiSuggestions());
+            }
 
             if (btnGetMore != null) {
                 btnGetMore.setOnClickListener(v -> {
-                    if (targetedReplyItem != null) {
+                    if (editCustomSteer != null && editCustomSteer.getText() != null) {
+                        customAiToneText = editCustomSteer.getText().toString().trim();
+                    }
+                    if (lastDraftToRefine != null && !lastDraftToRefine.isEmpty()) {
+                        triggerAssistantAiRefineDraft(lastDraftToRefine);
+                    } else if (targetedReplyItem != null) {
                         triggerAssistantAiReply(targetedReplyItem);
                     } else if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
                         setAiGeneratingState(true, randomLoadingMessage(R.array.gemini_status_targeted));
@@ -2084,6 +2693,9 @@ public class ConversationFragment extends Fragment {
         });
         assistantDialog.setContentView(assistantSheetView);
         try { assistantDialog.show(); } catch (Exception ignored) {}
+        if (isAiGenerating) {
+            setAiGeneratingState(true, currentGeneratingStatus);
+        }
     }
 
     private void triggerAssistantAiIntro() {
@@ -2094,6 +2706,7 @@ public class ConversationFragment extends Fragment {
             startActivity(new Intent(context(), SettingsIntelligenceActivity.class));
             return;
         }
+        lastDraftToRefine = null;
         setAiGeneratingState(true, randomLoadingMessage(R.array.gemini_status_intros));
         onGeminiGenerate(false);
     }
@@ -2107,12 +2720,30 @@ public class ConversationFragment extends Fragment {
             startActivity(new Intent(context(), SettingsIntelligenceActivity.class));
             return;
         }
+        lastDraftToRefine = null;
         onGeminiGenerateSpecific(item);
     }
 
+    private void triggerAssistantAiRefineDraft(String draft) {
+        if (draft == null || draft.trim().isEmpty()) return;
+        AppPrefs prefs = AppPrefs.getInstance(context());
+        String savedToken = prefs.getString(ApiConstants.KEY_AI_TOKEN, "").trim();
+        if (savedToken.isEmpty() && ApiConstants.GEMINI_API_KEY.isEmpty()) {
+            Toast.makeText(context(), R.string.gemini_error_no_token, Toast.LENGTH_LONG).show();
+            startActivity(new Intent(context(), SettingsIntelligenceActivity.class));
+            return;
+        }
+        lastDraftToRefine = draft;
+        setAiGeneratingState(true, randomLoadingMessage(R.array.gemini_status_replies));
+        onGeminiGenerate(false);
+    }
+
     private void showAssistantError(String errMsg, boolean hasNextLlm) {
+        if (!isFragmentSafe() || getActivity() == null || getActivity().isFinishing() || getActivity().isDestroyed()) return;
         if (assistantDialog == null || !assistantDialog.isShowing()) {
             showAssistantBottomSheet();
+        } else {
+            BottomSheetUtils.expand(assistantDialog);
         }
         if (assistantSheetView != null) {
             View loadingLayout = assistantSheetView.findViewById(R.id.layout_assistant_loading);
@@ -2126,20 +2757,25 @@ public class ConversationFragment extends Fragment {
             if (btnRetry != null) {
                 btnRetry.setOnClickListener(v -> {
                     errorLayout.setVisibility(View.GONE);
-                    String status = randomLoadingMessage(R.array.gemini_status_intros);
-                    if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
-                        status = randomLoadingMessage(R.array.gemini_status_targeted);
-                    } else if (lastHistory != null && !lastHistory.trim().isEmpty()) {
-                        status = randomLoadingMessage(R.array.gemini_status_replies);
+                    if (lastDraftToRefine != null && !lastDraftToRefine.isEmpty()) {
+                        triggerAssistantAiRefineDraft(lastDraftToRefine);
+                    } else {
+                        String status = randomLoadingMessage(R.array.gemini_status_intros);
+                        if (lastSpecificMessage != null && !lastSpecificMessage.isEmpty()) {
+                            status = randomLoadingMessage(R.array.gemini_status_targeted);
+                        } else if (lastHistory != null && !lastHistory.trim().isEmpty()) {
+                            status = randomLoadingMessage(R.array.gemini_status_replies);
+                        }
+                        setAiGeneratingState(true, status);
+                        callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
                     }
-                    setAiGeneratingState(true, status);
-                    callGeminiApi(lastMyProfile, lastOtherProfile, lastHistory, lastSpecificMessage);
                 });
             }
         }
     }
 
     private void onAiOptionsReceived(String[] options) {
+        if (!isFragmentSafe() || getActivity() == null || getActivity().isFinishing() || getActivity().isDestroyed()) return;
         if (options == null || options.length == 0) return;
         for (String opt : options) {
             String trimmed = opt.trim();
@@ -2147,19 +2783,82 @@ public class ConversationFragment extends Fragment {
                 accumulatedAiSuggestions.add(trimmed);
             }
         }
+        saveAiSuggestions();
 
         if (assistantDialog == null || !assistantDialog.isShowing()) {
             showAssistantBottomSheet();
-        } else if (assistantSheetView != null) {
+        } else {
+            BottomSheetUtils.expand(assistantDialog);
+            if (assistantSheetView != null) {
+                LinearLayout container = assistantSheetView.findViewById(R.id.layout_ai_suggestions_container);
+                LinearLayout list = assistantSheetView.findViewById(R.id.layout_ai_suggestions_list);
+                MaterialButton btnMore = assistantSheetView.findViewById(R.id.btn_get_more_answers);
+                renderAccumulatedSuggestions(container, list, btnMore);
+
+                View scrollView = assistantSheetView;
+                if (scrollView instanceof androidx.core.widget.NestedScrollView && list != null) {
+                    scrollView.post(() -> ((androidx.core.widget.NestedScrollView) scrollView).smoothScrollTo(0, list.getBottom()));
+                }
+            }
+        }
+    }
+
+    private String getAiSuggestionsPrefsKey() {
+        if (otherUserId != null && !otherUserId.isEmpty()) {
+            return "ai_saved_suggestions_" + otherUserId;
+        } else if (conversationLink != null && !conversationLink.isEmpty()) {
+            return "ai_saved_suggestions_" + conversationLink;
+        }
+        return null;
+    }
+
+    private synchronized void loadSavedAiSuggestions() {
+        String key = getAiSuggestionsPrefsKey();
+        if (key == null) return;
+        Context ctx = context();
+        if (ctx == null) return;
+        AppPrefs prefs = AppPrefs.getInstance(ctx);
+        String json = prefs.getString(key, "[]");
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                String s = arr.getString(i).trim();
+                if (!s.isEmpty() && !accumulatedAiSuggestions.contains(s)) {
+                    accumulatedAiSuggestions.add(s);
+                }
+            }
+        } catch (Exception e) {
+            AppLogger.log(TAG, "Error loading saved AI suggestions", e);
+        }
+    }
+
+    private synchronized void saveAiSuggestions() {
+        String key = getAiSuggestionsPrefsKey();
+        if (key == null) return;
+        Context ctx = context();
+        if (ctx == null) return;
+        AppPrefs prefs = AppPrefs.getInstance(ctx);
+        JSONArray arr = new JSONArray();
+        for (String s : accumulatedAiSuggestions) {
+            arr.put(s);
+        }
+        prefs.putString(key, arr.toString());
+    }
+
+    private synchronized void clearSavedAiSuggestions() {
+        accumulatedAiSuggestions.clear();
+        String key = getAiSuggestionsPrefsKey();
+        if (key != null) {
+            Context ctx = context();
+            if (ctx != null) {
+                AppPrefs.getInstance(ctx).remove(key);
+            }
+        }
+        if (assistantSheetView != null) {
             LinearLayout container = assistantSheetView.findViewById(R.id.layout_ai_suggestions_container);
             LinearLayout list = assistantSheetView.findViewById(R.id.layout_ai_suggestions_list);
             MaterialButton btnMore = assistantSheetView.findViewById(R.id.btn_get_more_answers);
             renderAccumulatedSuggestions(container, list, btnMore);
-
-            View scrollView = assistantSheetView;
-            if (scrollView instanceof androidx.core.widget.NestedScrollView && list != null) {
-                scrollView.post(() -> ((androidx.core.widget.NestedScrollView) scrollView).smoothScrollTo(0, list.getBottom()));
-            }
         }
     }
 
@@ -2197,7 +2896,12 @@ public class ConversationFragment extends Fragment {
             if (assistantDialog != null && assistantDialog.isShowing()) {
                 assistantDialog.dismiss();
             }
-            appendOrSetEditMessage(messageText);
+            if (lastDraftToRefine != null && !lastDraftToRefine.isEmpty() && editMessage != null) {
+                editMessage.setText(messageText);
+                lastDraftToRefine = null;
+            } else {
+                appendOrSetEditMessage(messageText);
+            }
             if (editMessage != null) {
                 editMessage.requestFocus();
                 if (editMessage.getText() != null) {
@@ -2415,7 +3119,7 @@ public class ConversationFragment extends Fragment {
 
         Request request = new Request.Builder()
                 .url(getAbsoluteUrl(conversationLink))
-                .patch(body)
+                .post(body)
                 .addHeader("Cookie", fullCookie)
                 .addHeader("x-csrftoken", suid)
                 .addHeader("User-Agent", ApiConstants.USER_AGENT)
@@ -2451,7 +3155,8 @@ public class ConversationFragment extends Fragment {
         String[] endpoints = {
                 "/rest/users/" + myUserId + "/conversations/active",
                 "/rest/users/" + myUserId + "/conversations/new",
-                "/rest/users/" + myUserId + "/conversations/archived"
+                "/rest/users/" + myUserId + "/conversations/archived",
+                "/rest/users/" + myUserId + "/conversations/flirts"
         };
         searchConversationEndpoints(targetUserId, endpoints, 0, offset);
     }

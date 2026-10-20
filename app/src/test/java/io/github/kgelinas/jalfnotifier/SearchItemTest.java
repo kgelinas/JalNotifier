@@ -2,6 +2,8 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.ui.*;
+
 import org.junit.Test;
 
 public class SearchItemTest {

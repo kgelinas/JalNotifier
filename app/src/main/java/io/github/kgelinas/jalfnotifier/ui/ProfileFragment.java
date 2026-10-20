@@ -360,10 +360,21 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (photoAdapter != null && getContext() != null) {
+        if (getContext() != null) {
             SharedPreferences prefs = getContext().getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE);
-            boolean blurNsfw = prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true);
-            photoAdapter.setBlurNsfw(blurNsfw);
+            if (photoAdapter != null) {
+                boolean blurNsfw = prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true);
+                photoAdapter.setBlurNsfw(blurNsfw);
+            }
+            boolean disablePokes = prefs.getBoolean(ApiConstants.KEY_DISABLE_POKES, false);
+            if (disablePokes) {
+                isFabMenuOpen = false;
+                if (fabPoke != null) fabPoke.hide();
+                if (fabMessage != null) fabMessage.hide();
+                if (fabMain != null) fabMain.setImageResource(R.drawable.ic_chat_24);
+            } else if (fabMain != null) {
+                fabMain.setImageResource(isFabMenuOpen ? R.drawable.ic_close : R.drawable.ic_menu);
+            }
         }
     }
 
@@ -659,6 +670,14 @@ public class ProfileFragment extends Fragment {
     }
 
     private void toggleFabMenu() {
+        boolean disablePokes = getContext() != null
+                && getContext().getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE)
+                        .getBoolean(ApiConstants.KEY_DISABLE_POKES, false);
+        if (disablePokes) {
+            if (fabPoke != null) fabPoke.hide();
+            openChat();
+            return;
+        }
         isFabMenuOpen = !isFabMenuOpen;
         if (isFabMenuOpen) {
             if (fabMessage != null) fabMessage.show();
@@ -678,6 +697,18 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    private void openProfileInBrowser() {
+        if (getContext() != null && userId != null && !userId.isEmpty()) {
+            android.content.Intent intent = new android.content.Intent(getContext(), ProfileWebViewActivity.class);
+            intent.putExtra(ProfileWebViewActivity.EXTRA_URL, ApiConstants.BASE_URL + "/ct/memberProfile/" + userId + "/1");
+            String title = (toolbarTitleText != null && toolbarTitleText.getText() != null && toolbarTitleText.getText().length() > 0)
+                    ? toolbarTitleText.getText().toString()
+                    : getString(R.string.action_open_in_browser);
+            intent.putExtra(ProfileWebViewActivity.EXTRA_TITLE, title);
+            startActivity(intent);
+        }
+    }
+
     private void updateOnfireUi() {
         // No-op: FAB is now static "Edit Profile"
     }
@@ -692,6 +723,9 @@ public class ProfileFragment extends Fragment {
             return true;
         } else if (itemId == R.id.action_notify) {
             toggleNotification();
+            return true;
+        } else if (itemId == R.id.action_open_in_browser) {
+            openProfileInBrowser();
             return true;
         } else if (itemId == R.id.action_block) {
             toggleBlock();
@@ -1194,11 +1228,9 @@ public class ProfileFragment extends Fragment {
         if (contentLayout != null)
             contentLayout.setVisibility(View.VISIBLE);
 
-        String name = data.optString("pseudo", "");
+        String name = data.optString("name", "");
         if (name.isEmpty())
-            name = data.optString("user_name", "");
-        if (name.isEmpty())
-            name = data.optString("name", "Unknown");
+            name = data.optString("user_name", "Unknown");
 
         if (toolbarTitleText != null) {
             toolbarTitleText.setText(name);
@@ -1638,13 +1670,15 @@ public class ProfileFragment extends Fragment {
         if (!allPhotoItems.isEmpty())
             intent.putExtra("avatarUrl", allPhotoItems.get(0).url);
 
+        String link = null;
         if (getActivity() instanceof MainActivity) {
-            String link = ((MainActivity) getActivity()).findConversationForUser(userId);
+            link = ((MainActivity) getActivity()).findConversationForUser(userId);
             if (link != null && !link.isEmpty()) {
                 intent.putExtra("conversationLink", link);
             }
         }
 
+        ConversationActivity.applyMultiWindowFlagsIfNeeded(getActivity(), intent, userId, link);
         startActivity(intent);
     }
 
@@ -2143,8 +2177,21 @@ public class ProfileFragment extends Fragment {
 
             recycler.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(getContext()));
             java.util.List<EventAdapter.EventItem> events = new java.util.ArrayList<>();
+            final String[] nextTimestampLimit = new String[] { null };
             EventAdapter adapter = new EventAdapter(events, item -> {
-                // Ignore clicks on recent activity for now
+                if (item.otherUserId != null && !item.otherUserId.isEmpty() && !item.otherUserId.equals(userId)) {
+                    openOtherUserProfile(item.otherUserId);
+                } else {
+                    openActivityMedia(item);
+                }
+            });
+            adapter.setOnSecondaryImageClickListener(this::openActivityMedia);
+            adapter.setOnLoadMoreListener(() -> {
+                String ts = nextTimestampLimit[0];
+                if (ts != null && !ts.isEmpty() && !"0".equals(ts)) {
+                    nextTimestampLimit[0] = null;
+                    fetchMoreLatestActivity(ts, events, adapter, nextTimestampLimit);
+                }
             });
             recycler.setAdapter(adapter);
             dialog.show();
@@ -2163,6 +2210,9 @@ public class ProfileFragment extends Fragment {
                         getActivity().runOnUiThread(() -> {
                             progress.setVisibility(View.GONE);
                             emptyView.setVisibility(View.VISIBLE);
+                            if (dialog.isShowing()) {
+                                BottomSheetUtils.expand(dialog);
+                            }
                         });
                     }
                 }
@@ -2173,65 +2223,14 @@ public class ProfileFragment extends Fragment {
                         if (r.isSuccessful() && r.body() != null) {
                             String html = NetworkUtils.responseToString(r);
                             Document doc = Jsoup.parse(html);
-                            Elements publications = doc.select(".publication");
+                            List<EventAdapter.EventItem> parsedItems = parseActivityPublications(doc);
+                            events.addAll(parsedItems);
 
-                            for (Element pub : publications) {
-                                EventAdapter.EventItem item = new EventAdapter.EventItem();
-                                Element nameEl = pub.selectFirst(".name_user a.mbrprof");
-                                if (nameEl != null)
-                                    item.title = nameEl.text();
-
-                                Element actionEl = pub.selectFirst(".action h1");
-                                if (actionEl != null) {
-                                    String h1Text = actionEl.text();
-                                    if (item.title != null && h1Text.startsWith(item.title)) {
-                                        h1Text = h1Text.substring(item.title.length()).trim();
-                                    }
-                                    item.body = h1Text;
-                                }
-
-                                Element mediaH1 = pub.selectFirst(".media h1");
-                                if (mediaH1 != null) {
-                                    String mediaText = mediaH1.text();
-                                    if (item.title != null && mediaText.startsWith(item.title)) {
-                                        mediaText = mediaText.substring(item.title.length()).trim();
-                                    }
-                                    if (!mediaText.isEmpty()
-                                            && (item.body == null || mediaText.length() > item.body.length())) {
-                                        item.body = mediaText;
-                                    }
-                                }
-
-                                Element descStatus = pub.selectFirst("#user_desc_status");
-                                if (descStatus != null) {
-                                    item.body = descStatus.html();
-                                }
-
-                                Element imgEl = pub.selectFirst(".action .media img, .media img");
-                                if (imgEl != null) {
-                                    item.secondaryImageUrl = imgEl.hasAttr("data-src") ? imgEl.attr("data-src")
-                                            : imgEl.attr("src");
-                                }
-
-                                Element videoEl = pub.selectFirst("video");
-                                if (videoEl != null) {
-                                    String poster = videoEl.attr("poster");
-                                    if (poster != null && !poster.isEmpty()) {
-                                        item.secondaryImageUrl = poster;
-                                    }
-                                }
-
-                                Element avatarEl = pub.selectFirst(".pic img");
-                                if (avatarEl != null) {
-                                    item.avatarUrl = avatarEl.hasAttr("data-src") ? avatarEl.attr("data-src")
-                                            : avatarEl.attr("src");
-                                }
-
-                                Element dateEl = pub.selectFirst(".name_user p");
-                                if (dateEl != null)
-                                    item.timeIso = dateEl.text();
-
-                                events.add(item);
+                            Element tsEl = doc.selectFirst("#timestamp_limit");
+                            String tsLimit = tsEl != null ? tsEl.val().trim() : "";
+                            if (!tsLimit.isEmpty() && !"0".equals(tsLimit) && parsedItems.size() >= 5) {
+                                nextTimestampLimit[0] = tsLimit;
+                                events.add(new EventAdapter.EventItem(EventAdapter.TYPE_LOAD_MORE));
                             }
 
                             if (getActivity() != null) {
@@ -2242,12 +2241,253 @@ public class ProfileFragment extends Fragment {
                                     } else {
                                         adapter.notifyDataSetChanged();
                                     }
+                                    if (dialog.isShowing()) {
+                                        BottomSheetUtils.expand(dialog);
+                                    }
                                 });
                             }
                         }
                     }
                 }
             });
+        }
+    }
+
+    private void fetchMoreLatestActivity(String timestampLimit, List<EventAdapter.EventItem> events,
+            EventAdapter adapter, String[] nextTimestampLimit) {
+        if (userId == null || userId.isEmpty())
+            return;
+
+        RequestBody formBody = new FormBody.Builder()
+                .add("filter_sex", "undefined")
+                .add("filter_cert", "undefined")
+                .add("filter_fav", "")
+                .add("filter_regn", "undefined")
+                .add("filter_unum", userId)
+                .add("get_count", "0")
+                .add("get_stuff_flag", timestampLimit)
+                .add("filter_cont", "undefined")
+                .add("filter_lang_1", "undefined")
+                .add("filter_lang_2", "undefined")
+                .add("filter_lang_3", "undefined")
+                .add("filter_lang_4", "undefined")
+                .add("filter_lang_5", "undefined")
+                .build();
+
+        String url = ApiConstants.BASE_URL + "/ct/jalf_book_wall/1/undefined";
+        Request request = new Request.Builder()
+                .url(url)
+                .post(formBody)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .addHeader("X-Requested-With", "XMLHttpRequest")
+                .addHeader("Referer", ApiConstants.BASE_URL + "/ct/jalf_book_wall/1?filter_unum=" + userId)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        nextTimestampLimit[0] = timestampLimit;
+                        adapter.notifyDataSetChanged();
+                    });
+                }
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try (Response r = response) {
+                    List<EventAdapter.EventItem> newItems = new ArrayList<>();
+                    String newTs = "";
+                    if (r.isSuccessful() && r.body() != null) {
+                        String body = NetworkUtils.responseToString(r);
+                        try {
+                            JSONArray arr = new JSONArray(body);
+                            String htmlFragment = arr.optString(1, "");
+                            newTs = arr.optString(2, "");
+                            if ("null".equalsIgnoreCase(newTs) || "false".equalsIgnoreCase(newTs)) {
+                                newTs = "";
+                            }
+                            if (!htmlFragment.isEmpty() && !"nodata".equalsIgnoreCase(htmlFragment)) {
+                                Document doc = Jsoup.parseBodyFragment(htmlFragment);
+                                newItems = parseActivityPublications(doc);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error parsing more recent activity JSON", e);
+                        }
+                    }
+
+                    final List<EventAdapter.EventItem> finalNewItems = newItems;
+                    final String finalNewTs = newTs != null ? newTs.trim() : "";
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (!events.isEmpty() && events.get(events.size() - 1).type == EventAdapter.TYPE_LOAD_MORE) {
+                                events.remove(events.size() - 1);
+                            }
+                            events.addAll(finalNewItems);
+                            if (!finalNewTs.isEmpty() && !"0".equals(finalNewTs) && !finalNewItems.isEmpty()) {
+                                nextTimestampLimit[0] = finalNewTs;
+                                events.add(new EventAdapter.EventItem(EventAdapter.TYPE_LOAD_MORE));
+                            } else {
+                                nextTimestampLimit[0] = null;
+                            }
+                            adapter.notifyDataSetChanged();
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    private List<EventAdapter.EventItem> parseActivityPublications(Document doc) {
+        List<EventAdapter.EventItem> list = new ArrayList<>();
+        if (doc == null)
+            return list;
+        Elements publications = doc.select(".publication");
+        for (Element pub : publications) {
+            EventAdapter.EventItem item = new EventAdapter.EventItem();
+            Element nameEl = pub.selectFirst(".name_user a.mbrprof");
+            if (nameEl != null)
+                item.title = nameEl.text();
+
+            Element actionEl = pub.selectFirst(".action h1");
+            if (actionEl != null) {
+                String h1Text = actionEl.text();
+                if (item.title != null && h1Text.startsWith(item.title)) {
+                    h1Text = h1Text.substring(item.title.length()).trim();
+                }
+                item.body = h1Text;
+            }
+
+            // Extract target user ID if this activity references another member's profile
+            Elements profLinks = pub.select(".action h1 a.mbrprof, .media h1 a.mbrprof");
+            for (Element link : profLinks) {
+                String href = link.attr("href");
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("/ct/memberProfile/([0-9]+)").matcher(href);
+                if (m.find()) {
+                    String foundId = m.group(1);
+                    if (foundId != null && !foundId.equals(userId)) {
+                        item.otherUserId = foundId;
+                        break;
+                    }
+                }
+            }
+
+            Element mediaH1 = pub.selectFirst(".media h1");
+            if (mediaH1 != null) {
+                String mediaText = mediaH1.text();
+                if (item.title != null && mediaText.startsWith(item.title)) {
+                    mediaText = mediaText.substring(item.title.length()).trim();
+                }
+                if (!mediaText.isEmpty()
+                        && (item.body == null || mediaText.length() > item.body.length())) {
+                    item.body = mediaText;
+                }
+            }
+
+            Element descStatus = pub.selectFirst("#user_desc_status");
+            if (descStatus != null) {
+                item.body = descStatus.html();
+            }
+
+            Element zoomImgEl = pub.selectFirst(".action .media img[onclick*=zoomPic], .media img[onclick*=zoomPic]");
+            Element imgEl = zoomImgEl != null ? zoomImgEl : pub.selectFirst(".action .media img, .media img");
+            if (imgEl != null) {
+                item.secondaryImageUrl = imgEl.hasAttr("data-src") ? imgEl.attr("data-src")
+                        : imgEl.attr("src");
+                String onclick = imgEl.attr("onclick");
+                if (onclick != null && onclick.contains("zoomPic")) {
+                    java.util.regex.Matcher picMatcher = java.util.regex.Pattern.compile("zoomPic\\s*\\([^,]+,\\s*([0-9]+)\\s*\\)").matcher(onclick);
+                    if (picMatcher.find()) {
+                        item.picId = picMatcher.group(1);
+                    }
+                }
+            }
+
+            Element likeHrefEl = pub.selectFirst("a[id^=likeHref_]");
+            if (likeHrefEl != null) {
+                String href = likeHrefEl.attr("href");
+                item.isLiked = href != null && href.contains("'del'");
+            }
+
+            Element realHrefEl = pub.selectFirst("a[id^=realHref_]");
+            if (realHrefEl != null) {
+                String href = realHrefEl.attr("href");
+                item.isRealized = href != null && href.contains("'del-fntsm'");
+            }
+
+            Element videoEl = pub.selectFirst("video");
+            if (videoEl != null) {
+                String poster = videoEl.attr("poster");
+                if (poster != null && !poster.isEmpty()) {
+                    item.secondaryImageUrl = poster;
+                }
+                Element sourceEl = videoEl.selectFirst("source[type=video/mp4], source");
+                if (sourceEl != null) {
+                    String videoSrc = sourceEl.attr("src");
+                    if (videoSrc != null && !videoSrc.isEmpty()) {
+                        item.videoUrl = videoSrc.startsWith("/") ? ApiConstants.BASE_URL + videoSrc : videoSrc;
+                    }
+                }
+            }
+
+            Element avatarEl = pub.selectFirst(".pic img");
+            if (avatarEl != null) {
+                item.avatarUrl = avatarEl.hasAttr("data-src") ? avatarEl.attr("data-src")
+                        : avatarEl.attr("src");
+            }
+
+            Element dateEl = pub.selectFirst(".name_user p");
+            if (dateEl != null)
+                item.timeIso = dateEl.text();
+
+            list.add(item);
+        }
+        return list;
+    }
+
+    private void openActivityMedia(EventAdapter.EventItem item) {
+        if (item == null || getContext() == null)
+            return;
+        if (item.videoUrl != null && !item.videoUrl.isEmpty()) {
+            playVideo(item.videoUrl);
+        } else if (item.picId != null && !item.picId.isEmpty()
+                && item.secondaryImageUrl != null && !item.secondaryImageUrl.isEmpty()) {
+            String fullUrl = item.secondaryImageUrl.startsWith("/")
+                    ? ApiConstants.BASE_URL + item.secondaryImageUrl
+                    : item.secondaryImageUrl;
+            Intent intent = new Intent(getContext(), FullscreenImageActivity.class);
+            ArrayList<String> urls = new ArrayList<>();
+            urls.add(fullUrl);
+            ArrayList<Integer> ranks = new ArrayList<>();
+            ranks.add(item.nsfwRank);
+            ArrayList<String> picIds = new ArrayList<>();
+            picIds.add(item.picId);
+            boolean[] likes = new boolean[] { item.isLiked };
+            boolean[] realizes = new boolean[] { item.isRealized };
+
+            intent.putStringArrayListExtra("imageUrlList", urls);
+            intent.putIntegerArrayListExtra("imageRanks", ranks);
+            intent.putStringArrayListExtra("picIds", picIds);
+            intent.putExtra("likes", likes);
+            intent.putExtra("realizes", realizes);
+            intent.putExtra("initialPosition", 0);
+            startActivity(intent);
+        }
+    }
+
+    private void openOtherUserProfile(String targetUserId) {
+        if (getContext() == null || targetUserId == null || targetUserId.isEmpty())
+            return;
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).openProfile(targetUserId, null, null, true);
+        } else {
+            Intent intent = new Intent(getContext(), ProfileActivity.class);
+            intent.putExtra("userId", targetUserId);
+            intent.putExtra("fromChat", true);
+            startActivity(intent);
         }
     }
 

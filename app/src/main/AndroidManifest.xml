@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
         android:name=".util.JalfNotifierApplication"
@@ -95,7 +96,7 @@
             android:name="io.github.kgelinas.jalfnotifier.ui.ConversationActivity"
             android:exported="false"
             android:resizeableActivity="true"
-            android:documentLaunchMode="always"
+            android:autoRemoveFromRecents="true"
             android:parentActivityName="io.github.kgelinas.jalfnotifier.ui.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density" />
 

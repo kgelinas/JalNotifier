@@ -29,10 +29,14 @@ public class ProfileCacheManager extends Object {
     private static volatile ProfileCacheManager instance;
 
     private static final long PROFILE_TTL = TimeUnit.HOURS.toMillis(72);
-    private static final long STATUS_TTL = 0; // Never cache online status
+    private static final long STATUS_TTL = TimeUnit.SECONDS.toMillis(30); // Short TTL to avoid duplicate fetches within the same refresh cycle
     private static final long EVENTS_TTL = TimeUnit.MINUTES.toMillis(2);
+    private static final long SAVE_DEBOUNCE_MS = 1500L;
 
     private final Map<String, CachedProfile> profileCache = new HashMap<>();
+    private final java.util.concurrent.ScheduledExecutorService saveExecutor =
+            java.util.concurrent.Executors.newSingleThreadScheduledExecutor();
+    private java.util.concurrent.ScheduledFuture<?> pendingSaveFuture;
 
     private JSONArray cachedNotifications = new JSONArray();
     private JSONArray cachedLookers = new JSONArray();
@@ -111,6 +115,15 @@ public class ProfileCacheManager extends Object {
         }
     }
 
+    public synchronized void scheduleSave(Context context) {
+        if (context == null) return;
+        final Context appContext = context.getApplicationContext();
+        if (pendingSaveFuture != null && !pendingSaveFuture.isDone()) {
+            pendingSaveFuture.cancel(false);
+        }
+        pendingSaveFuture = saveExecutor.schedule(() -> save(appContext), SAVE_DEBOUNCE_MS, TimeUnit.MILLISECONDS);
+    }
+
     public synchronized void save(Context context) {
         if (context == null) return;
         SharedPreferences prefs = context.getSharedPreferences(ApiConstants.PREFS_NAME, Context.MODE_PRIVATE);
@@ -140,6 +153,7 @@ public class ProfileCacheManager extends Object {
                 JSONObject obj = new JSONObject();
                 obj.put("data", entry.getValue().data);
                 obj.put("ts", entry.getValue().timestamp);
+                obj.put("status_ts", entry.getValue().statusTimestamp);
                 root.put(entry.getKey(), obj);
             }
             editor.putString(profilesKey, root.toString());
@@ -251,7 +265,7 @@ public class ProfileCacheManager extends Object {
             }
         }
         profileCache.put(userId, new CachedProfile(cacheData, System.currentTimeMillis(), System.currentTimeMillis()));
-        save(context);
+        scheduleSave(context);
     }
 
     public synchronized void putProfileField(Context context, String userId, String key, Object value) {
@@ -260,7 +274,7 @@ public class ProfileCacheManager extends Object {
         if (cached != null) {
             try {
                 cached.data.put(key, value);
-                save(context);
+                scheduleSave(context);
             } catch (Exception e) {
                 Log.e(TAG, "Error updating profile field", e);
             }
@@ -278,7 +292,7 @@ public class ProfileCacheManager extends Object {
                     cached.data.put("last_connection", lastConnected);
                 }
                 cached.statusTimestamp = System.currentTimeMillis();
-                save(context);
+                scheduleSave(context);
             } catch (Exception e) {
                 Log.e(TAG, "Error updating status in cache", e);
             }
@@ -338,7 +352,7 @@ public class ProfileCacheManager extends Object {
 
         JSONObject profile = getCachedOrFetchProfileSync(context, client, userLink);
         if (profile != null) {
-            return profile.optString("pseudo", profile.optString("name", null));
+            return profile.optString("name", null);
         }
 
         return null;

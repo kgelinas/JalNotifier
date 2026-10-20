@@ -2,6 +2,9 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.util.*;
+
 import org.junit.Test;
 
 import java.io.IOException;
@@ -16,34 +19,32 @@ public class SearchApiUtilsTest {
 
     @Test
     public void testBuildSimpleSearchRequest_Page1() throws IOException {
-        SearchSettingsManager.SavedSettings s = new SearchSettingsManager.SavedSettings();
-        s.seek = "1";
-        s.wanted = "2";
-        s.ageMin = "20";
-        s.ageMax = "30";
-        s.fantasyIds = Arrays.asList(10, 20);
-
-        Request request = SearchApiUtils.buildSimpleSearchRequest(s, 1, "test-cookie");
+        Request request = SearchApiUtils.buildSimpleSearchRequest(
+                "1", "2", "3", "pseudo", "20", "30",
+                true, true, false, false, "CA,QC", "1", 1,
+                "test-cookie", "test-suid");
 
         assertEquals(ApiConstants.BASE_URL + "/ct/searchResults/profile", request.url().toString());
         assertEquals("POST", request.method());
         assertEquals("test-cookie", request.header("Cookie"));
-        assertEquals(ApiConstants.BASE_URL + "/ct/search/profile", request.header("Referer"));
+        assertEquals("test-suid", request.header("x-csrftoken"));
+        assertEquals(ApiConstants.BASE_URL + "/ct/search/0", request.header("Referer"));
 
-        FormBody body = (FormBody) request.body();
+        okhttp3.RequestBody body = request.body();
         assertNotNull(body);
         assertEquals("1", getFormValue(body, "InitiateSearch"));
         assertEquals("1", getFormValue(body, "seek"));
         assertEquals("2", getFormValue(body, "wanted"));
         assertEquals("20", getFormValue(body, "VIPAgeD"));
         assertEquals("30", getFormValue(body, "VIPAgeF"));
-        assertEquals("10,20", getFormValue(body, "VIPFantasme"));
     }
 
     @Test
     public void testBuildSimpleSearchRequest_Page2() {
-        SearchSettingsManager.SavedSettings s = new SearchSettingsManager.SavedSettings();
-        Request request = SearchApiUtils.buildSimpleSearchRequest(s, 2, "test-cookie");
+        Request request = SearchApiUtils.buildSimpleSearchRequest(
+                "1", "2", "3", "pseudo", "20", "30",
+                true, true, false, false, "CA,QC", "1", 2,
+                "test-cookie", "test-suid");
 
         HttpUrl url = request.url();
         assertEquals("0", url.queryParameter("InitiateSearch"));
@@ -71,17 +72,10 @@ public class SearchApiUtilsTest {
         assertEquals("POST", request.method());
         assertEquals("test-suid", request.header("x-csrftoken"));
 
-        FormBody body = (FormBody) request.body();
+        okhttp3.RequestBody body = request.body();
         assertNotNull(body);
 
-        // Multi-value check
-        int seekCount = 0;
-        for (int i = 0; i < body.size(); i++) {
-            if ("seek".equals(body.name(i)))
-                seekCount++;
-        }
-        assertEquals(2, seekCount);
-
+        assertEquals(2, countFormKey(body, "seek"));
         assertEquals("25", getFormValue(body, "VIPAgeD"));
         assertEquals("YES", getFormValue(body, "VIPWebcam"));
         assertEquals("2", getFormValue(body, "orderBy"));
@@ -107,7 +101,8 @@ public class SearchApiUtilsTest {
         s.selectedLocationsDet.add(loc2);
 
         Request request = SearchApiUtils.buildDetailedSearchRequest(s, 1, "cookie", "suid", "1", "", "", "", "", "");
-        FormBody body = (FormBody) request.body();
+        okhttp3.RequestBody body = request.body();
+        assertNotNull(body);
 
         // Final Location string should be "CA,QC-FR,75,1"
         assertEquals("CA,QC-FR,75,1", getFormValue(body, "Location"));
@@ -115,12 +110,30 @@ public class SearchApiUtilsTest {
         assertEquals("FR,75,1", getFormValue(body, "multRegions"));
     }
 
-    private String getFormValue(FormBody body, String name) {
-        for (int i = 0; i < body.size(); i++) {
-            if (body.name(i).equals(name)) {
-                return body.value(i);
+    private String getFormValue(okhttp3.RequestBody body, String name) throws IOException {
+        Buffer buffer = new Buffer();
+        body.writeTo(buffer);
+        String formStr = buffer.readUtf8();
+        for (String pair : formStr.split("&")) {
+            String[] parts = pair.split("=", 2);
+            if (parts.length > 0 && parts[0].equals(name)) {
+                return parts.length > 1 ? java.net.URLDecoder.decode(parts[1], "ISO-8859-1") : "";
             }
         }
         return null;
+    }
+
+    private int countFormKey(okhttp3.RequestBody body, String name) throws IOException {
+        Buffer buffer = new Buffer();
+        body.writeTo(buffer);
+        String formStr = buffer.readUtf8();
+        int count = 0;
+        for (String pair : formStr.split("&")) {
+            String[] parts = pair.split("=", 2);
+            if (parts.length > 0 && parts[0].equals(name)) {
+                count++;
+            }
+        }
+        return count;
     }
 }

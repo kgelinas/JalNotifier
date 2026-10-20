@@ -276,8 +276,9 @@ public class JalfSseService extends Service {
                         }
 
                         String senderName = resolveName(json, source, userLink);
+                        String senderUserId = StringUtils.extractNumericId(userLink);
                         JalfNotificationTask.showChatNotification(getApplicationContext(), senderName,
-                                getString(R.string.status_typing), convLink, "", "", "");
+                                getString(R.string.status_typing), convLink, senderUserId, "", "");
 
                     } else if ("looked".equals(type) && !userLink.isEmpty()) {
                         Set<String> salutationSexes = prefs.getStringSet(ApiConstants.KEY_SALUTATION_SEXES, null);
@@ -298,6 +299,15 @@ public class JalfSseService extends Service {
                         // this SSE event against the poll-based online check.
                         JalfNotificationTask task = new JalfNotificationTask(getApplicationContext());
                         task.notifyIfOnline(userLink, userName);
+                        if ("1".equals(json.optString("onfire", "0")) || json.optBoolean("onfire", false)
+                                || (source != null && ("1".equals(source.optString("onfire", "0")) || source.optBoolean("onfire", false)))) {
+                            task.notifyIfOnfire(userLink, userName);
+                        }
+
+                    } else if (("onfire".equals(type) || "sexnow".equals(type)) && !userLink.isEmpty()) {
+                        String userName = resolveName(json, source, userLink);
+                        JalfNotificationTask task = new JalfNotificationTask(getApplicationContext());
+                        task.notifyIfOnfire(userLink, userName);
 
                     } else if (("message".equals(type) || "convo_new".equals(type)) && !userLink.isEmpty()) {
                         String senderName = resolveName(json, source, userLink);
@@ -358,20 +368,18 @@ public class JalfSseService extends Service {
                 String name = null;
                 if (sourceJson != null) {
                     name = sourceJson.optString("user_name",
-                           sourceJson.optString("pseudo",
-                           sourceJson.optString("name", null)));
+                           sourceJson.optString("name", null));
                 }
                 if (name == null || name.isEmpty() || "null".equals(name)) {
                     name = eventJson.optString("user_name",
-                           eventJson.optString("pseudo",
-                           eventJson.optString("name", null)));
+                           eventJson.optString("name", null));
                 }
                 if (name != null && !name.isEmpty() && !"null".equals(name)) return name;
                 String resolved = MetadataManager.getInstance().resolve(userLink);
                 if (resolved != null) return resolved;
-                String pseudo = ProfileCacheManager.getInstance()
+                String username = ProfileCacheManager.getInstance()
                         .resolveUsername(getApplicationContext(), client, userLink);
-                return pseudo != null ? pseudo : getString(R.string.someone);
+                return username != null ? username : getString(R.string.someone);
             }
 
             // ── EventSourceListener callbacks ─────────────────────────────────

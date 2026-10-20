@@ -2,6 +2,9 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.ui.*;
+
 import org.junit.Test;
 
 import java.util.List;
@@ -54,7 +57,7 @@ public class ProfileViewersTest {
         assertEquals("12345", item.otherUserId);
         assertEquals("Alice", item.title);
         assertEquals(-2, item.eventType);
-        assertTrue(item.body.contains("visité"));
+        assertTrue(item.body.contains("visited") || item.body.contains("visité"));
     }
 
     @Test

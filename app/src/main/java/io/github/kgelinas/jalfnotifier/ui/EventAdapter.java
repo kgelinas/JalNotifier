@@ -32,11 +32,15 @@ import java.util.TimeZone;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHolder> {
+public class EventAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    public static final int TYPE_EVENT = 0;
+    public static final int TYPE_LOAD_MORE = 1;
 
     private final List<EventItem> items;
 
     public static class EventItem {
+        public int type = TYPE_EVENT;
         public String title;
         public String body;
         public String timeIso;
@@ -55,8 +59,17 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
             super();
         }
 
+        public EventItem(int type) {
+            super();
+            this.type = type;
+        }
+
         public int eventType;
         public boolean isOnline;
+        public String picId;
+        public boolean isLiked;
+        public boolean isRealized;
+        public String videoUrl;
 
         public JSONObject toJson() {
             try {
@@ -76,6 +89,10 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
                 obj.put("isOnline", isOnline);
                 obj.put("why", why);
                 obj.put("nsfwRank", nsfwRank);
+                obj.put("picId", picId);
+                obj.put("isLiked", isLiked);
+                obj.put("isRealized", isRealized);
+                obj.put("videoUrl", videoUrl);
                 return obj;
             } catch (Exception e) {
                 return null;
@@ -99,6 +116,10 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
             item.isOnline = obj.optBoolean("isOnline", false);
             item.why = obj.optString("why", "");
             item.nsfwRank = obj.optInt("nsfwRank", 0);
+            item.picId = obj.optString("picId", "");
+            item.isLiked = obj.optBoolean("isLiked", false);
+            item.isRealized = obj.optBoolean("isRealized", false);
+            item.videoUrl = obj.optString("videoUrl", "");
             return item;
         }
     }
@@ -107,23 +128,62 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
         void onItemClick(EventItem item);
     }
 
+    public interface OnSecondaryImageClickListener {
+        void onSecondaryImageClick(EventItem item);
+    }
+
     private final OnItemClickListener listener;
+    private OnSecondaryImageClickListener secondaryImageClickListener;
+    private Runnable onLoadMoreListener;
 
     public EventAdapter(List<EventItem> items, OnItemClickListener listener) {
         this.items = items;
         this.listener = listener;
     }
 
+    public void setOnSecondaryImageClickListener(OnSecondaryImageClickListener secondaryImageClickListener) {
+        this.secondaryImageClickListener = secondaryImageClickListener;
+    }
+
+    public void setOnLoadMoreListener(Runnable onLoadMoreListener) {
+        this.onLoadMoreListener = onLoadMoreListener;
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return items.get(position).type;
+    }
+
     @NonNull
     @Override
-    public EventViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == TYPE_LOAD_MORE) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_load_more, parent, false);
+            return new LoadMoreViewHolder(view);
+        }
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_event, parent, false);
         return new EventViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull EventViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder rawHolder, int position) {
+        if (getItemViewType(position) == TYPE_LOAD_MORE) {
+            LoadMoreViewHolder vh = (LoadMoreViewHolder) rawHolder;
+            vh.btnLoadMore.setEnabled(true);
+            vh.btnLoadMore.setText(R.string.show_more);
+            if (onLoadMoreListener != null) {
+                vh.btnLoadMore.setOnClickListener(v -> {
+                    vh.btnLoadMore.setEnabled(false);
+                    vh.btnLoadMore.setText(R.string.loading);
+                    onLoadMoreListener.run();
+                });
+            }
+            return;
+        }
+
+        EventViewHolder holder = (EventViewHolder) rawHolder;
         EventItem item = items.get(position);
 
         holder.titleText.setText(Html.fromHtml(item.title, Html.FROM_HTML_MODE_COMPACT));
@@ -210,8 +270,17 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
                     .apply(secondaryOptions)
                     .into(holder.secondaryImage);
             holder.secondaryImage.setVisibility(View.VISIBLE);
+            if (secondaryImageClickListener != null) {
+                holder.secondaryImage.setClickable(true);
+                holder.secondaryImage.setOnClickListener(v -> secondaryImageClickListener.onSecondaryImageClick(item));
+            } else {
+                holder.secondaryImage.setOnClickListener(null);
+                holder.secondaryImage.setClickable(false);
+            }
         } else {
             holder.secondaryImage.setVisibility(View.GONE);
+            holder.secondaryImage.setOnClickListener(null);
+            holder.secondaryImage.setClickable(false);
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -252,6 +321,15 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
             unreadDot = itemView.findViewById(R.id.event_unread_dot);
             avatarSectionLayout = itemView.findViewById(R.id.event_avatar_section_layout);
             textSectionLayout = itemView.findViewById(R.id.event_text_section_layout);
+        }
+    }
+
+    static class LoadMoreViewHolder extends RecyclerView.ViewHolder {
+        com.google.android.material.button.MaterialButton btnLoadMore;
+
+        public LoadMoreViewHolder(@NonNull View itemView) {
+            super(itemView);
+            btnLoadMore = itemView.findViewById(R.id.btn_load_more);
         }
     }
 

@@ -2,28 +2,43 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.mockito.Mockito.when;
 
 import android.content.SharedPreferences;
 
-import io.github.kgelinas.jalfnotifier.ChatAdapter.ChatItem;
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.ui.*;
+import io.github.kgelinas.jalfnotifier.ui.ChatAdapter.ChatItem;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ConversationLinkTest {
 
-    @Mock
-    SharedPreferences mockPrefs;
+    private SharedPreferences mockPrefs;
+    private final Map<String, String> prefsStorage = new HashMap<>();
 
     @Before
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
+        prefsStorage.clear();
+        prefsStorage.put("12345", "/rest/conversations/active/67890");
+
+        mockPrefs = (SharedPreferences) Proxy.newProxyInstance(
+                SharedPreferences.class.getClassLoader(),
+                new Class<?>[]{SharedPreferences.class},
+                (proxy, method, args) -> {
+                    if ("getString".equals(method.getName())) {
+                        String key = (String) args[0];
+                        String defValue = (String) args[1];
+                        return prefsStorage.getOrDefault(key, defValue);
+                    }
+                    return null;
+                });
     }
 
     /**
@@ -66,16 +81,9 @@ public class ConversationLinkTest {
 
     @Test
     public void testSharedPreferencesLookup() {
-        // Mock the SharedPreferences behavior: return the default value (second arg) by default
-        when(mockPrefs.getString(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString()))
-                .thenAnswer(invocation -> invocation.getArgument(1));
-        
-        // Stub a specific key
-        when(mockPrefs.getString("12345", "")).thenReturn("/rest/conversations/active/67890");
-
         String result = mockPrefs.getString("12345", "");
         assertEquals("/rest/conversations/active/67890", result);
-        
+
         String notFound = mockPrefs.getString("99999", "fallback");
         assertEquals("fallback", notFound);
     }

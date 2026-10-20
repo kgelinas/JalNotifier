@@ -52,6 +52,11 @@ public class ApiParser {
      */
     public static List<ChatAdapter.ChatItem> parseConversationJson(JSONArray arr, boolean forceUnread,
             String myUserId) {
+        return parseConversationJson(arr, forceUnread, myUserId, "");
+    }
+
+    public static List<ChatAdapter.ChatItem> parseConversationJson(JSONArray arr, boolean forceUnread,
+            String myUserId, String myDisplayName) {
         List<ChatAdapter.ChatItem> result = new ArrayList<>();
         if (arr == null)
             return result;
@@ -97,6 +102,12 @@ public class ApiParser {
                     JSONObject content = lastMsg.optJSONObject("content");
                     if ("photo".equals(type)) {
                         item.lastMessage = "📷 Photo";
+                    } else if ("flirt".equals(type) && content != null) {
+                        String tpl = content.optString("text_template", content.optString("text", ""));
+                        String fromLink = lastMsg.optString("from_user_link", "");
+                        boolean isMine = !fromLink.isEmpty() && fromLink.endsWith("/" + myUserId);
+                        String senderName = isMine ? (myDisplayName != null ? myDisplayName : "") : (item.name != null ? item.name : "");
+                        item.lastMessage = tpl.replace("%%USERNAME%%", senderName);
                     } else if (content != null) {
                         item.lastMessage = content.optString("text", "");
                     } else {
@@ -120,7 +131,7 @@ public class ApiParser {
                     item.lastPosted = lastMsg.optString("posted", "");
                 }
                 item.timeIso = item.lastPosted;
-                item.unreadCount = obj.optInt("unread_messages_count", 0);
+                item.unreadCount = obj.optInt("unread_messages_count", obj.optInt("total_unread_messages_count", 0));
                 item.isUnread = forceUnread || (item.unreadCount > 0) || obj.optBoolean("is_new", false);
                 item.conversationLink = obj.optString("conversation_link", "");
                 // nsfwRank is enriched asynchronously via /rest/users/{id} profile fetch
@@ -538,7 +549,7 @@ public class ApiParser {
                 }
 
                 item.title = obj.optString("title",
-                        obj.optString("user_name", obj.optString("pseudo", "Someone")));
+                        obj.optString("user_name", obj.optString("name", "Someone")));
                 item.avatarUrl = obj.optString("avatar_url", "");
                 if (item.avatarUrl != null && !item.avatarUrl.isEmpty()
                         && !item.avatarUrl.startsWith("http")) {
@@ -705,6 +716,40 @@ public class ApiParser {
 
             if (!uniqueMap.containsKey(key)) {
                 uniqueMap.put(key, item);
+            } else {
+                EventAdapter.EventItem existing = uniqueMap.get(key);
+                if (existing != null) {
+                    boolean existingIsGeneric = existing.title == null
+                            || "Someone".equalsIgnoreCase(existing.title)
+                            || "Quelqu'un".equalsIgnoreCase(existing.title)
+                            || existing.title.trim().isEmpty();
+                    boolean newIsGeneric = item.title == null
+                            || "Someone".equalsIgnoreCase(item.title)
+                            || "Quelqu'un".equalsIgnoreCase(item.title)
+                            || item.title.trim().isEmpty();
+
+                    if (existingIsGeneric && !newIsGeneric) {
+                        existing.title = item.title;
+                    }
+                    if ((existing.avatarUrl == null || existing.avatarUrl.isEmpty())
+                            && item.avatarUrl != null && !item.avatarUrl.isEmpty()) {
+                        existing.avatarUrl = item.avatarUrl;
+                    }
+                    if ((existing.sexIconUrl == null || existing.sexIconUrl.isEmpty())
+                            && item.sexIconUrl != null && !item.sexIconUrl.isEmpty()) {
+                        existing.sexIconUrl = item.sexIconUrl;
+                    }
+                    if (existing.nsfwRank == 0 && item.nsfwRank > 0) {
+                        existing.nsfwRank = item.nsfwRank;
+                    }
+                    if (!existing.isOnline && item.isOnline) {
+                        existing.isOnline = true;
+                    }
+                    if ((existing.secondaryImageUrl == null || existing.secondaryImageUrl.isEmpty())
+                            && item.secondaryImageUrl != null && !item.secondaryImageUrl.isEmpty()) {
+                        existing.secondaryImageUrl = item.secondaryImageUrl;
+                    }
+                }
             }
         }
 

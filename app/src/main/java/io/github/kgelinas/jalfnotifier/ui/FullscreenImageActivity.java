@@ -332,6 +332,9 @@ public class FullscreenImageActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             int rank = (imageRanks != null && imageRanks.size() > position) ? imageRanks.get(position) : 0;
+            if (holder.imageView instanceof ZoomableImageView) {
+                ((ZoomableImageView) holder.imageView).resetZoom();
+            }
             if (blurNsfw && rank > 0) {
                 Glide.with(FullscreenImageActivity.this)
                         .load(images.get(position))

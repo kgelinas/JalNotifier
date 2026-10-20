@@ -82,6 +82,10 @@ public class ProfilePhotoAdapter extends RecyclerView.Adapter<ProfilePhotoAdapte
             options = options.transform(new BlurTransformation(25, 3));
         }
 
+        if (holder.imageView instanceof ZoomableImageView) {
+            ((ZoomableImageView) holder.imageView).resetZoom();
+        }
+
         Glide.with(holder.itemView.getContext())
                 .load(item.url)
                 .apply(options)

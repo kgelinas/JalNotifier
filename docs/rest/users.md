@@ -57,7 +57,7 @@ Returns the comprehensive profile of a specific user, including their stats, loc
     "user_blocked_users_link": "/rest/users/USERID/blocked", // REST endpoint for managing blocked users
     "onfire": "0", // Sex Today (1 = "want to have sex today")
     "user_pnsubscriptions_link": "/rest/users/USERID/pnsubscriptions", // Link for Push Notification subscription management
-    "send_poke_htlink": "/ct/memberProfile/USERID/5", // Website URL to send a "Clin d'oeil" (poke)
+    "send_poke_htlink": "/ct/memberProfile/USERID/5", // Website URL to send a "Clin d'oeil" (poke) — pending deprecation, being replaced by Flirts (/rest/flirt/*)
     "zodiac_sign_link": "/rest/zodiac-signs/ZODIACID", // REST link to zodiac sign metadata
     "sexes_interested_links": [ // List of REST links to genders the user is interested in
         "/rest/sexes/SEXID"

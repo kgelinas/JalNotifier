@@ -20,20 +20,35 @@ import androidx.appcompat.widget.Toolbar;
 
 public class ProfileWebViewActivity extends AppCompatActivity {
 
+    public static final String EXTRA_URL = "extra_url";
+    public static final String EXTRA_TITLE = "extra_title";
+
+    private WebView webView;
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile_webview);
 
+        String targetUrl = getIntent() != null ? getIntent().getStringExtra(EXTRA_URL) : null;
+        if (targetUrl == null || targetUrl.isEmpty()) {
+            targetUrl = ApiConstants.BASE_URL + ApiConstants.PATH_PROFILE_EDIT;
+        }
+        String customTitle = getIntent() != null ? getIntent().getStringExtra(EXTRA_TITLE) : null;
+
         Toolbar toolbar = findViewById(R.id.toolbar_profile_webview);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle(R.string.edit_profile);
+            if (customTitle != null && !customTitle.isEmpty()) {
+                getSupportActionBar().setTitle(customTitle);
+            } else {
+                getSupportActionBar().setTitle(R.string.edit_profile);
+            }
         }
 
-        WebView webView = findViewById(R.id.webview_profile);
+        webView = findViewById(R.id.webview_profile);
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
@@ -51,6 +66,7 @@ public class ProfileWebViewActivity extends AppCompatActivity {
             for (String cookie : cookies) {
                 if (!cookie.trim().isEmpty()) {
                     cookieManager.setCookie("https://m-app.jalf.com", cookie.trim());
+                    cookieManager.setCookie("https://app.jalf.com", cookie.trim());
                 }
             }
         }
@@ -72,7 +88,19 @@ public class ProfileWebViewActivity extends AppCompatActivity {
             }
         });
 
-        webView.loadUrl("https://m-app.jalf.com/ct/profile");
+        getOnBackPressedDispatcher().addCallback(this, new androidx.activity.OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (webView != null && webView.canGoBack()) {
+                    webView.goBack();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
+
+        webView.loadUrl(targetUrl);
     }
 
     @Override

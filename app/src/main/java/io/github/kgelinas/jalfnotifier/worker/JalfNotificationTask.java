@@ -291,6 +291,8 @@ public class JalfNotificationTask {
                 } else if ("visit".equals(why)) {
                     text = context.getString(R.string.visited_profile);
 
+                } else if ("onfire".equals(why) || "sexnow".equals(why) || "onfire".equals(refType) || "sexnow".equals(refType)) {
+                    text = context.getString(R.string.is_onfire);
                 }
 
                 JSONObject eventObj = new JSONObject();
@@ -440,6 +442,7 @@ public class JalfNotificationTask {
                     else if (b.contains("favori")) why = "favorite_of";
                     else if (b.contains("photo") && b.contains("ajouté")) why = "your_favorite";
                     else if (b.contains("photo") && (b.contains("aimé") || b.contains("like"))) why = "author";
+                    else if (b.contains("en feu") || b.contains("on fire")) why = "onfire";
                 }
 
                 String notifType = "visit";
@@ -451,6 +454,8 @@ public class JalfNotificationTask {
                     notifType = "poke";
                 } else if ("author".equals(why)) {
                     notifType = "photo";
+                } else if ("onfire".equals(why) || "sexnow".equals(why) || "onfire".equals(refType) || "sexnow".equals(refType)) {
+                    notifType = "onfire";
                 } else if ("visit".equals(why) || type == -2) {
                     notifType = "visit";
                 }
@@ -490,6 +495,8 @@ public class JalfNotificationTask {
                     } else {
                         text = context.getString(R.string.liked_photo);
                     }
+                } else if ("onfire".equals(why) || "sexnow".equals(why) || "onfire".equals(refType) || "sexnow".equals(refType)) {
+                    text = context.getString(R.string.is_onfire);
                 } else if ("visit".equals(why) || type == -2) {
                     text = context.getString(R.string.visited_profile);
                 }
@@ -528,6 +535,67 @@ public class JalfNotificationTask {
         return ProfileCacheManager.getInstance().getUserSexDescription(context, sharedClient, userLink);
     }
 
+    public boolean isNotificationAllowed(String userLink, String notifType) {
+        if (userLink == null || userLink.isEmpty()) {
+            return true;
+        }
+        if ("online".equalsIgnoreCase(notifType)) {
+            String sexDesc = getUserSexDescription(userLink);
+            if (!sexDesc.isEmpty() && !SettingsViewModel.getNotificationFilter(getAppPrefs().getRaw(), sexDesc, "online")) {
+                return false;
+            }
+            return isOnlineContactTypeAllowed(userLink);
+        }
+        if (isContactTypeNotificationAllowed(userLink, notifType)) {
+            return true;
+        }
+        String sexDesc = getUserSexDescription(userLink);
+        return sexDesc.isEmpty() || SettingsViewModel.getNotificationFilter(getAppPrefs().getRaw(), sexDesc, notifType);
+    }
+
+    private boolean isOnlineContactTypeAllowed(String userLink) {
+        if (userLink == null || userLink.isEmpty()) {
+            return false;
+        }
+        String targetUserId = StringUtils.extractUserIdFromLink(userLink);
+        if (targetUserId.isEmpty()) {
+            return false;
+        }
+        AppPrefs prefs = getAppPrefs();
+
+        // 1. Check Notified category
+        if (prefs.getBoolean("notif_filter_ct_notified_online", true)) {
+            Set<String> notifiedUsers = prefs.getStringSet(ApiConstants.KEY_ONLINE_NOTIF_USERS, java.util.Collections.emptySet());
+            for (String link : notifiedUsers) {
+                if (targetUserId.equals(StringUtils.extractUserIdFromLink(link))) {
+                    return true;
+                }
+            }
+        }
+
+        // 2. Check Contacts (Favorites) category
+        if (prefs.getBoolean("notif_filter_ct_contacts_online", false)) {
+            Set<String> favorites = prefs.getStringSet("CACHED_FAVORITES_LINKS", java.util.Collections.emptySet());
+            for (String link : favorites) {
+                if (targetUserId.equals(StringUtils.extractUserIdFromLink(link))) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. Check Bookmarks category
+        if (prefs.getBoolean("notif_filter_ct_bookmarks_online", false)) {
+            Set<String> bookmarks = prefs.getStringSet("CACHED_BOOKMARKS_LINKS", java.util.Collections.emptySet());
+            for (String link : bookmarks) {
+                if (targetUserId.equals(StringUtils.extractUserIdFromLink(link))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     private boolean isContactTypeNotificationAllowed(String userLink, String notifType) {
         if (userLink == null || userLink.isEmpty()) {
             return false;
@@ -557,7 +625,8 @@ public class JalfNotificationTask {
         for (String link : favorites) {
             if (targetUserId.equals(StringUtils.extractUserIdFromLink(link))) {
                 String key = "notif_filter_ct_contacts_" + notifType.toLowerCase(Locale.ROOT);
-                if (prefs.getBoolean(key, true)) {
+                boolean defVal = !"online".equalsIgnoreCase(notifType);
+                if (prefs.getBoolean(key, defVal)) {
                     return true;
                 }
                 break;
@@ -569,7 +638,8 @@ public class JalfNotificationTask {
         for (String link : bookmarks) {
             if (targetUserId.equals(StringUtils.extractUserIdFromLink(link))) {
                 String key = "notif_filter_ct_bookmarks_" + notifType.toLowerCase(Locale.ROOT);
-                if (prefs.getBoolean(key, true)) {
+                boolean defVal = !"online".equalsIgnoreCase(notifType);
+                if (prefs.getBoolean(key, defVal)) {
                     return true;
                 }
                 break;
@@ -606,7 +676,18 @@ public class JalfNotificationTask {
             subscribedUsers = new HashSet<>();
             prefs.edit().remove(ApiConstants.KEY_ONLINE_NOTIF_USERS).apply();
         }
-        if (subscribedUsers.isEmpty()) {
+        boolean checkFavOnfire = prefs.getBoolean("notif_filter_ct_contacts_onfire", true);
+        boolean checkBmOnfire = prefs.getBoolean("notif_filter_ct_bookmarks_onfire", true)
+                && !prefs.getStringSet("CACHED_BOOKMARKS_LINKS", java.util.Collections.emptySet()).isEmpty();
+        boolean checkNotifiedOnline = prefs.getBoolean("notif_filter_ct_notified_online", true);
+        boolean checkFavOnline = prefs.getBoolean("notif_filter_ct_contacts_online", false);
+        boolean checkBmOnline = prefs.getBoolean("notif_filter_ct_bookmarks_online", false)
+                && !prefs.getStringSet("CACHED_BOOKMARKS_LINKS", java.util.Collections.emptySet()).isEmpty();
+
+        boolean anyOnlineNeeded = (checkNotifiedOnline && !subscribedUsers.isEmpty()) || checkFavOnline || checkBmOnline;
+        boolean anyOnfireNeeded = checkFavOnfire || checkBmOnfire;
+
+        if (!anyOnlineNeeded && !anyOnfireNeeded) {
             // Even if no specific subs, we might have pending messages to check
             try {
                 String pendingJson = prefs.getString(ApiConstants.KEY_PENDING_AUTO_MESSAGES, "{}");
@@ -622,7 +703,10 @@ public class JalfNotificationTask {
         AppLogger.log("Task: Checking online status for " + subscribedUsers.size() + " users");
 
         // 1. Bulk check via Favorites (Efficient)
-        Set<String> remainingToCheck = new HashSet<>(subscribedUsers);
+        Set<String> remainingToCheck = new HashSet<>();
+        if (checkNotifiedOnline) {
+            remainingToCheck.addAll(subscribedUsers);
+        }
 
         // Also add users with pending messages to the check list
         try {
@@ -645,19 +729,45 @@ public class JalfNotificationTask {
                 for (int i = 0; i < items.length(); i++) {
                     JSONObject item = items.getJSONObject(i);
                     String userLink = item.optString("user_link", "");
+                    String favName = item.optString("description", item.optString("name", "Unknown"));
+                    boolean isOnline = item.optBoolean("online", false) || item.optBoolean("is_online", false);
+                    boolean isItemOnfire = "1".equals(item.optString("onfire", "0")) || item.optBoolean("onfire", false);
                     if (!userLink.isEmpty()) {
                         favoritesSet.add(userLink);
                     }
                     if (remainingToCheck.contains(userLink)) {
                         remainingToCheck.remove(userLink);
-                        if (item.optBoolean("online", false) || item.optBoolean("is_online", false)) {
-                            notifyIfOnline(userLink, item.optString("description", item.optString("name", "Unknown")));
+                    }
+                    if (isOnline) {
+                        boolean shouldNotifyOnline = (subscribedUsers.contains(userLink) && checkNotifiedOnline) || checkFavOnline;
+                        if (shouldNotifyOnline) {
+                            notifyIfOnline(userLink, favName);
+                        } else {
+                            checkAndSendAutoMessage(userLink);
+                        }
+                    }
+                    if (!userLink.isEmpty()) {
+                        if (isItemOnfire) {
+                            notifyIfOnfire(userLink, favName);
+                        } else if (isOnline && isNotificationAllowed(userLink, "onfire")) {
+                            checkProfileAndNotifyIfOnfire(userLink, favName);
                         }
                     }
                 }
                 prefs.edit().putStringSet("CACHED_FAVORITES_LINKS", favoritesSet).apply();
             } catch (Exception e) {
                 AppLogger.log(TAG, "Error checking favorites online status", e);
+            }
+        }
+
+        // Also include bookmarked users in the status check if On Fire or Online notifications are enabled for bookmarks
+        if (checkBmOnfire || checkBmOnline) {
+            Set<String> bookmarks = prefs.getStringSet("CACHED_BOOKMARKS_LINKS", java.util.Collections.emptySet());
+            Set<String> cachedFavs = prefs.getStringSet("CACHED_FAVORITES_LINKS", java.util.Collections.emptySet());
+            for (String bmLink : bookmarks) {
+                if (!cachedFavs.contains(bmLink)) {
+                    remainingToCheck.add(bmLink);
+                }
             }
         }
 
@@ -682,7 +792,9 @@ public class JalfNotificationTask {
                 if (statusResponse != null && !statusResponse.equals("403")) {
                     try {
                         JSONObject statusJson = new JSONObject(statusResponse);
-                        if (statusJson.optInt("online", 0) == 1) {
+                        boolean statusOnfire = "1".equals(statusJson.optString("onfire", "0"))
+                                || statusJson.optBoolean("onfire", false);
+                        if (statusJson.optInt("online", 0) == 1 || statusOnfire) {
                             String nameToUse = namesObj.optString(userLink, "");
 
                             // If name is missing, try cache first
@@ -690,7 +802,7 @@ public class JalfNotificationTask {
                                 String userId = StringUtils.extractUserIdFromLink(userLink);
                                 JSONObject cached = ProfileCacheManager.getInstance().getProfile(userId);
                                 if (cached != null) {
-                                    nameToUse = cached.optString("name", cached.optString("pseudo", ""));
+                                    nameToUse = cached.optString("name", "");
                                     if (!nameToUse.isEmpty()) {
                                         namesObj.put(userLink, nameToUse);
                                         namesUpdated = true;
@@ -704,6 +816,9 @@ public class JalfNotificationTask {
                                 if (profileResponse != null && !profileResponse.equals("403")) {
                                     JSONObject profile = new JSONObject(profileResponse);
                                     nameToUse = profile.optString("name", "");
+                                    statusOnfire = statusOnfire
+                                            || "1".equals(profile.optString("onfire", "0"))
+                                            || profile.optBoolean("onfire", false);
                                     if (!nameToUse.isEmpty()) {
                                         namesObj.put(userLink, nameToUse);
                                         namesUpdated = true;
@@ -719,7 +834,19 @@ public class JalfNotificationTask {
 
                             }
 
-                            notifyIfOnline(userLink, nameToUse);
+                            if (statusJson.optInt("online", 0) == 1) {
+                                boolean shouldNotifyOnline = (subscribedUsers.contains(userLink) && checkNotifiedOnline) || checkBmOnline;
+                                if (shouldNotifyOnline) {
+                                    notifyIfOnline(userLink, nameToUse);
+                                } else {
+                                    checkAndSendAutoMessage(userLink);
+                                }
+                            }
+                            if (statusOnfire) {
+                                notifyIfOnfire(userLink, nameToUse);
+                            } else if (statusJson.optInt("online", 0) == 1 && isNotificationAllowed(userLink, "onfire")) {
+                                checkProfileAndNotifyIfOnfire(userLink, nameToUse);
+                            }
                         }
                     } catch (Exception e) {
                         AppLogger.log(TAG, "Error checking status for user: " + userLink, e);
@@ -732,7 +859,79 @@ public class JalfNotificationTask {
         }
     }
 
+    private boolean wasNotifiedToday(long lastNotifiedMillis) {
+        if (lastNotifiedMillis <= 0) {
+            return false;
+        }
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        now.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        now.set(java.util.Calendar.MINUTE, 0);
+        now.set(java.util.Calendar.SECOND, 0);
+        now.set(java.util.Calendar.MILLISECOND, 0);
+        return lastNotifiedMillis >= now.getTimeInMillis();
+    }
+
+    private void checkProfileAndNotifyIfOnfire(String userLink, String name) {
+        if (userLink == null || userLink.isEmpty()) return;
+        AppPrefs prefs = getAppPrefs();
+        String lastNotifiedKey = "LAST_ONFIRE_NOTIF_" + userLink;
+        long lastNotified = prefs.getLong(lastNotifiedKey, 0);
+        if (wasNotifiedToday(lastNotified)) {
+            return;
+        }
+        if (!isNotificationAllowed(userLink, "onfire")) {
+            return;
+        }
+        String userId = StringUtils.extractUserIdFromLink(userLink);
+        if (userId.isEmpty()) return;
+
+        JSONObject profile = ProfileCacheManager.getInstance().getProfile(userId);
+        if (profile == null || ProfileCacheManager.getInstance().isStatusStale(userId)) {
+            String profileResponse = performApiCheck(ApiConstants.BASE_URL + userLink);
+            if (profileResponse != null && !profileResponse.equals("403")) {
+                try {
+                    profile = new JSONObject(profileResponse);
+                    ProfileCacheManager.getInstance().putProfile(context, userId, profile);
+                } catch (Exception e) {
+                    AppLogger.log(TAG, "Error parsing profile for onfire check: " + userLink, e);
+                }
+            }
+        }
+        if (profile != null) {
+            boolean isOnfire = "1".equals(profile.optString("onfire", "0")) || profile.optBoolean("onfire", false);
+            if (isOnfire) {
+                String resolvedName = (name != null && !name.isEmpty() && !"Unknown".equals(name))
+                        ? name
+                        : profile.optString("name", context.getString(R.string.someone));
+                notifyIfOnfire(userLink, resolvedName);
+            }
+        }
+    }
+
+    public void notifyIfOnfire(String userLink, String name) {
+        if (userLink == null || userLink.isEmpty()) return;
+        if (!isNotificationAllowed(userLink, "onfire")) {
+            return;
+        }
+        AppPrefs prefs = getAppPrefs();
+        String lastNotifiedKey = "LAST_ONFIRE_NOTIF_" + userLink;
+        long lastNotified = prefs.getLong(lastNotifiedKey, 0);
+
+        if (!wasNotifiedToday(lastNotified)) {
+            String displayName = (name != null && !name.isEmpty()) ? name : context.getString(R.string.someone);
+            showNotification(context, EVENT_CHANNEL_ID, context.getString(R.string.event_notifications),
+                    context.getString(R.string.user_onfire_title),
+                    context.getString(R.string.user_onfire_message, displayName), userLink);
+            prefs.edit().putLong(lastNotifiedKey, System.currentTimeMillis()).apply();
+        }
+    }
+
     public void notifyIfOnline(String userLink, String name) {
+        if (userLink == null || userLink.isEmpty()) return;
+        checkAndSendAutoMessage(userLink);
+        if (!isNotificationAllowed(userLink, "online")) {
+            return;
+        }
         AppPrefs prefs = getAppPrefs();
         String lastNotifiedKey = "LAST_ONLINE_NOTIF_V2_" + userLink; // Using V2 to reset due to logic change
         long lastNotified = prefs.getLong(lastNotifiedKey, 0);
@@ -743,9 +942,6 @@ public class JalfNotificationTask {
                     context.getString(R.string.user_online_message, name), userLink);
             prefs.edit().putLong(lastNotifiedKey, System.currentTimeMillis()).apply();
         }
-
-
-        checkAndSendAutoMessage(userLink);
     }
 
     public void checkAndSendAutoMessage(String userLink) {
@@ -913,6 +1109,9 @@ public class JalfNotificationTask {
         return false;
     }
 
+    private static final java.util.concurrent.atomic.AtomicInteger notifIdCounter =
+            new java.util.concurrent.atomic.AtomicInteger(10000);
+
     public static void showNotification(Context context, String channelId, String channelName,
             String title, String message, String userLink) {
         NotificationManager notificationManager = (NotificationManager) context
@@ -937,8 +1136,10 @@ public class JalfNotificationTask {
             intent.putExtra(ApiConstants.EXTRA_USER_LINK, userLink);
         }
 
+        int uniqueNotifId = ((int) (System.currentTimeMillis() & 0x0FFFFFFF)) ^ notifIdCounter.incrementAndGet();
+
         PendingIntent pendingIntent = PendingIntent.getActivity(
-                context, (int) System.currentTimeMillis(), intent,
+                context, uniqueNotifId, intent,
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
@@ -949,7 +1150,7 @@ public class JalfNotificationTask {
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true);
 
-        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
+        notificationManager.notify(uniqueNotifId, builder.build());
     }
 
     public static void showChatNotification(Context context, String senderName, String messageText,
@@ -971,6 +1172,66 @@ public class JalfNotificationTask {
             notificationManager.createNotificationChannel(channel);
         }
 
+        // Resolve avatarUrl and sexIconUrl from ProfileCacheManager if missing (e.g. from SSE events)
+        String resolvedAvatarUrl = avatarUrl != null ? avatarUrl : "";
+        String resolvedSexIconUrl = sexIconUrl != null ? sexIconUrl : "";
+        if ((resolvedAvatarUrl.isEmpty() || resolvedSexIconUrl.isEmpty())
+                && otherUserId != null && !otherUserId.isEmpty()) {
+            try {
+                JSONObject profile = ProfileCacheManager.getInstance()
+                        .getCachedOrFetchProfileSync(context, sharedClient, "/rest/users/" + otherUserId);
+                if (profile != null) {
+                    if (resolvedAvatarUrl.isEmpty()) {
+                        JSONObject photo = profile.optJSONObject("photo");
+                        if (photo != null) {
+                            resolvedAvatarUrl = photo.optString("image_144x189_link",
+                                    photo.optString("thumbnail_uri",
+                                            photo.optString("large_url", "")));
+                        }
+                        if (resolvedAvatarUrl.isEmpty()) {
+                            JSONArray photos = profile.optJSONArray("photos");
+                            if (photos != null && photos.length() > 0) {
+                                JSONObject p = photos.getJSONObject(0);
+                                resolvedAvatarUrl = p.optString("thumb_url", p.optString("large_url", ""));
+                            }
+                        }
+                    }
+                    if (resolvedSexIconUrl.isEmpty()) {
+                        String sexLink = profile.optString("sex_link", "");
+                        if (!sexLink.isEmpty()) {
+                            String icon = MetadataManager.getInstance().resolveIcon(sexLink);
+                            if (icon != null) {
+                                resolvedSexIconUrl = icon;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to resolve profile for notification avatar", e);
+            }
+        }
+        if (!resolvedAvatarUrl.isEmpty() && !resolvedAvatarUrl.startsWith("http")) {
+            resolvedAvatarUrl = ApiConstants.BASE_URL + resolvedAvatarUrl;
+        }
+
+        android.graphics.Bitmap avatarBitmap = null;
+        if (!resolvedAvatarUrl.isEmpty()) {
+            try {
+                avatarBitmap = com.bumptech.glide.Glide.with(context.getApplicationContext())
+                        .asBitmap()
+                        .load(resolvedAvatarUrl)
+                        .circleCrop()
+                        .submit(192, 192)
+                        .get(5, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to load notification avatar bitmap", e);
+            }
+        }
+
+        IconCompat senderIcon = (avatarBitmap != null)
+                ? IconCompat.createWithBitmap(avatarBitmap)
+                : IconCompat.createWithResource(context, R.drawable.ic_default_avatar);
+
         String convoIdStr = StringUtils.extractNumericId(conversationLink);
         int notificationId = convoIdStr.isEmpty() ? conversationLink.hashCode() : convoIdStr.hashCode();
 
@@ -980,8 +1241,8 @@ public class JalfNotificationTask {
         intent.putExtra(ApiConstants.EXTRA_CONVERSATION_LINK, conversationLink);
         intent.putExtra(ApiConstants.EXTRA_OTHER_USER_ID, otherUserId);
         intent.putExtra(ApiConstants.EXTRA_OTHER_NAME, senderName);
-        intent.putExtra(ApiConstants.EXTRA_AVATAR_URL, avatarUrl);
-        intent.putExtra(ApiConstants.EXTRA_SEX_ICON_URL, sexIconUrl);
+        intent.putExtra(ApiConstants.EXTRA_AVATAR_URL, resolvedAvatarUrl);
+        intent.putExtra(ApiConstants.EXTRA_SEX_ICON_URL, resolvedSexIconUrl);
 
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context, notificationId, intent,
@@ -991,8 +1252,8 @@ public class JalfNotificationTask {
         bubbleIntent.putExtra("conversationLink", conversationLink);
         bubbleIntent.putExtra("otherUserId", otherUserId);
         bubbleIntent.putExtra("otherName", senderName);
-        bubbleIntent.putExtra("avatarUrl", avatarUrl);
-        bubbleIntent.putExtra("sexIconUrl", sexIconUrl);
+        bubbleIntent.putExtra("avatarUrl", resolvedAvatarUrl);
+        bubbleIntent.putExtra("sexIconUrl", resolvedSexIconUrl);
 
         PendingIntent bubblePendingIntent = PendingIntent.getActivity(
                 context, notificationId, bubbleIntent,
@@ -1001,7 +1262,7 @@ public class JalfNotificationTask {
         ShortcutInfoCompat shortcutInfo = new ShortcutInfoCompat.Builder(context, conversationLink)
                 .setShortLabel(senderName)
                 .setLongLabel(senderName)
-                .setIcon(IconCompat.createWithResource(context, R.drawable.ic_chat_24))
+                .setIcon(senderIcon)
                 .setIntent(intent)
                 .setLongLived(true)
                 .build();
@@ -1009,16 +1270,25 @@ public class JalfNotificationTask {
 
         NotificationCompat.BubbleMetadata bubbleMetadata = new NotificationCompat.BubbleMetadata.Builder(
                 bubblePendingIntent,
-                IconCompat.createWithResource(context, R.drawable.ic_chat_24))
+                senderIcon)
                 .setDesiredHeight(600)
+                .build();
+
+        long now = System.currentTimeMillis();
+
+        Person mePerson = new Person.Builder()
+                .setName("Me")
+                .setKey("me")
                 .build();
 
         Person sender = new Person.Builder()
                 .setName(senderName)
+                .setIcon(senderIcon)
+                .setKey(otherUserId != null && !otherUserId.isEmpty() ? otherUserId : conversationLink)
                 .build();
 
-        NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(sender)
-                .addMessage(messageText, System.currentTimeMillis(), sender)
+        NotificationCompat.MessagingStyle messagingStyle = new NotificationCompat.MessagingStyle(mePerson)
+                .addMessage(messageText, now, sender)
                 .setGroupConversation(false);
 
         RemoteInput remoteInput = new RemoteInput.Builder(ApiConstants.EXTRA_REMOTE_INPUT_KEY)
@@ -1040,6 +1310,7 @@ public class JalfNotificationTask {
                 .addRemoteInput(remoteInput)
                 .setAllowGeneratedReplies(true)
                 .setSemanticAction(NotificationCompat.Action.SEMANTIC_ACTION_REPLY)
+                .setShowsUserInterface(false)
                 .build();
 
         Intent readIntent = new Intent(context, MarkAsReadReceiver.class);
@@ -1049,7 +1320,7 @@ public class JalfNotificationTask {
                 context,
                 notificationId,
                 readIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
 
         NotificationCompat.Action readAction = new NotificationCompat.Action.Builder(
                 android.R.drawable.ic_menu_agenda, context.getString(R.string.action_mark_as_read), readPendingIntent)
@@ -1057,8 +1328,17 @@ public class JalfNotificationTask {
                 .setShowsUserInterface(false)
                 .build();
 
+        NotificationCompat.CarExtender.UnreadConversation unreadConversation =
+                new NotificationCompat.CarExtender.UnreadConversation.Builder(senderName)
+                        .addMessage(messageText)
+                        .setLatestTimestamp(now)
+                        .setReplyAction(replyPendingIntent, remoteInput)
+                        .setReadPendingIntent(readPendingIntent)
+                        .build();
+
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHAT_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(avatarBitmap)
                 .setStyle(messagingStyle)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setShortcutId(conversationLink)
@@ -1067,6 +1347,7 @@ public class JalfNotificationTask {
                 .setContentIntent(pendingIntent)
                 .addAction(replyAction)
                 .addAction(readAction)
+                .extend(new NotificationCompat.CarExtender().setUnreadConversation(unreadConversation))
                 .setAutoCancel(true);
 
         notificationManager.notify(notificationId, builder.build());

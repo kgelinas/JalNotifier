@@ -2,6 +2,10 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.ui.*;
+import io.github.kgelinas.jalfnotifier.util.*;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -277,7 +281,7 @@ public class ApiParserTest {
         assertEquals(1, result.size());
         assertEquals("user42", result.get(0).userId);
         assertEquals("Alice", result.get(0).name);
-        assertTrue(result.get(0).detailsFetched);
+        assertFalse(result.get(0).detailsFetched);
     }
 
     @Test

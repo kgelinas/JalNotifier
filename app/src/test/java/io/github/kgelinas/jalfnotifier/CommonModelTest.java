@@ -2,6 +2,9 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.data.SearchOption;
+import io.github.kgelinas.jalfnotifier.ui.MainActivity;
+
 import org.junit.Test;
 
 public class CommonModelTest {

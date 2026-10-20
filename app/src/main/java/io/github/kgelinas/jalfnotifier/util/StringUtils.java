@@ -69,8 +69,8 @@ public class StringUtils {
                 return id;
         }
 
-        // Fallback: any numeric segment longer than 4 digits (to avoid /0/ or /1/)
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("/(\\d{4,})(?:/|\\?|$)").matcher(link);
+        // Fallback: any numeric segment of 2 or more digits (to avoid single digits like /0/ or /1/)
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("/(\\d{2,})(?:/|\\?|$)").matcher(link);
         if (m.find()) {
             return m.group(1);
         }

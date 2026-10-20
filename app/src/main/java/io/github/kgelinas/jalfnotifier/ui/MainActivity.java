@@ -187,6 +187,7 @@ public class MainActivity extends AppCompatActivity {
     private final CopyOnWriteArrayList<ChatAdapter.ChatItem> allNewItems = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<ChatAdapter.ChatItem> allArchivedItems = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<ChatAdapter.ChatItem> allActiveItems = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<ChatAdapter.ChatItem> allFlirtItems = new CopyOnWriteArrayList<>();
     private final Set<String> pinnedConvoLinks = new HashSet<>();
     private boolean isChatSelectionMode = false;
     private View lockOverlay;
@@ -201,10 +202,12 @@ public class MainActivity extends AppCompatActivity {
     private static final int TAB_ACTIVE = 0;
     private static final int TAB_NEW = 1;
     private static final int TAB_ARCHIVED = 2;
+    private static final int TAB_FLIRTS = 3;
     private int currentChatTab = TAB_ACTIVE;
 
     private String myUserId = "";
     private boolean isLoadingMore = false;
+    private int loadingAllTab = -1;
     private boolean isUserScrolling = false;
 
     private String myAvatarUrl = "";
@@ -216,16 +219,19 @@ public class MainActivity extends AppCompatActivity {
     private int offsetActive = 0;
     private int offsetNew = 0;
     private int offsetArchived = 0;
+    private int offsetFlirts = 0;
 
     private int totalActiveCount = -1;
     private int totalNewCount = -1;
     private int totalArchivedCount = -1;
+    private int totalFlirtsCount = -1;
 
     private int totalUnreadActive = 0;
     private int totalUnreadNew = 0;
     private boolean isMyVip = false;
     private String favoritesSortOrder = "default"; // "default", "timedesc", "timeasc"
     private int totalUnreadArchived = 0;
+    private int totalUnreadFlirts = 0;
 
     private ArrayList<String> savedChatsFilters = null;
     private ArrayList<String> savedFavoritesFilters = null;
@@ -633,6 +639,7 @@ public class MainActivity extends AppCompatActivity {
         tabLayoutChats.addTab(tabLayoutChats.newTab().setText(getString(R.string.tab_actives)));
         tabLayoutChats.addTab(tabLayoutChats.newTab().setText(getString(R.string.tab_new)));
         tabLayoutChats.addTab(tabLayoutChats.newTab().setText(getString(R.string.tab_archived)));
+        tabLayoutChats.addTab(tabLayoutChats.newTab().setText(getString(R.string.tab_flirts)));
 
 
         tabLayoutChats.addOnTabSelectedListener(new com.google.android.material.tabs.TabLayout.OnTabSelectedListener() {
@@ -647,6 +654,8 @@ public class MainActivity extends AppCompatActivity {
                 else if (currentChatTab == TAB_NEW && allNewItems.isEmpty())
                     needsFetch = true;
                 else if (currentChatTab == TAB_ARCHIVED && allArchivedItems.isEmpty())
+                    needsFetch = true;
+                else if (currentChatTab == TAB_FLIRTS && allFlirtItems.isEmpty())
                     needsFetch = true;
 
                 if (needsFetch) {
@@ -679,6 +688,8 @@ public class MainActivity extends AppCompatActivity {
                     fetchNewConversations(offsetNew, false);
                 else if (currentChatTab == TAB_ARCHIVED)
                     fetchArchivedConversations(offsetArchived, false);
+                else if (currentChatTab == TAB_FLIRTS)
+                    fetchFlirtConversations(offsetFlirts, false);
                 else
                     fetchActiveConversations(offsetActive, false);
             }
@@ -694,6 +705,20 @@ public class MainActivity extends AppCompatActivity {
         }, item -> {
             enterSelectionMode(item);
             return true;
+        });
+        chatAdapter.setOnLoadAllListener(() -> {
+            if (!isLoadingMore) {
+                isLoadingMore = true;
+                loadingAllTab = currentChatTab;
+                if (currentChatTab == TAB_NEW)
+                    fetchNewConversations(offsetNew, false);
+                else if (currentChatTab == TAB_ARCHIVED)
+                    fetchArchivedConversations(offsetArchived, false);
+                else if (currentChatTab == TAB_FLIRTS)
+                    fetchFlirtConversations(offsetFlirts, false);
+                else
+                    fetchActiveConversations(offsetActive, false);
+            }
         });
         recyclerChats.setAdapter(chatAdapter);
 
@@ -921,6 +946,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("sexIconUrl", item.sexIconUrl);
             intent.putExtra("otherUserId", item.otherUserId);
             intent.putExtra("isOnline", item.isOnline);
+            ConversationActivity.applyMultiWindowFlagsIfNeeded(this, intent, item.otherUserId, item.conversationLink);
             startActivity(intent);
         }
     }
@@ -1020,6 +1046,21 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(this::applyContactsFilter);
     }
 
+    public String findBookmarkNameByUserId(String userId) {
+        if (userId == null || userId.isEmpty()) {
+            return null;
+        }
+        for (FavoriteAdapter.FavoriteItem fi : allFavoriteItems) {
+            if (userId.equals(fi.otherUserId) && fi.name != null && !fi.name.isEmpty()
+                    && !"User".equalsIgnoreCase(fi.name)
+                    && !"Someone".equalsIgnoreCase(fi.name)
+                    && !"Quelqu'un".equalsIgnoreCase(fi.name)) {
+                return fi.name;
+            }
+        }
+        return null;
+    }
+
 
     @Override
     protected void onPause() {
@@ -1036,9 +1077,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void refreshData() {
+        loadingAllTab = -1;
         offsetActive = 0;
         offsetNew = 0;
         offsetArchived = 0;
+        offsetFlirts = 0;
         if (bottomNav.getSelectedItemId() == R.id.nav_chats) {
             fetchAllUnreadCounts();
         } else if (bottomNav.getSelectedItemId() == R.id.nav_favorites) {
@@ -1207,7 +1250,7 @@ public class MainActivity extends AppCompatActivity {
                     if (r.isSuccessful() && r.body() != null) {
                         try {
                             JSONObject profile = new JSONObject(NetworkUtils.responseToString(r));
-                            myName = profile.optString("name", profile.optString("pseudo", ""));
+                            myName = profile.optString("name", "");
 
                             String age = profile.optString("age", "");
                             JSONObject loc = profile.optJSONObject("location");
@@ -1260,9 +1303,43 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private final Set<String> inFlightFavoriteProfiles = java.util.Collections.synchronizedSet(new HashSet<>());
+    private final android.os.Handler contactsUiHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable debouncedContactsFilterRunnable = this::applyContactsFilter;
+
+    private void scheduleContactsFilterUpdate() {
+        contactsUiHandler.removeCallbacks(debouncedContactsFilterRunnable);
+        contactsUiHandler.postDelayed(debouncedContactsFilterRunnable, 220L);
+    }
+
+    private void flushContactsFilterUpdate() {
+        contactsUiHandler.removeCallbacks(debouncedContactsFilterRunnable);
+        runOnUiThread(this::applyContactsFilter);
+    }
+
+    private void persistContactsCacheLinks(List<FavoriteAdapter.FavoriteItem> items) {
+        java.util.Set<String> favoritesSet = new java.util.HashSet<>();
+        java.util.Set<String> bookmarksSet = new java.util.HashSet<>();
+        for (FavoriteAdapter.FavoriteItem fi : items) {
+            if (fi.userLink != null && !fi.userLink.isEmpty()) {
+                if (fi.isFavorite) {
+                    favoritesSet.add(fi.userLink);
+                }
+                if (fi.isBookmarked) {
+                    bookmarksSet.add(fi.userLink);
+                }
+            }
+        }
+        getAppPrefs().getRaw().edit()
+                .putStringSet("CACHED_FAVORITES_LINKS", favoritesSet)
+                .putStringSet("CACHED_BOOKMARKS_LINKS", bookmarksSet)
+                .apply();
+    }
+
     private void fetchFavorites() {
         Log.d(TAG, "fetchFavorites requested");
         setLoading(true);
+        final boolean forceRefresh = swipeRefreshFavorites != null && swipeRefreshFavorites.isRefreshing();
 
         SecurePrefs secure = SecurePrefs.get(this);
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
@@ -1281,7 +1358,6 @@ public class MainActivity extends AppCompatActivity {
                     setLoading(false);
                 });
             }
-
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
@@ -1302,7 +1378,7 @@ public class MainActivity extends AppCompatActivity {
 
                             // Collect favorite user links
                             Set<String> favoriteLinks = new java.util.LinkedHashSet<>();
-                            final List<FavoriteAdapter.FavoriteItem> finalFavs = new ArrayList<>();
+                            final List<FavoriteAdapter.FavoriteItem> finalFavs = new CopyOnWriteArrayList<>();
                             for (int i = 0; i < arr.length(); i++) {
                                 JSONObject obj = arr.getJSONObject(i);
                                 FavoriteAdapter.FavoriteItem item = new FavoriteAdapter.FavoriteItem();
@@ -1330,8 +1406,9 @@ public class MainActivity extends AppCompatActivity {
                                     populateFavoriteFromCache(item, cachedProfile);
                                 }
 
-                                // Fetch fresh profile if avatar or lastConnection is missing, or cache is stale
-                                boolean isStale = ProfileCacheManager.getInstance().isProfileStale(item.otherUserId);
+                                boolean isStale = forceRefresh
+                                        || ProfileCacheManager.getInstance().isProfileStale(item.otherUserId)
+                                        || ProfileCacheManager.getInstance().isStatusStale(item.otherUserId);
                                 if (item.avatarUrl == null || item.avatarUrl.isEmpty()
                                         || item.lastConnection == null || item.lastConnection.isEmpty()
                                         || isStale) {
@@ -1378,36 +1455,40 @@ public class MainActivity extends AppCompatActivity {
                                     if (parts.length >= 4)
                                         item.otherUserId = parts[parts.length - 1];
                                     finalFavs.add(item);
+
+                                    JSONObject cachedProfile = ProfileCacheManager.getInstance()
+                                            .getProfile(item.otherUserId);
+                                    if (cachedProfile != null) {
+                                        populateFavoriteFromCache(item, cachedProfile);
+                                    }
                                     fetchUserProfileForFavorite(item, fullCookie, item.otherUserId);
                                 }
                             }
 
-                            scrapeFavoritesHtml(finalFavs, () ->
-                                fetchBookmarks(finalFavs, () -> {
-                                    runOnUiThread(() -> {
-                                        allFavoriteItems.clear();
-                                        allFavoriteItems.addAll(finalFavs);
-                                        applyContactsFilter();
+                            // Render initial REST + cached contacts immediately so the user can interact right away
+                            synchronized (allFavoriteItems) {
+                                allFavoriteItems.clear();
+                                allFavoriteItems.addAll(finalFavs);
+                            }
+                            flushContactsFilterUpdate();
 
-                                        java.util.Set<String> favoritesSet = new java.util.HashSet<>();
-                                        java.util.Set<String> bookmarksSet = new java.util.HashSet<>();
-                                        for (FavoriteAdapter.FavoriteItem fi : finalFavs) {
-                                            if (fi.userLink != null && !fi.userLink.isEmpty()) {
-                                                if (fi.isFavorite) {
-                                                    favoritesSet.add(fi.userLink);
-                                                }
-                                                if (fi.isBookmarked) {
-                                                    bookmarksSet.add(fi.userLink);
-                                                }
-                                            }
-                                        }
-                                        getAppPrefs().getRaw().edit()
-                                                .putStringSet("CACHED_FAVORITES_LINKS", favoritesSet)
-                                                .putStringSet("CACHED_BOOKMARKS_LINKS", bookmarksSet)
-                                                .apply();
-                                    });
-                                })
-                            );
+                            // Run HTML favorites scraper (/ct/online/2) and Bookmarks (/ct/online/11) in parallel
+                            final java.util.concurrent.atomic.AtomicInteger remainingTasks =
+                                    new java.util.concurrent.atomic.AtomicInteger(2);
+                            Runnable onSourceDone = () -> {
+                                synchronized (allFavoriteItems) {
+                                    allFavoriteItems.clear();
+                                    allFavoriteItems.addAll(finalFavs);
+                                }
+                                scheduleContactsFilterUpdate();
+                                if (remainingTasks.decrementAndGet() == 0) {
+                                    persistContactsCacheLinks(finalFavs);
+                                    flushContactsFilterUpdate();
+                                }
+                            };
+
+                            scrapeFavoritesHtml(finalFavs, onSourceDone);
+                            fetchBookmarks(finalFavs, onSourceDone);
                         } catch (Exception e) {
                             AppLogger.log("MainActivity", "Error parsing favorites", e);
                         }
@@ -1455,32 +1536,34 @@ public class MainActivity extends AppCompatActivity {
 
                         for (FavoriteAdapter.FavoriteItem scrapedItem : scraped) {
                             FavoriteAdapter.FavoriteItem existing = null;
-                            for (FavoriteAdapter.FavoriteItem fav : listToMerge) {
-                                if (fav.otherUserId != null
-                                        && fav.otherUserId.equals(scrapedItem.otherUserId)) {
-                                    existing = fav;
-                                    break;
+                            synchronized (listToMerge) {
+                                for (FavoriteAdapter.FavoriteItem fav : listToMerge) {
+                                    if (fav.otherUserId != null
+                                            && fav.otherUserId.equals(scrapedItem.otherUserId)) {
+                                        existing = fav;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (existing == null) {
-                                // User is a favorite but wasn't in REST response; add it
-                                existing = scrapedItem;
-                                listToMerge.add(existing);
-                            } else {
-                                // Merge HTML-exclusive data into existing REST item
-                                existing.distance = scrapedItem.distance;
-                                existing.city = scrapedItem.city;
-                                existing.age = scrapedItem.age;
-                                if (!scrapedItem.details.isEmpty()) {
-                                    existing.details = scrapedItem.details;
-                                }
-                                // Respect per-card online icon for real-time status
-                                existing.isOnline = scrapedItem.isOnline;
-                                if (scrapedItem.isBookmarked) {
-                                    existing.isBookmarked = true;
-                                }
-                                if (existing.avatarUrl == null || existing.avatarUrl.isEmpty()) {
-                                    existing.avatarUrl = scrapedItem.avatarUrl;
+                                if (existing == null) {
+                                    // User is a favorite but wasn't in REST response; add it
+                                    existing = scrapedItem;
+                                    listToMerge.add(existing);
+                                } else {
+                                    // Merge HTML-exclusive data into existing REST item
+                                    existing.distance = scrapedItem.distance;
+                                    existing.city = scrapedItem.city;
+                                    existing.age = scrapedItem.age;
+                                    if (!scrapedItem.details.isEmpty()) {
+                                        existing.details = scrapedItem.details;
+                                    }
+                                    // Respect per-card online icon for real-time status
+                                    existing.isOnline = scrapedItem.isOnline;
+                                    if (scrapedItem.isBookmarked) {
+                                        existing.isBookmarked = true;
+                                    }
+                                    if (existing.avatarUrl == null || existing.avatarUrl.isEmpty()) {
+                                        existing.avatarUrl = scrapedItem.avatarUrl;
+                                    }
                                 }
                             }
 
@@ -1489,7 +1572,8 @@ public class MainActivity extends AppCompatActivity {
                             if (cached != null) {
                                 populateFavoriteFromCache(existing, cached);
                             }
-                            boolean isStale = ProfileCacheManager.getInstance().isProfileStale(existing.otherUserId);
+                            boolean isStale = ProfileCacheManager.getInstance().isProfileStale(existing.otherUserId)
+                                    || ProfileCacheManager.getInstance().isStatusStale(existing.otherUserId);
                             if (cached == null || isStale || existing.lastConnection == null || existing.lastConnection.isEmpty()) {
                                 fetchUserProfileForFavorite(existing, fullCookie, existing.otherUserId);
                             }
@@ -1570,50 +1654,50 @@ public class MainActivity extends AppCompatActivity {
 
                         SecurePrefs secure = SecurePrefs.get(MainActivity.this);
                         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
-                        boolean forceRefresh = swipeRefreshFavorites.isRefreshing();
 
                         for (FavoriteAdapter.FavoriteItem scrapedItem : scrapedItems) {
                             FavoriteAdapter.FavoriteItem existing = null;
-                            for (FavoriteAdapter.FavoriteItem fav : listToMerge) {
-                                if (fav.otherUserId != null && fav.otherUserId.equals(scrapedItem.otherUserId)) {
-                                    existing = fav;
-                                    break;
+                            synchronized (listToMerge) {
+                                for (FavoriteAdapter.FavoriteItem fav : listToMerge) {
+                                    if (fav.otherUserId != null && fav.otherUserId.equals(scrapedItem.otherUserId)) {
+                                        existing = fav;
+                                        break;
+                                    }
                                 }
-                            }
 
-                            if (existing == null) {
-                                existing = scrapedItem;
-                                listToMerge.add(existing);
-                            } else {
-                                // Merge scraper data (city, distance, age) into existing item
-                                existing.city = scrapedItem.city;
-                                existing.age = scrapedItem.age;
-                                existing.distance = scrapedItem.distance;
-                                existing.details = scrapedItem.details;
-                                existing.isBookmarked = true;
-                                existing.isOnline = scrapedItem.isOnline;
-                                if (existing.avatarUrl == null || existing.avatarUrl.isEmpty()) {
-                                    existing.avatarUrl = scrapedItem.avatarUrl;
-                                }
-                            }
-
-                            // Trigger REST enrichment
-                            if (forceRefresh
-                                    || ProfileCacheManager.getInstance().isStatusStale(scrapedItem.otherUserId)) {
-                                fetchUserProfileForFavorite(existing, fullCookie, existing.otherUserId);
-                            } else {
-                                // Load from cache if fresh
-                                JSONObject cached = ProfileCacheManager.getInstance().getProfile(existing.otherUserId);
-                                if (cached != null) {
-                                    existing.name = cached.optString("name", cached.optString("pseudo", existing.name));
-                                    String onlineVal = cached.optString("online", "0");
-                                    existing.isOnline = "1".equals(onlineVal) || cached.optBoolean("online", false)
-                                            || cached.optBoolean("is_online", false);
+                                if (existing == null) {
+                                    existing = scrapedItem;
+                                    listToMerge.add(existing);
                                 } else {
-                                    fetchUserProfileForFavorite(existing, fullCookie, existing.otherUserId);
+                                    // Merge scraper data (city, distance, age) into existing item
+                                    existing.city = scrapedItem.city;
+                                    existing.age = scrapedItem.age;
+                                    existing.distance = scrapedItem.distance;
+                                    existing.details = scrapedItem.details;
+                                    existing.isBookmarked = true;
+                                    existing.isOnline = scrapedItem.isOnline;
+                                    if (existing.avatarUrl == null || existing.avatarUrl.isEmpty()) {
+                                        existing.avatarUrl = scrapedItem.avatarUrl;
+                                    }
                                 }
+                            }
+
+                            JSONObject cached = ProfileCacheManager.getInstance().getProfile(existing.otherUserId);
+                            if (cached != null) {
+                                populateFavoriteFromCache(existing, cached);
+                            }
+                            boolean isStale = ProfileCacheManager.getInstance().isProfileStale(existing.otherUserId)
+                                    || ProfileCacheManager.getInstance().isStatusStale(existing.otherUserId);
+                            if (cached == null || isStale || existing.lastConnection == null || existing.lastConnection.isEmpty()) {
+                                fetchUserProfileForFavorite(existing, fullCookie, existing.otherUserId);
                             }
                         }
+
+                        synchronized (allFavoriteItems) {
+                            allFavoriteItems.clear();
+                            allFavoriteItems.addAll(listToMerge);
+                        }
+                        scheduleContactsFilterUpdate();
 
                         org.jsoup.nodes.Document doc = org.jsoup.Jsoup.parse(body);
                         org.jsoup.nodes.Element offsetEl = doc.selectFirst("input#offset");
@@ -1690,6 +1774,7 @@ public class MainActivity extends AppCompatActivity {
         fetchNewConversations(0, true);
         fetchActiveConversations(0, true);
         fetchArchivedConversations(0, true);
+        fetchFlirtConversations(0, true);
     }
 
     private void fetchConversations(final int offset, final boolean clearExisting) {
@@ -1703,6 +1788,9 @@ public class MainActivity extends AppCompatActivity {
         } else if (currentChatTab == TAB_NEW) {
             fetchNewConversations(offset, clearExisting);
             return;
+        } else if (currentChatTab == TAB_FLIRTS) {
+            fetchFlirtConversations(offset, clearExisting);
+            return;
         }
 
         // TAB_ACTIVE
@@ -1714,7 +1802,7 @@ public class MainActivity extends AppCompatActivity {
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
 
-        int count = (offset == 0) ? 50 : 25;
+        int count = (offset == 0 || loadingAllTab == TAB_NEW) ? 50 : 25;
         Request reqNew = new Request.Builder()
                 .url(ApiConstants.BASE_URL + "/rest/users/" + myUserId + "/conversations/new?offset=" + offset
                         + "&count=" + count)
@@ -1730,6 +1818,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 isLoadingMore = false;
+                if (loadingAllTab == TAB_NEW) loadingAllTab = -1;
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     setLoading(false);
@@ -1786,17 +1875,31 @@ public class MainActivity extends AppCompatActivity {
                                         allNewItems.add(item);
                                 }
 
-                                if (totalNewCount > allNewItems.size()) {
+                                int received = finalArr != null ? finalArr.length() : 0;
+                                offsetNew = offset + received;
+                                boolean hasMore = totalNewCount > allNewItems.size() && received > 0;
+                                if (hasMore) {
                                     allNewItems.add(new ChatAdapter.ChatItem(ChatAdapter.TYPE_LOAD_MORE));
                                 }
 
-                                offsetNew = offset + (finalArr != null ? finalArr.length() : 0);
                                 applyFilter("chats");
                                 updateUnreadCounts();
+
+                                if (loadingAllTab == TAB_NEW) {
+                                    if (hasMore) {
+                                        isLoadingMore = true;
+                                        fetchNewConversations(offsetNew, false);
+                                    } else {
+                                        loadingAllTab = -1;
+                                    }
+                                }
                             });
                         } catch (Exception e) {
+                            if (loadingAllTab == TAB_NEW) loadingAllTab = -1;
                             Log.e("MainActivity", "Error parsing new conversations", e);
                         }
+                    } else if (loadingAllTab == TAB_NEW) {
+                        loadingAllTab = -1;
                     }
                 }
             }
@@ -1808,7 +1911,7 @@ public class MainActivity extends AppCompatActivity {
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
 
-        int count = (offset == 0) ? 50 : 25;
+        int count = (offset == 0 || loadingAllTab == TAB_ACTIVE) ? 50 : 25;
         Request reqActive = new Request.Builder()
                 .url(ApiConstants.BASE_URL + "/rest/users/" + myUserId + "/conversations/active?offset=" + offset
                         + "&count=" + count)
@@ -1824,6 +1927,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 isLoadingMore = false;
+                if (loadingAllTab == TAB_ACTIVE) loadingAllTab = -1;
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     setLoading(false);
@@ -1878,17 +1982,31 @@ public class MainActivity extends AppCompatActivity {
                                         allActiveItems.add(item);
                                 }
 
-                                if (totalActiveCount > allActiveItems.size()) {
+                                int received = finalArr != null ? finalArr.length() : 0;
+                                offsetActive = offset + received;
+                                boolean hasMore = totalActiveCount > allActiveItems.size() && received > 0;
+                                if (hasMore) {
                                     allActiveItems.add(new ChatAdapter.ChatItem(ChatAdapter.TYPE_LOAD_MORE));
                                 }
 
-                                offsetActive = offset + (finalArr != null ? finalArr.length() : 0);
                                 applyFilter("chats");
                                 updateUnreadCounts();
+
+                                if (loadingAllTab == TAB_ACTIVE) {
+                                    if (hasMore) {
+                                        isLoadingMore = true;
+                                        fetchActiveConversations(offsetActive, false);
+                                    } else {
+                                        loadingAllTab = -1;
+                                    }
+                                }
                             });
                         } catch (Exception e) {
+                            if (loadingAllTab == TAB_ACTIVE) loadingAllTab = -1;
                             Log.e("MainActivity", "Error parsing active conversations", e);
                         }
+                    } else if (loadingAllTab == TAB_ACTIVE) {
+                        loadingAllTab = -1;
                     }
                 }
             }
@@ -1900,7 +2018,7 @@ public class MainActivity extends AppCompatActivity {
         String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
 
-        int count = (offset == 0) ? 50 : 25;
+        int count = (offset == 0 || loadingAllTab == TAB_ARCHIVED) ? 50 : 25;
         Request req = new Request.Builder()
                 .url(ApiConstants.BASE_URL + "/rest/users/" + myUserId + "/conversations/archived?offset=" + offset
                         + "&count=" + count)
@@ -1915,6 +2033,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 isLoadingMore = false;
+                if (loadingAllTab == TAB_ARCHIVED) loadingAllTab = -1;
                 runOnUiThread(() -> {
                     swipeRefreshLayout.setRefreshing(false);
                     setLoading(false);
@@ -1971,17 +2090,138 @@ public class MainActivity extends AppCompatActivity {
                                         allArchivedItems.add(item);
                                 }
 
-                                if (totalArchivedCount > allArchivedItems.size()) {
+                                int received = finalArr != null ? finalArr.length() : 0;
+                                offsetArchived = offset + received;
+                                boolean hasMore = totalArchivedCount > allArchivedItems.size() && received > 0;
+                                if (hasMore) {
                                     allArchivedItems.add(new ChatAdapter.ChatItem(ChatAdapter.TYPE_LOAD_MORE));
                                 }
 
-                                offsetArchived = offset + (finalArr != null ? finalArr.length() : 0);
                                 applyFilter("chats");
                                 updateUnreadCounts();
+
+                                if (loadingAllTab == TAB_ARCHIVED) {
+                                    if (hasMore) {
+                                        isLoadingMore = true;
+                                        fetchArchivedConversations(offsetArchived, false);
+                                    } else {
+                                        loadingAllTab = -1;
+                                    }
+                                }
                             });
                         } catch (Exception e) {
+                            if (loadingAllTab == TAB_ARCHIVED) loadingAllTab = -1;
                             Log.e("MainActivity", "Error parsing archived conversations", e);
                         }
+                    } else if (loadingAllTab == TAB_ARCHIVED) {
+                        loadingAllTab = -1;
+                    }
+                }
+            }
+        });
+    }
+
+    private void fetchFlirtConversations(final int offset, final boolean clearExisting) {
+        SecurePrefs secure = SecurePrefs.get(this);
+        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        String suid = secure.getString(ApiConstants.KEY_SUID, "");
+
+        int count = (offset == 0 || loadingAllTab == TAB_FLIRTS) ? 50 : 25;
+        Request req = new Request.Builder()
+                .url(ApiConstants.BASE_URL + "/rest/users/" + myUserId + "/conversations/flirts?offset=" + offset
+                        + "&count=" + count)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        if (offset == 0) setLoading(true);
+        client.newCall(req).enqueue(new Callback() {
+
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                isLoadingMore = false;
+                if (loadingAllTab == TAB_FLIRTS) loadingAllTab = -1;
+                runOnUiThread(() -> {
+                    swipeRefreshLayout.setRefreshing(false);
+                    setLoading(false);
+                });
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                try (Response r = response) {
+                    isLoadingMore = false;
+                    runOnUiThread(() -> {
+                        swipeRefreshLayout.setRefreshing(false);
+                        setLoading(false);
+                    });
+
+                    if (r.isSuccessful() && r.body() != null) {
+                        try {
+                            String body = NetworkUtils.responseToString(r);
+                            JSONArray arr = null;
+                            try {
+                                JSONObject json = new JSONObject(body);
+                                totalFlirtsCount = json.optInt("total_conversations_count", -1);
+                                totalUnreadFlirts = json.optInt("total_unread_messages_count", 0);
+                                arr = json.optJSONArray("items");
+                                if (arr == null)
+                                    arr = json.optJSONArray("conversations");
+                            } catch (Exception e) {
+                                arr = new JSONArray(body);
+                            }
+
+                            final JSONArray finalArr = arr;
+                            final List<ChatAdapter.ChatItem> flirtItems = parseConversationJson(finalArr, false);
+
+                            runOnUiThread(() -> {
+                                if (clearExisting)
+                                    allFlirtItems.clear();
+                                // Remove existing Load More if present
+                                if (!allFlirtItems.isEmpty() && allFlirtItems
+                                        .get(allFlirtItems.size() - 1).type == ChatAdapter.TYPE_LOAD_MORE) {
+                                    allFlirtItems.remove(allFlirtItems.size() - 1);
+                                }
+
+                                // Deduplicate
+                                for (ChatAdapter.ChatItem item : flirtItems) {
+                                    boolean exists = false;
+                                    for (ChatAdapter.ChatItem existing : allFlirtItems) {
+                                        if (Objects.equals(existing.conversationLink, item.conversationLink)) {
+                                            exists = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!exists)
+                                        allFlirtItems.add(item);
+                                }
+
+                                int received = finalArr != null ? finalArr.length() : 0;
+                                offsetFlirts = offset + received;
+                                boolean hasMore = totalFlirtsCount > allFlirtItems.size() && received > 0;
+                                if (hasMore) {
+                                    allFlirtItems.add(new ChatAdapter.ChatItem(ChatAdapter.TYPE_LOAD_MORE));
+                                }
+
+                                applyFilter("chats");
+                                updateUnreadCounts();
+
+                                if (loadingAllTab == TAB_FLIRTS) {
+                                    if (hasMore) {
+                                        isLoadingMore = true;
+                                        fetchFlirtConversations(offsetFlirts, false);
+                                    } else {
+                                        loadingAllTab = -1;
+                                    }
+                                }
+                            });
+                        } catch (Exception e) {
+                            if (loadingAllTab == TAB_FLIRTS) loadingAllTab = -1;
+                            Log.e("MainActivity", "Error parsing flirt conversations", e);
+                        }
+                    } else if (loadingAllTab == TAB_FLIRTS) {
+                        loadingAllTab = -1;
                     }
                 }
             }
@@ -1989,6 +2229,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void fetchUserProfileForFavorite(FavoriteAdapter.FavoriteItem item, String fullCookie, String otherUserId) {
+        if (otherUserId == null || otherUserId.isEmpty()) {
+            return;
+        }
+        if (!inFlightFavoriteProfiles.add(otherUserId)) {
+            return;
+        }
+
         SecurePrefs secure = SecurePrefs.get(this);
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
         Request req = new Request.Builder()
@@ -2000,6 +2247,7 @@ public class MainActivity extends AppCompatActivity {
         client.newCall(req).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                inFlightFavoriteProfiles.remove(otherUserId);
             }
 
             @Override
@@ -2020,8 +2268,11 @@ public class MainActivity extends AppCompatActivity {
                                 profile.put("age", item.age);
                             }
 
-                            ProfileCacheManager.getInstance().putProfile(MainActivity.this, otherUserId, profile);
-                            item.name = profile.optString("name", profile.optString("pseudo", item.name));
+                            // Preserve previously resolved nsfw_rank if cached
+                            JSONObject prevCached = ProfileCacheManager.getInstance().getProfile(otherUserId);
+                            int cachedNsfwRank = (prevCached != null) ? prevCached.optInt("cached_nsfw_rank", -1) : -1;
+
+                            item.name = profile.optString("name", item.name);
                             item.isCertified = profile.optBoolean("certified", false);
                             item.isOnfire = "1".equals(profile.optString("onfire", "0")) || profile.optBoolean("onfire", false);
                             item.lastConnection = profile.optString("last_connection", profile.optString("last_connected", ""));
@@ -2068,8 +2319,6 @@ public class MainActivity extends AppCompatActivity {
                             }
                             item.details = details.toString();
 
-                            runOnUiThread(() -> applyContactsFilter());
-
                             JSONObject photo = profile.optJSONObject("photo");
                             if (photo != null) {
                                 item.avatarUrl = photo.optString("image_144x189_link",
@@ -2089,25 +2338,34 @@ public class MainActivity extends AppCompatActivity {
                             }
 
                             // Extract nsfwRank from photo metadata
-                            item.nsfwRank = extractNsfwRankFromProfile(profile);
-                            if (item.nsfwRank == 0) {
-                                // Fallback: check photo album for authoritative rating link
+                            int profileNsfwRank = extractNsfwRankFromProfile(profile);
+                            if (profileNsfwRank > 0) {
+                                item.nsfwRank = profileNsfwRank;
+                                profile.put("cached_nsfw_rank", profileNsfwRank);
+                            } else if (cachedNsfwRank >= 0) {
+                                item.nsfwRank = cachedNsfwRank;
+                                profile.put("cached_nsfw_rank", cachedNsfwRank);
+                            } else if (item.avatarUrl != null && !item.avatarUrl.isEmpty()) {
+                                // Fallback: check photo album once and cache the result
                                 fetchPhotoRankFromAlbum(otherUserId, albumRank -> {
-                                    if (albumRank > 0) {
+                                    ProfileCacheManager.getInstance().putProfileField(
+                                            MainActivity.this, otherUserId, "cached_nsfw_rank", albumRank);
+                                    if (albumRank > 0 && item.nsfwRank != albumRank) {
                                         item.nsfwRank = albumRank;
-                                        runOnUiThread(() -> applyContactsFilter());
+                                        scheduleContactsFilterUpdate();
                                     }
                                 });
                             }
 
-                            runOnUiThread(() -> applyContactsFilter());
-
-
+                            ProfileCacheManager.getInstance().putProfile(MainActivity.this, otherUserId, profile);
+                            scheduleContactsFilterUpdate();
 
                         } catch (Exception e) {
                             Log.e("MainActivity", "Error parsing favorite profile", e);
                         }
                     }
+                } finally {
+                    inFlightFavoriteProfiles.remove(otherUserId);
                 }
             }
         });
@@ -2115,7 +2373,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void populateFavoriteFromCache(FavoriteAdapter.FavoriteItem item, JSONObject profile) {
         if (item.name == null || item.name.equals("User") || item.name.equals("Someone")) {
-            item.name = profile.optString("name", profile.optString("pseudo", item.name));
+            item.name = profile.optString("name", item.name);
         }
 
         item.isCertified = profile.optBoolean("certified", false);
@@ -2125,15 +2383,42 @@ public class MainActivity extends AppCompatActivity {
             item.sexIconUrl = MetadataManager.getInstance().resolveIcon(item.sexLink);
         }
         String age = profile.optString("age", "");
+        if (!age.isEmpty() && !age.contains("ans")) {
+            age += " ans";
+        }
         String city = profile.optString("city", "");
-        if (!city.isEmpty()) {
+        if (city.isEmpty()) {
+            JSONObject region = profile.optJSONObject("region");
+            if (region != null) {
+                city = region.optString("name", "");
+            }
+        }
+        if (!city.isEmpty() && (item.city == null || item.city.isEmpty())) {
             item.city = city;
-            if (!age.isEmpty())
-                item.details = age + ", " + city;
+        }
+        if (item.distance == null || item.distance.isEmpty()) {
+            String cachedDist = profile.optString("distance", "");
+            if (!cachedDist.isEmpty()) {
+                item.distance = cachedDist;
+            }
+        }
+
+        StringBuilder details = new StringBuilder();
+        if (!age.isEmpty())
+            details.append(age);
+        if (item.city != null && !item.city.isEmpty()) {
+            if (details.length() > 0)
+                details.append(", ");
+            details.append(item.city);
+        }
+        if (item.distance != null && !item.distance.isEmpty()) {
+            if (details.length() > 0)
+                details.append(" (").append(item.distance).append(")");
             else
-                item.details = city;
-        } else if (!age.isEmpty()) {
-            item.details = age + " ans";
+                details.append(item.distance);
+        }
+        if (details.length() > 0) {
+            item.details = details.toString();
         }
 
         if (!item.isOnline) {
@@ -2142,13 +2427,26 @@ public class MainActivity extends AppCompatActivity {
                     || profile.optBoolean("is_online", false);
         }
 
+        if (item.lastConnection == null || item.lastConnection.isEmpty()) {
+            item.lastConnection = profile.optString("last_connection", profile.optString("last_connected", ""));
+        }
+
         JSONObject photo = profile.optJSONObject("photo");
         if (photo != null && (item.avatarUrl == null || item.avatarUrl.isEmpty())) {
             item.avatarUrl = photo.optString("image_144x189_link",
-                    photo.optString("image_82x107_link", ""));
+                    photo.optString("thumbnail_uri",
+                            photo.optString("image_82x107_link", "")));
         }
-        // last connection should never be loaded from cache to ensure fresh REST fetch
-        runOnUiThread(() -> applyContactsFilter());
+        if (item.avatarUrl != null && !item.avatarUrl.isEmpty() && !item.avatarUrl.startsWith("http")) {
+            item.avatarUrl = ApiConstants.BASE_URL + item.avatarUrl;
+        }
+
+        int cachedRank = profile.optInt("cached_nsfw_rank", -1);
+        if (cachedRank >= 0) {
+            item.nsfwRank = cachedRank;
+        } else {
+            item.nsfwRank = extractNsfwRankFromProfile(profile);
+        }
     }
 
     /**
@@ -2173,7 +2471,134 @@ public class MainActivity extends AppCompatActivity {
             item.details = c;
     }
 
+    private final java.util.Map<String, List<EventAdapter.EventItem>> inFlightEventProfiles =
+            new java.util.HashMap<>();
+    private final android.os.Handler eventsUiHandler =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable debouncedEventsRefreshRunnable = () -> {
+        if (eventAdapter != null) {
+            eventAdapter.notifyDataSetChanged();
+        }
+    };
+
+    /** Coalesces bursts of per-profile updates into a single adapter refresh. */
+    private void scheduleEventsAdapterRefresh() {
+        eventsUiHandler.removeCallbacks(debouncedEventsRefreshRunnable);
+        eventsUiHandler.postDelayed(debouncedEventsRefreshRunnable, 220L);
+    }
+
+    private List<EventAdapter.EventItem> drainEventProfileWaiters(String otherUserId) {
+        synchronized (inFlightEventProfiles) {
+            List<EventAdapter.EventItem> waiting = inFlightEventProfiles.remove(otherUserId);
+            return waiting == null ? new ArrayList<>() : new ArrayList<>(waiting);
+        }
+    }
+
+    private void applyProfileToEventItem(EventAdapter.EventItem item, JSONObject profile) {
+        try {
+            if (profile.has("online") || profile.has("is_online")) {
+                item.isOnline = "1".equals(profile.optString("online", "0"))
+                        || profile.optBoolean("online", false)
+                        || profile.optBoolean("is_online", false);
+            }
+            String resolvedName = profile.optString("name", "");
+            if (!resolvedName.isEmpty()) {
+                item.title = resolvedName;
+            } else if (item.title == null || "Someone".equals(item.title) || "Quelqu'un".equals(item.title)) {
+                String fallback = findBookmarkNameByUserId(item.otherUserId);
+                if (fallback != null && !fallback.isEmpty()) {
+                    item.title = fallback;
+                }
+            }
+
+            String sexLink = profile.optString("sex_link", "");
+            if (sexLink != null && !sexLink.isEmpty()) {
+                item.sexIconUrl = MetadataManager.getInstance().resolveIcon(sexLink);
+            }
+
+            JSONObject pObj = profile.optJSONObject("photo");
+            if (pObj != null) {
+                item.avatarUrl = pObj.optString("image_144x189_link",
+                        pObj.optString("thumbnail_uri", ""));
+            }
+            if (item.avatarUrl == null || item.avatarUrl.isEmpty()) {
+                JSONArray photosArr = profile.optJSONArray("photos");
+                if (photosArr != null && photosArr.length() > 0) {
+                    JSONObject p = photosArr.getJSONObject(0);
+                    item.avatarUrl = p.optString("thumb_url", p.optString("large_url", ""));
+                }
+            }
+
+            if (item.avatarUrl != null && !item.avatarUrl.isEmpty()
+                    && !item.avatarUrl.startsWith("http")) {
+                item.avatarUrl = ApiConstants.BASE_URL + item.avatarUrl;
+            }
+
+            int rank = extractNsfwRankFromProfile(profile);
+            if (rank == 0) {
+                int cachedRank = profile.optInt("cached_nsfw_rank", -1);
+                if (cachedRank > 0) {
+                    rank = cachedRank;
+                }
+            }
+            item.nsfwRank = rank;
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error applying event profile", e);
+        }
+    }
+
+    private void applyProfileToEventItems(List<EventAdapter.EventItem> items, String otherUserId,
+            JSONObject profile) {
+        if (items.isEmpty()) {
+            return;
+        }
+        for (EventAdapter.EventItem item : items) {
+            applyProfileToEventItem(item, profile);
+        }
+
+        // Resolve the NSFW rank from the photo album once per user, and remember the result
+        // (including "no rank" = 0) so it is never re-fetched on later refreshes.
+        if (items.get(0).nsfwRank == 0 && profile.optInt("cached_nsfw_rank", -1) < 0) {
+            final List<EventAdapter.EventItem> target = new ArrayList<>(items);
+            fetchPhotoRankFromAlbum(otherUserId, albumRank -> {
+                ProfileCacheManager.getInstance().putProfileField(
+                        MainActivity.this, otherUserId, "cached_nsfw_rank", albumRank);
+                if (albumRank > 0) {
+                    for (EventAdapter.EventItem it : target) {
+                        it.nsfwRank = albumRank;
+                    }
+                    scheduleEventsAdapterRefresh();
+                }
+            });
+        }
+        scheduleEventsAdapterRefresh();
+    }
+
     private void fetchUserProfileForEvent(EventAdapter.EventItem item, String fullCookie, String otherUserId) {
+        if (otherUserId == null || otherUserId.isEmpty()) {
+            return;
+        }
+
+        // 1. Fresh cached profile: no network needed.
+        ProfileCacheManager cache = ProfileCacheManager.getInstance();
+        JSONObject cached = cache.getProfile(otherUserId);
+        if (cached != null && !cache.isStatusStale(otherUserId)) {
+            applyProfileToEventItems(java.util.Collections.singletonList(item), otherUserId, cached);
+            return;
+        }
+
+        // 2. Already being fetched: just wait for that response to update this item too.
+        synchronized (inFlightEventProfiles) {
+            List<EventAdapter.EventItem> waiting = inFlightEventProfiles.get(otherUserId);
+            if (waiting != null) {
+                waiting.add(item);
+                return;
+            }
+            waiting = new ArrayList<>();
+            waiting.add(item);
+            inFlightEventProfiles.put(otherUserId, waiting);
+        }
+
         SecurePrefs secure = SecurePrefs.get(this);
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
         Request req = new Request.Builder()
@@ -2185,56 +2610,33 @@ public class MainActivity extends AppCompatActivity {
         client.newCall(req).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                drainEventProfileWaiters(otherUserId);
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                List<EventAdapter.EventItem> waiters = null;
                 try (Response r = response) {
                     if (r.isSuccessful() && r.body() != null) {
                         try {
                             JSONObject profile = new JSONObject(NetworkUtils.responseToString(r));
+
+                            // Preserve a previously resolved album rank across profile refreshes
+                            JSONObject prev = ProfileCacheManager.getInstance().getProfile(otherUserId);
+                            if (prev != null && prev.has("cached_nsfw_rank")) {
+                                profile.put("cached_nsfw_rank", prev.optInt("cached_nsfw_rank", -1));
+                            }
+
                             ProfileCacheManager.getInstance().putProfile(MainActivity.this, otherUserId, profile);
-                            item.isOnline = profile.optBoolean("is_online", false);
-                            item.title = profile.optString("name", item.title);
-
-                            String sexLink = profile.optString("sex_link", "");
-                            if (sexLink != null && !sexLink.isEmpty()) {
-                                item.sexIconUrl = MetadataManager.getInstance().resolveIcon(sexLink);
-                            }
-
-                            JSONObject pObj = profile.optJSONObject("photo");
-                            if (pObj != null) {
-                                item.avatarUrl = pObj.optString("image_144x189_link",
-                                        pObj.optString("thumbnail_uri", ""));
-                            }
-                            if (item.avatarUrl == null || item.avatarUrl.isEmpty()) {
-                                JSONArray photosArr = profile.optJSONArray("photos");
-                                if (photosArr != null && photosArr.length() > 0) {
-                                    JSONObject p = photosArr.getJSONObject(0);
-                                    item.avatarUrl = p.optString("thumb_url", p.optString("large_url", ""));
-                                }
-                            }
-
-                            if (item.avatarUrl != null && !item.avatarUrl.isEmpty()
-                                    && !item.avatarUrl.startsWith("http")) {
-                                item.avatarUrl = ApiConstants.BASE_URL + item.avatarUrl;
-                            }
-
-                            // Extract nsfwRank from photo metadata
-                            item.nsfwRank = extractNsfwRankFromProfile(profile);
-                            if (item.nsfwRank == 0) {
-                                fetchPhotoRankFromAlbum(otherUserId, albumRank -> {
-                                    if (albumRank > 0) {
-                                        item.nsfwRank = albumRank;
-                                        runOnUiThread(() -> eventAdapter.notifyDataSetChanged());
-                                    }
-                                });
-                            }
-
-                            runOnUiThread(() -> eventAdapter.notifyDataSetChanged());
+                            waiters = drainEventProfileWaiters(otherUserId);
+                            applyProfileToEventItems(waiters, otherUserId, profile);
                         } catch (Exception e) {
                             Log.e("MainActivity", "Error parsing event profile", e);
                         }
+                    }
+                } finally {
+                    if (waiters == null) {
+                        drainEventProfileWaiters(otherUserId);
                     }
                 }
             }
@@ -2243,13 +2645,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void fetchEvents() {
         setLoading(true);
+        final boolean forceRefresh = swipeRefreshEvents != null && swipeRefreshEvents.isRefreshing();
 
         if (filterEventsDirection == FILTER_EVENTS_DIRECTION_INCOMING || filterEventsDirection == FILTER_EVENTS_DIRECTION_ALL) {
             boolean isStale = (filterEventsDirection == FILTER_EVENTS_DIRECTION_ALL)
                     ? (ProfileCacheManager.getInstance().areEventsStale() || ProfileCacheManager.getInstance().areOutgoingEventsStale())
                     : ProfileCacheManager.getInstance().areEventsStale();
 
-            if (!isStale && !eventItems.isEmpty()) {
+            if (!forceRefresh && !isStale && !eventItems.isEmpty()) {
                 Log.d(TAG, "Events cache is fresh, skipping network fetch");
                 runOnUiThread(() -> {
                     swipeRefreshEvents.setRefreshing(false);
@@ -2290,7 +2693,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 // Update cache
                                 ProfileCacheManager.getInstance().putNotifications(arr);
-                                ProfileCacheManager.getInstance().save(MainActivity.this);
+                                ProfileCacheManager.getInstance().scheduleSave(MainActivity.this);
 
                                 List<EventAdapter.EventItem> restEvents = ApiParser.parseNotificationJson(arr);
                                 String fullCookie = SecurePrefs.get(MainActivity.this)
@@ -2300,9 +2703,8 @@ public class MainActivity extends AppCompatActivity {
                                     if (item.otherUserId != null && !item.otherUserId.isEmpty()) {
                                         JSONObject cached = ProfileCacheManager.getInstance().getProfile(item.otherUserId);
                                         if (cached != null) {
-                                            if (item.title == null || item.title.equals("Someone")) {
-                                                item.title = cached.optString("name",
-                                                        cached.optString("pseudo", item.title));
+                                            if (item.title == null || "Someone".equals(item.title) || "Quelqu'un".equals(item.title)) {
+                                                item.title = cached.optString("name", item.title);
                                             }
                                             JSONObject photo = cached.optJSONObject("photo");
                                             if (photo != null && (item.avatarUrl == null || item.avatarUrl.isEmpty())) {
@@ -2315,6 +2717,12 @@ public class MainActivity extends AppCompatActivity {
                                             item.isOnline = "1".equals(onlineVal) || cached.optBoolean("online", false)
                                                     || cached.optBoolean("is_online", false);
                                         }
+                                        if (item.title == null || "Someone".equals(item.title) || "Quelqu'un".equals(item.title)) {
+                                            String bookmarkName = findBookmarkNameByUserId(item.otherUserId);
+                                            if (bookmarkName != null && !bookmarkName.isEmpty()) {
+                                                item.title = bookmarkName;
+                                            }
+                                        }
 
                                         // Fetch if status is stale OR avatar is still missing
                                         if (ProfileCacheManager.getInstance().isStatusStale(item.otherUserId) 
@@ -2323,7 +2731,7 @@ public class MainActivity extends AppCompatActivity {
                                         }
                                     }
                                 }
-                                fetchProfileViewers(restEvents, () -> fetchPokeEvents(restEvents));
+                                fetchEventSourcesParallel(restEvents);
                             } catch (Exception e) {
                                 Log.e("MainActivity", "Error parsing notifications", e);
                                 runOnUiThread(() -> {
@@ -2340,7 +2748,7 @@ public class MainActivity extends AppCompatActivity {
 
             });
         } else {
-            if (!ProfileCacheManager.getInstance().areOutgoingEventsStale() && !eventItems.isEmpty()) {
+            if (!forceRefresh && !ProfileCacheManager.getInstance().areOutgoingEventsStale() && !eventItems.isEmpty()) {
                 Log.d(TAG, "Outgoing events cache is fresh, skipping network fetch");
                 runOnUiThread(() -> {
                     swipeRefreshEvents.setRefreshing(false);
@@ -2372,58 +2780,48 @@ public class MainActivity extends AppCompatActivity {
         return rawUrl;
     }
 
-    private void fetchProfileViewers(List<EventAdapter.EventItem> restEvents, final Runnable onDone) {
-        SecurePrefs secure = SecurePrefs.get(this);
-        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
-        String suid = secure.getString(ApiConstants.KEY_SUID, "");
-
-        Request req = new Request.Builder()
-                .url(ApiConstants.BASE_URL + ApiConstants.PATH_LOOKERS)
-                .addHeader("Cookie", fullCookie)
-                .addHeader("x-csrftoken", suid)
-                .addHeader("User-Agent", ApiConstants.USER_AGENT)
-                .build();
-
-        client.newCall(req).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                finalizeEvents(restEvents);
-            }
-
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                try (Response r = response) {
-                    if (r.isSuccessful() && r.body() != null) {
-                        try {
-                            String html = NetworkUtils.responseToString(r);
-                            List<EventAdapter.EventItem> viewerItems = ApiParser.parseProfileViewersHtml(html);
-                            for (EventAdapter.EventItem item : viewerItems) {
-                                Log.d(TAG,
-                                        "Extracted profile viewer ID: " + item.otherUserId + " for: " + item.title);
-                                restEvents.add(item);
-                                fetchUserProfileForEvent(item, fullCookie, item.otherUserId);
-                            }
-                        } catch (Exception e) {
-                            Log.e("MainActivity", "Error parsing profile viewers", e);
-                        }
-                    }
-                    if (onDone != null)
-                        onDone.run();
-                    else
-                        finalizeEvents(restEvents);
-                }
-            }
-        });
-
+    private boolean isOutgoingEvent(EventAdapter.EventItem it) {
+        return it.eventType == -4 || "outgoing_salutation".equals(it.why)
+                || it.eventType == -6 || "visit_sent".equals(it.why);
     }
 
-    private void fetchPokeEvents(List<EventAdapter.EventItem> restEvents) {
+    /**
+     * Renders the already-parsed REST events immediately (keeping any outgoing events that are
+     * currently displayed) so the user does not wait for every HTML scrape to complete.
+     */
+    private void renderEventsEarly(List<EventAdapter.EventItem> restEvents) {
+        final List<EventAdapter.EventItem> early = new ArrayList<>(restEvents);
+        for (EventAdapter.EventItem item : early) {
+            localizeEventItem(item);
+        }
+        runOnUiThread(() -> {
+            List<EventAdapter.EventItem> combined = new ArrayList<>(early);
+            for (EventAdapter.EventItem it : allEventItems) {
+                if (isOutgoingEvent(it)) {
+                    combined.add(it);
+                }
+            }
+            List<EventAdapter.EventItem> deduped = ApiParser.deduplicateEvents(combined);
+            allEventItems.clear();
+            allEventItems.addAll(deduped);
+            applyFilter("events");
+        });
+    }
+
+    /**
+     * Fetches one HTML event source and appends the parsed items to {@code sink}.
+     * {@code onDone} is always invoked exactly once, whether the request succeeds or fails.
+     */
+    private void fetchHtmlEventSource(String path,
+            java.util.function.Function<String, List<EventAdapter.EventItem>> parser,
+            java.util.function.Consumer<EventAdapter.EventItem> tagger,
+            final List<EventAdapter.EventItem> sink, final Runnable onDone) {
         SecurePrefs secure = SecurePrefs.get(this);
-        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
+        final String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
         String suid = secure.getString(ApiConstants.KEY_SUID, "");
 
         Request req = new Request.Builder()
-                .url(ApiConstants.BASE_URL + ApiConstants.PATH_POKES)
+                .url(ApiConstants.BASE_URL + path)
                 .addHeader("Cookie", fullCookie)
                 .addHeader("x-csrftoken", suid)
                 .addHeader("User-Agent", ApiConstants.USER_AGENT)
@@ -2432,11 +2830,7 @@ public class MainActivity extends AppCompatActivity {
         client.newCall(req).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                if (filterEventsDirection == FILTER_EVENTS_DIRECTION_ALL) {
-                    fetchOutgoingPokeEventsChain(restEvents);
-                } else {
-                    finalizeEvents(restEvents);
-                }
+                onDone.run();
             }
 
             @Override
@@ -2445,66 +2839,58 @@ public class MainActivity extends AppCompatActivity {
                     if (r.isSuccessful() && r.body() != null) {
                         try {
                             String html = NetworkUtils.responseToString(r);
-                            List<EventAdapter.EventItem> pokeItems = ApiParser.parsePokeHtml(html);
-                            for (EventAdapter.EventItem item : pokeItems) {
-                                restEvents.add(item);
-                                Log.d(TAG, "Extracted poke ID: " + item.otherUserId + " for: " + item.title);
+                            for (EventAdapter.EventItem item : parser.apply(html)) {
+                                if (tagger != null) {
+                                    tagger.accept(item);
+                                }
+                                sink.add(item);
                                 fetchUserProfileForEvent(item, fullCookie, item.otherUserId);
                             }
                         } catch (Exception e) {
-                            Log.e("MainActivity", "Error parsing pokes", e);
+                            Log.e("MainActivity", "Error parsing events source " + path, e);
                         }
                     }
-                    if (filterEventsDirection == FILTER_EVENTS_DIRECTION_ALL) {
-                        fetchOutgoingPokeEventsChain(restEvents);
-                    } else {
-                        finalizeEvents(restEvents);
-                    }
+                } finally {
+                    onDone.run();
                 }
             }
         });
     }
 
-    private void fetchOutgoingPokeEventsChain(List<EventAdapter.EventItem> restEvents) {
-        SecurePrefs secure = SecurePrefs.get(this);
-        String fullCookie = secure.getString(ApiConstants.KEY_FULL_COOKIE, "");
-        String suid = secure.getString(ApiConstants.KEY_SUID, "");
+    /**
+     * Runs the viewers / pokes (and, for the "all" direction, sent pokes / sent visits) scrapes
+     * in parallel instead of one after another.
+     */
+    private void fetchEventSourcesParallel(List<EventAdapter.EventItem> restEvents) {
+        final boolean includeOutgoing = filterEventsDirection == FILTER_EVENTS_DIRECTION_ALL;
+        final List<EventAdapter.EventItem> merged = Collections
+                .synchronizedList(new ArrayList<>(restEvents));
 
-        Request req = new Request.Builder()
-                .url(ApiConstants.BASE_URL + ApiConstants.PATH_POKES_SENT)
-                .addHeader("Cookie", fullCookie)
-                .addHeader("x-csrftoken", suid)
-                .addHeader("User-Agent", ApiConstants.USER_AGENT)
-                .build();
+        renderEventsEarly(restEvents);
 
-        client.newCall(req).enqueue(new Callback() {
-            @Override
-            public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                fetchOutgoingVisits(restEvents, null);
+        final java.util.concurrent.atomic.AtomicInteger remaining =
+                new java.util.concurrent.atomic.AtomicInteger(includeOutgoing ? 4 : 2);
+        final Runnable onSourceDone = () -> {
+            if (remaining.decrementAndGet() == 0) {
+                finalizeEvents(new ArrayList<>(merged));
             }
+        };
 
-            @Override
-            public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                try (Response r = response) {
-                    if (r.isSuccessful() && r.body() != null) {
-                        try {
-                            String html = NetworkUtils.responseToString(r);
-                            List<EventAdapter.EventItem> pokeItems = ApiParser.parsePokeHtml(html);
-                            for (EventAdapter.EventItem item : pokeItems) {
-                                item.why = "outgoing_salutation";
-                                item.eventType = -4;
-                                Log.d(TAG, "Extracted outgoing poke ID Chain: " + item.otherUserId + " for: " + item.title);
-                                fetchUserProfileForEvent(item, fullCookie, item.otherUserId);
-                                restEvents.add(item);
-                            }
-                        } catch (Exception e) {
-                            Log.e("MainActivity", "Error parsing outgoing pokes in chain", e);
-                        }
-                    }
-                    fetchOutgoingVisits(restEvents, null);
-                }
-            }
-        });
+        fetchHtmlEventSource(ApiConstants.PATH_LOOKERS, ApiParser::parseProfileViewersHtml, null,
+                merged, onSourceDone);
+        fetchHtmlEventSource(ApiConstants.PATH_POKES, ApiParser::parsePokeHtml, null,
+                merged, onSourceDone);
+        if (includeOutgoing) {
+            fetchHtmlEventSource(ApiConstants.PATH_POKES_SENT, ApiParser::parsePokeHtml, item -> {
+                item.why = "outgoing_salutation";
+                item.eventType = -4;
+            }, merged, onSourceDone);
+            fetchHtmlEventSource(ApiConstants.PATH_VISITS_SENT, ApiParser::parseProfileViewersHtml, item -> {
+                item.why = "visit_sent";
+                item.eventType = -6;
+                item.body = "visited their profile";
+            }, merged, onSourceDone);
+        }
     }
 
     private void fetchOutgoingPokeEvents() {
@@ -2625,7 +3011,7 @@ public class MainActivity extends AppCompatActivity {
                 arr.put(obj);
         }
         ProfileCacheManager.getInstance().putOutgoingEvents(arr);
-        ProfileCacheManager.getInstance().save(this);
+        ProfileCacheManager.getInstance().scheduleSave(this);
     }
 
     private void finalizeEvents(List<EventAdapter.EventItem> events) {
@@ -2661,8 +3047,13 @@ public class MainActivity extends AppCompatActivity {
     }
     
     private void localizeEventItem(EventAdapter.EventItem item) {
-        if ("Someone".equals(item.title) || "Quelqu'un".equals(item.title)) {
-            item.title = getString(R.string.someone);
+        if ("Someone".equals(item.title) || "Quelqu'un".equals(item.title) || item.title == null || item.title.trim().isEmpty()) {
+            String bookmarkName = findBookmarkNameByUserId(item.otherUserId);
+            if (bookmarkName != null && !bookmarkName.isEmpty()) {
+                item.title = bookmarkName;
+            } else {
+                item.title = getString(R.string.someone);
+            }
         }
 
         if (item.why == null || item.why.isEmpty())
@@ -2704,7 +3095,7 @@ public class MainActivity extends AppCompatActivity {
                 arr.put(obj);
         }
         ProfileCacheManager.getInstance().putNotifications(arr);
-        ProfileCacheManager.getInstance().save(this);
+        ProfileCacheManager.getInstance().scheduleSave(this);
     }
 
     private void loadEventsFromCache() {
@@ -2754,6 +3145,7 @@ public class MainActivity extends AppCompatActivity {
         final int fActive = totalUnreadActive;
         final int fNew = totalUnreadNew;
         final int fArchived = totalUnreadArchived;
+        final int fFlirts = totalUnreadFlirts;
 
         runOnUiThread(() -> {
             if (tabLayoutChats.getTabAt(TAB_ACTIVE) != null) {
@@ -2795,8 +3187,21 @@ public class MainActivity extends AppCompatActivity {
                     badge.setVisible(false);
                 }
             }
+            if (tabLayoutChats.getTabAt(TAB_FLIRTS) != null) {
+                tabLayoutChats.getTabAt(TAB_FLIRTS).setText(R.string.tab_flirts);
 
-            int total = fActive + fNew + fArchived;
+                BadgeDrawable badge = tabLayoutChats.getTabAt(TAB_FLIRTS).getOrCreateBadge();
+                badge.setHorizontalOffset(dpToPx(10));
+                badge.setVerticalOffset(dpToPx(2));
+                if (fFlirts > 0) {
+                    badge.setVisible(true);
+                    badge.setNumber(fFlirts);
+                } else {
+                    badge.setVisible(false);
+                }
+            }
+
+            int total = fActive + fNew + fArchived + fFlirts;
             BadgeDrawable badge = bottomNav.getOrCreateBadge(R.id.nav_chats);
             if (total > 0) {
                 badge.setVisible(true);
@@ -2825,6 +3230,11 @@ public class MainActivity extends AppCompatActivity {
                 return item.conversationLink;
             }
         }
+        for (ChatAdapter.ChatItem item : allFlirtItems) {
+            if (item.type == ChatAdapter.TYPE_CHAT && targetUserId.equals(item.otherUserId)) {
+                return item.conversationLink;
+            }
+        }
         android.content.SharedPreferences convoPrefs = getSharedPreferences("ConversationLinks",
                 android.content.Context.MODE_PRIVATE);
         return convoPrefs.getString(targetUserId, null);
@@ -2833,10 +3243,11 @@ public class MainActivity extends AppCompatActivity {
     public void backgroundSearchConversation(String targetUserId, int offset) {
         if (targetUserId == null || targetUserId.isEmpty())
             return;
-        // Search in Active, New, Archived in parallel or sequence
+        // Search in Active, New, Archived, Flirts in parallel or sequence
         searchEndpointsForUser(targetUserId, "/rest/users/" + myUserId + "/conversations/active", offset);
         searchEndpointsForUser(targetUserId, "/rest/users/" + myUserId + "/conversations/new", offset);
         searchEndpointsForUser(targetUserId, "/rest/users/" + myUserId + "/conversations/archived", offset);
+        searchEndpointsForUser(targetUserId, "/rest/users/" + myUserId + "/conversations/flirts", offset);
     }
 
     private void searchEndpointsForUser(String targetUserId, String endpointBase, int offset) {
@@ -3200,7 +3611,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private List<ChatAdapter.ChatItem> parseConversationJson(JSONArray arr, boolean forceUnread) {
-        List<ChatAdapter.ChatItem> result = ApiParser.parseConversationJson(arr, forceUnread, myUserId);
+        String myDisplayName = (myName != null && !myName.isEmpty())
+                ? myName
+                : SecurePrefs.get(this).getString(ApiConstants.KEY_USERNAME, "");
+        List<ChatAdapter.ChatItem> result = ApiParser.parseConversationJson(arr, forceUnread, myUserId, myDisplayName);
 
         // Persist conversation links as a side-effect (kept here, not in the pure parser)
         android.content.SharedPreferences convoPrefs = getSharedPreferences("ConversationLinks",
@@ -3388,10 +3802,13 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        if (resultsBottomSheet != null && resultsBottomSheet.isShowing())
+        if (resultsBottomSheet != null && resultsBottomSheet.isShowing()) {
+            BottomSheetUtils.expand(resultsBottomSheet);
             return;
+        }
 
         resultsBottomSheet = new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+        BottomSheetUtils.setupFullHeight(resultsBottomSheet);
         View view = getLayoutInflater().inflate(R.layout.layout_search_results, null);
 
         RecyclerView recyclerView = view.findViewById(R.id.recycler_results_sheet);
@@ -3845,6 +4262,8 @@ public class MainActivity extends AppCompatActivity {
             backingList = allArchivedItems;
         else if (currentChatTab == TAB_NEW)
             backingList = allNewItems;
+        else if (currentChatTab == TAB_FLIRTS)
+            backingList = allFlirtItems;
         else
             backingList = allActiveItems;
 
@@ -3992,9 +4411,9 @@ public class MainActivity extends AppCompatActivity {
             });
         }
 
-        favoriteItems.clear();
-        favoriteItems.addAll(filtered);
-        favoriteAdapter.notifyDataSetChanged();
+        if (favoriteAdapter != null) {
+            favoriteAdapter.submitList(filtered);
+        }
     }
 
     private void showFavoritesSortBottomSheet() {
@@ -4277,6 +4696,10 @@ public class MainActivity extends AppCompatActivity {
         
         if (btnExecuteUnified != null) {
             btnExecuteUnified.setOnClickListener(v -> {
+                if (isSearchingUnified) {
+                    showSearchResultsSheet();
+                    return;
+                }
                 searchItems.clear();
                 if (searchAdapter != null) searchAdapter.notifyDataSetChanged();
                 currentSearchPageUnified = 1;
@@ -4636,6 +5059,11 @@ public class MainActivity extends AppCompatActivity {
                     setSearchLoading(false);
                     Toast.makeText(MainActivity.this, R.string.search_failed, Toast.LENGTH_SHORT).show();
                     searchAdapter.notifyDataSetChanged();
+                    if (resultsBottomSheet != null && resultsBottomSheet.isShowing()) {
+                        BottomSheetUtils.expand(resultsBottomSheet);
+                    } else if (isTablet && persistentSearchBehavior != null) {
+                        persistentSearchBehavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+                    }
                     if (onDone != null) onDone.run();
                 });
             }
@@ -4647,6 +5075,11 @@ public class MainActivity extends AppCompatActivity {
                         runOnUiThread(() -> {
                             setSearchLoading(false);
                             searchAdapter.notifyDataSetChanged();
+                            if (resultsBottomSheet != null && resultsBottomSheet.isShowing()) {
+                                BottomSheetUtils.expand(resultsBottomSheet);
+                            } else if (isTablet && persistentSearchBehavior != null) {
+                                persistentSearchBehavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+                            }
                             if (onDone != null) onDone.run();
                         });
                         return;
@@ -4683,6 +5116,11 @@ public class MainActivity extends AppCompatActivity {
 
                     runOnUiThread(() -> {
                         setSearchLoading(false);
+                        if (resultsBottomSheet != null && resultsBottomSheet.isShowing()) {
+                            BottomSheetUtils.expand(resultsBottomSheet);
+                        } else if (isTablet && persistentSearchBehavior != null) {
+                            persistentSearchBehavior.setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+                        }
 
                         if (searchItems.isEmpty() && newItems.isEmpty() && !hasMoreSearchResults) {
                             Toast.makeText(MainActivity.this, R.string.no_results_found, Toast.LENGTH_SHORT).show();
@@ -5522,28 +5960,21 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /** conversationLink → reason it can't be posted to (filled during cleanup scan). */
+    private final java.util.Map<String, String> cleanupReasons = new java.util.concurrent.ConcurrentHashMap<>();
+
     private void startConversationCleanup() {
+        cleanupReasons.clear();
+        // Seed with whatever is already loaded, then page through every endpoint so
+        // conversations not yet loaded in the UI are scanned too.
         List<ChatAdapter.ChatItem> uniqueConversations = new ArrayList<>();
         Set<String> links = new HashSet<>();
-        for (ChatAdapter.ChatItem item : allActiveItems) {
-            if (item.conversationLink != null && links.add(item.conversationLink)) {
-                uniqueConversations.add(item);
+        for (List<ChatAdapter.ChatItem> src : java.util.Arrays.asList(allActiveItems, allNewItems, allArchivedItems, allFlirtItems)) {
+            for (ChatAdapter.ChatItem item : src) {
+                if (item.conversationLink != null && links.add(item.conversationLink)) {
+                    uniqueConversations.add(item);
+                }
             }
-        }
-        for (ChatAdapter.ChatItem item : allNewItems) {
-            if (item.conversationLink != null && links.add(item.conversationLink)) {
-                uniqueConversations.add(item);
-            }
-        }
-        for (ChatAdapter.ChatItem item : allArchivedItems) {
-            if (item.conversationLink != null && links.add(item.conversationLink)) {
-                uniqueConversations.add(item);
-            }
-        }
-
-        if (uniqueConversations.isEmpty()) {
-            Toast.makeText(this, R.string.cleanup_no_candidates, Toast.LENGTH_SHORT).show();
-            return;
         }
 
         ProgressBar progressBar = new ProgressBar(this);
@@ -5559,8 +5990,88 @@ public class MainActivity extends AppCompatActivity {
                 .create();
         scanDialog.show();
 
-        List<ChatAdapter.ChatItem> candidates = new ArrayList<>();
-        scanNext(0, uniqueConversations, candidates, scanDialog);
+        final String[] endpoints = {"active", "new", "archived", "flirts"};
+        fetchAllConversationsForCleanup(endpoints, 0, 0, uniqueConversations, links, scanDialog, () -> {
+            if (uniqueConversations.isEmpty()) {
+                runOnUiThread(() -> {
+                    scanDialog.dismiss();
+                    Toast.makeText(this, R.string.cleanup_no_candidates, Toast.LENGTH_SHORT).show();
+                });
+                return;
+            }
+            List<ChatAdapter.ChatItem> candidates = new ArrayList<>();
+            scanNext(0, uniqueConversations, candidates, scanDialog);
+        });
+    }
+
+    /**
+     * Recursively pages through /conversations/{endpoint} for each endpoint, adding
+     * any conversation not already collected. Calls onDone when all pages are fetched.
+     */
+    private void fetchAllConversationsForCleanup(final String[] endpoints, final int endpointIdx, final int offset,
+            final List<ChatAdapter.ChatItem> out, final Set<String> links,
+            final AlertDialog dialog, final Runnable onDone) {
+        if (isFinishing() || isDestroyed()) return;
+        if (endpointIdx >= endpoints.length) {
+            onDone.run();
+            return;
+        }
+        runOnUiThread(() -> dialog.setMessage(getString(R.string.cleanup_scanning, 0, out.size())));
+
+        final int count = 50;
+        SecurePrefs secure = SecurePrefs.get(this);
+        Request req = new Request.Builder()
+                .url(ApiConstants.BASE_URL + "/rest/users/" + myUserId + "/conversations/" + endpoints[endpointIdx]
+                        + "?offset=" + offset + "&count=" + count)
+                .addHeader("Cookie", secure.getString(ApiConstants.KEY_FULL_COOKIE, ""))
+                .addHeader("x-csrftoken", secure.getString(ApiConstants.KEY_SUID, ""))
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(req).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                fetchAllConversationsForCleanup(endpoints, endpointIdx + 1, 0, out, links, dialog, onDone);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                int received = 0;
+                int total = -1;
+                try (Response r = response) {
+                    if (r.isSuccessful() && r.body() != null) {
+                        String body = NetworkUtils.responseToString(r);
+                        JSONArray arr;
+                        try {
+                            JSONObject json = new JSONObject(body);
+                            total = json.optInt("total_conversations_count", -1);
+                            arr = json.optJSONArray("items");
+                            if (arr == null) arr = json.optJSONArray("conversations");
+                        } catch (Exception e) {
+                            arr = new JSONArray(body);
+                        }
+                        if (arr != null) {
+                            received = arr.length();
+                            for (ChatAdapter.ChatItem item : parseConversationJson(arr, false)) {
+                                if (item.conversationLink != null && links.add(item.conversationLink)) {
+                                    out.add(item);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e("MainActivity", "Error fetching conversations for cleanup", e);
+                }
+
+                int nextOffset = offset + received;
+                boolean more = received > 0 && (total < 0 ? received >= count : nextOffset < total);
+                if (more) {
+                    fetchAllConversationsForCleanup(endpoints, endpointIdx, nextOffset, out, links, dialog, onDone);
+                } else {
+                    fetchAllConversationsForCleanup(endpoints, endpointIdx + 1, 0, out, links, dialog, onDone);
+                }
+            }
+        });
     }
 
     private void scanNext(final int index, final List<ChatAdapter.ChatItem> list, final List<ChatAdapter.ChatItem> candidates, final AlertDialog dialog) {
@@ -5604,6 +6115,13 @@ public class MainActivity extends AppCompatActivity {
                             JSONObject json = new JSONObject(body);
                             String canPost = json.optString("can_post", "yes");
                             if (!"yes".equals(canPost)) {
+                                String reason = json.optString("cannot_post_error_message", "");
+                                if (reason.isEmpty() || "null".equals(reason)) {
+                                    reason = canPost.replace('_', ' ');
+                                }
+                                if (item.conversationLink != null) {
+                                    cleanupReasons.put(item.conversationLink, reason);
+                                }
                                 candidates.add(item);
                             }
                         } catch (Exception e) {
@@ -5635,11 +6153,8 @@ public class MainActivity extends AppCompatActivity {
                         ? "#" + item.otherUserId
                         : getString(R.string.someone);
             }
-            if (item.lastMessage != null && !item.lastMessage.isEmpty()) {
-                names[i] = name + " — " + item.lastMessage;
-            } else {
-                names[i] = name;
-            }
+            String reason = item.conversationLink != null ? cleanupReasons.get(item.conversationLink) : null;
+            names[i] = (reason != null && !reason.isEmpty()) ? name + " (" + reason + ")" : name;
             checked[i] = true;
         }
 
@@ -5792,8 +6307,13 @@ public class MainActivity extends AppCompatActivity {
                         }
 
                         // 3. Online Status
-                        boolean isOnline = profile.optBoolean("is_online", false);
-                        if (isOnline != item.isOnline) {
+                        // Only override the search-page status if the REST payload actually
+                        // carries an online field; otherwise keep the scraped value.
+                        boolean hasOnlineField = profile.has("online") || profile.has("is_online");
+                        boolean isOnline = "1".equals(profile.optString("online", "0"))
+                                || profile.optBoolean("online", false)
+                                || profile.optBoolean("is_online", false);
+                        if (hasOnlineField && isOnline != item.isOnline) {
                             item.isOnline = isOnline;
                             updated = true;
                         }

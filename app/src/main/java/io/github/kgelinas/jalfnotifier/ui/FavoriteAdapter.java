@@ -16,11 +16,14 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.FavoriteViewHolder> {
 
@@ -49,6 +52,55 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
         public String sexLink;
         public int nsfwRank = 0;
         public String lastConnection;
+
+        public FavoriteItem copy() {
+            FavoriteItem c = new FavoriteItem();
+            c.name = this.name;
+            c.age = this.age;
+            c.details = this.details;
+            c.city = this.city;
+            c.distance = this.distance;
+            c.avatarUrl = this.avatarUrl;
+            c.sexIconUrl = this.sexIconUrl;
+            c.isOnline = this.isOnline;
+            c.isFavorite = this.isFavorite;
+            c.isNotified = this.isNotified;
+            c.isBookmarked = this.isBookmarked;
+            c.isCertified = this.isCertified;
+            c.isOnfire = this.isOnfire;
+            c.userLink = this.userLink;
+            c.otherUserId = this.otherUserId;
+            c.sexLink = this.sexLink;
+            c.nsfwRank = this.nsfwRank;
+            c.lastConnection = this.lastConnection;
+            return c;
+        }
+
+        public String getUniqueKey() {
+            if (otherUserId != null && !otherUserId.isEmpty()) {
+                return otherUserId;
+            }
+            if (userLink != null && !userLink.isEmpty()) {
+                return userLink;
+            }
+            return name != null ? name : "";
+        }
+
+        public boolean hasSameContent(FavoriteItem other) {
+            if (other == null) return false;
+            return isOnline == other.isOnline
+                    && isFavorite == other.isFavorite
+                    && isNotified == other.isNotified
+                    && isBookmarked == other.isBookmarked
+                    && isCertified == other.isCertified
+                    && isOnfire == other.isOnfire
+                    && nsfwRank == other.nsfwRank
+                    && Objects.equals(name, other.name)
+                    && Objects.equals(details, other.details)
+                    && Objects.equals(avatarUrl, other.avatarUrl)
+                    && Objects.equals(sexIconUrl, other.sexIconUrl)
+                    && Objects.equals(lastConnection, other.lastConnection);
+        }
     }
 
     public interface OnItemClickListener {
@@ -60,6 +112,60 @@ public class FavoriteAdapter extends RecyclerView.Adapter<FavoriteAdapter.Favori
     public FavoriteAdapter(List<FavoriteItem> items, OnItemClickListener listener) {
         this.items = items;
         this.listener = listener;
+        setHasStableIds(true);
+    }
+
+    @Override
+    public long getItemId(int position) {
+        if (position < 0 || position >= items.size()) return RecyclerView.NO_ID;
+        String key = items.get(position).getUniqueKey();
+        try {
+            return Long.parseLong(key);
+        } catch (NumberFormatException e) {
+            return key.hashCode();
+        }
+    }
+
+    public void submitList(List<FavoriteItem> newItems) {
+        final List<FavoriteItem> oldSnapshot = new ArrayList<>(this.items);
+        final List<FavoriteItem> newSnapshot = new ArrayList<>(newItems.size());
+        for (FavoriteItem item : newItems) {
+            newSnapshot.add(item.copy());
+        }
+
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return oldSnapshot.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newSnapshot.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return Objects.equals(
+                        oldSnapshot.get(oldItemPosition).getUniqueKey(),
+                        newSnapshot.get(newItemPosition).getUniqueKey());
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                return oldSnapshot.get(oldItemPosition).hasSameContent(newSnapshot.get(newItemPosition));
+            }
+
+            @Override
+            public Object getChangePayload(int oldItemPosition, int newItemPosition) {
+                // Return non-null payload so DefaultItemAnimator doesn't cross-fade/detach the ViewHolder
+                return Boolean.TRUE;
+            }
+        });
+
+        this.items.clear();
+        this.items.addAll(newSnapshot);
+        diffResult.dispatchUpdatesTo(this);
     }
 
     @NonNull

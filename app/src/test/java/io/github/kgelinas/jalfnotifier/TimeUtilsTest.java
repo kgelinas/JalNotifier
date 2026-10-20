@@ -3,6 +3,8 @@ package io.github.kgelinas.jalfnotifier;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import io.github.kgelinas.jalfnotifier.util.*;
+
 import org.junit.Test;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;

@@ -84,10 +84,15 @@ public class ReplyReceiver extends BroadcastReceiver {
                 .addHeader("User-Agent", ApiConstants.USER_AGENT)
                 .build();
 
+        final PendingResult pendingResult = goAsync();
         client().newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                Log.e(TAG, "Failed to send reply", e);
+                try {
+                    Log.e(TAG, "Failed to send reply", e);
+                } finally {
+                    pendingResult.finish();
+                }
             }
 
             @Override
@@ -101,6 +106,8 @@ public class ReplyReceiver extends BroadcastReceiver {
                         // On failure, we should also update to stop spinner
                         updateNotification(context, conversationLink, context.getString(R.string.reply_failed_prefix, text));
                     }
+                } finally {
+                    pendingResult.finish();
                 }
             }
         });
@@ -132,6 +139,9 @@ public class ReplyReceiver extends BroadcastReceiver {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true);
 
-        notificationManager.notify(conversationLink.hashCode(), builder.build());
+        String convoIdStr = StringUtils.extractNumericId(conversationLink);
+        int notificationId = convoIdStr.isEmpty() ? conversationLink.hashCode() : convoIdStr.hashCode();
+
+        notificationManager.notify(notificationId, builder.build());
     }
 }

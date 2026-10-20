@@ -35,9 +35,14 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private final List<ChatItem> items;
     private final OnLoadMoreListener loadMoreListener;
+    private OnLoadMoreListener loadAllListener;
 
     public interface OnLoadMoreListener {
         void onLoadMore();
+    }
+
+    public void setOnLoadAllListener(OnLoadMoreListener loadAllListener) {
+        this.loadAllListener = loadAllListener;
     }
 
     public interface OnChatClickListener {
@@ -138,10 +143,18 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (holder instanceof HeaderViewHolder) {
             ((HeaderViewHolder) holder).titleText.setText(item.title);
         } else if (holder instanceof LoadMoreViewHolder) {
-            ((LoadMoreViewHolder) holder).btnLoadMore.setOnClickListener(v -> {
+            LoadMoreViewHolder lmHolder = (LoadMoreViewHolder) holder;
+            lmHolder.btnLoadMore.setOnClickListener(v -> {
                 if (loadMoreListener != null)
                     loadMoreListener.onLoadMore();
             });
+            if (lmHolder.btnLoadAll != null) {
+                lmHolder.btnLoadAll.setVisibility(loadAllListener != null ? View.VISIBLE : View.GONE);
+                lmHolder.btnLoadAll.setOnClickListener(v -> {
+                    if (loadAllListener != null)
+                        loadAllListener.onLoadMore();
+                });
+            }
         } else if (holder instanceof ChatViewHolder) {
             ChatViewHolder chatHolder = (ChatViewHolder) holder;
             chatHolder.nameText.setText(item.name);
@@ -284,10 +297,12 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     static class LoadMoreViewHolder extends RecyclerView.ViewHolder {
         View btnLoadMore;
+        View btnLoadAll;
 
         public LoadMoreViewHolder(@NonNull View itemView) {
             super(itemView);
             btnLoadMore = itemView.findViewById(R.id.btn_load_more);
+            btnLoadAll = itemView.findViewById(R.id.btn_load_all);
         }
     }
 

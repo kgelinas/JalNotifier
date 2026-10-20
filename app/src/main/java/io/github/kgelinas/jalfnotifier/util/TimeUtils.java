@@ -18,6 +18,13 @@ public class TimeUtils {
     }
 
     /**
+     * Converts an ISO timestamp into a relative human-readable string without Context.
+     */
+    public static String getRelativeTime(String isoTime) {
+        return getRelativeTime(null, isoTime);
+    }
+
+    /**
      * Converts an ISO timestamp into a relative human-readable string (e.g., "5m
      * ago").
      */
@@ -33,21 +40,21 @@ public class TimeUtils {
             Date date = sdf.parse(normalized);
             long diff = System.currentTimeMillis() - date.getTime();
             if (diff < 0)
-                return context.getString(R.string.time_now); // Future dates (skew) handled as now
+                return context != null ? context.getString(R.string.time_now) : "now"; // Future dates (skew) handled as now
 
             if (diff < 60_000)
-                return context.getString(R.string.time_now);
+                return context != null ? context.getString(R.string.time_now) : "now";
 
             long mins = diff / 60_000;
             if (mins < 60)
-                return context.getString(R.string.time_ago_m, mins);
+                return context != null ? context.getString(R.string.time_ago_m, mins) : mins + "m ago";
 
             long hours = mins / 60;
             if (hours < 24)
-                return context.getString(R.string.time_ago_h, hours);
+                return context != null ? context.getString(R.string.time_ago_h, hours) : hours + "h ago";
 
             long days = hours / 24;
-            return context.getString(R.string.time_ago_d, days);
+            return context != null ? context.getString(R.string.time_ago_d, days) : days + "d ago";
         } catch (Exception e) {
             return isoTime;
         }

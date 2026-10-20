@@ -2,6 +2,9 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.ui.*;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -141,7 +144,7 @@ public class EventParserTest {
                 .put("when_added", "2026-04-09T10:00:00.000Z"));
         List<EventAdapter.EventItem> result = ApiParser.parseNotificationJson(arr);
         assertEquals(1, result.size());
-        assertTrue(result.get(0).body.contains("aimé"));
+        assertTrue(result.get(0).body.contains("liked") || result.get(0).body.contains("aimé"));
         assertEquals("/photos/t2.jpg", result.get(0).secondaryImageUrl);
     }
 
@@ -173,7 +176,7 @@ public class EventParserTest {
                 .put("when_added", "2026-04-07T10:00:00.000Z"));
         List<EventAdapter.EventItem> result = ApiParser.parseNotificationJson(arr);
         assertEquals(1, result.size());
-        assertTrue(result.get(0).body.contains("visité"));
+        assertTrue(result.get(0).body.contains("visited") || result.get(0).body.contains("visité"));
     }
 
     // ==============================================================

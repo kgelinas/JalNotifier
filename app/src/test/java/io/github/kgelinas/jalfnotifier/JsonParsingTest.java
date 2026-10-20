@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import io.github.kgelinas.jalfnotifier.ui.*;
+import io.github.kgelinas.jalfnotifier.util.StringUtils;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;

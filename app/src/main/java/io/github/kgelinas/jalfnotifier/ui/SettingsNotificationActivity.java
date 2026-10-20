@@ -105,6 +105,8 @@ public class SettingsNotificationActivity extends AppCompatActivity {
             com.google.android.material.materialswitch.MaterialSwitch switchPokes = cardView.findViewById(R.id.switch_pokes);
             com.google.android.material.materialswitch.MaterialSwitch switchFavorites = cardView.findViewById(R.id.switch_favorites);
             com.google.android.material.materialswitch.MaterialSwitch switchPhotos = cardView.findViewById(R.id.switch_photos);
+            com.google.android.material.materialswitch.MaterialSwitch switchOnfire = cardView.findViewById(R.id.switch_onfire);
+            com.google.android.material.materialswitch.MaterialSwitch switchOnline = cardView.findViewById(R.id.switch_online);
 
             typeName.setText(titleStr);
             typeIcon.setImageResource(iconRes);
@@ -119,12 +121,16 @@ public class SettingsNotificationActivity extends AppCompatActivity {
             switchPokes.setChecked(viewModel.getContactTypeCategoryFilter(typeKey, "poke"));
             switchFavorites.setChecked(viewModel.getContactTypeCategoryFilter(typeKey, "favorite"));
             switchPhotos.setChecked(viewModel.getContactTypeCategoryFilter(typeKey, "photo"));
+            switchOnfire.setChecked(viewModel.getContactTypeCategoryFilter(typeKey, "onfire"));
+            switchOnline.setChecked(viewModel.getContactTypeCategoryFilter(typeKey, "online"));
 
             switchMessages.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "chat", isChecked));
             switchVisits.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "visit", isChecked));
             switchPokes.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "poke", isChecked));
             switchFavorites.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "favorite", isChecked));
             switchPhotos.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "photo", isChecked));
+            switchOnfire.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "onfire", isChecked));
+            switchOnline.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setContactTypeCategoryFilter(typeKey, "online", isChecked));
 
             headerLayout.setOnClickListener(v -> {
                 boolean isExpanded = expandContainer.getVisibility() == View.VISIBLE;
@@ -163,6 +169,8 @@ public class SettingsNotificationActivity extends AppCompatActivity {
             com.google.android.material.materialswitch.MaterialSwitch switchPokes = cardView.findViewById(R.id.switch_pokes);
             com.google.android.material.materialswitch.MaterialSwitch switchFavorites = cardView.findViewById(R.id.switch_favorites);
             com.google.android.material.materialswitch.MaterialSwitch switchPhotos = cardView.findViewById(R.id.switch_photos);
+            com.google.android.material.materialswitch.MaterialSwitch switchOnfire = cardView.findViewById(R.id.switch_onfire);
+            com.google.android.material.materialswitch.MaterialSwitch switchOnline = cardView.findViewById(R.id.switch_online);
 
             sexName.setText(desc);
             if (iconUrl != null && !iconUrl.isEmpty()) {
@@ -176,12 +184,16 @@ public class SettingsNotificationActivity extends AppCompatActivity {
             switchPokes.setChecked(viewModel.getNotificationFilter(desc, "poke"));
             switchFavorites.setChecked(viewModel.getNotificationFilter(desc, "favorite"));
             switchPhotos.setChecked(viewModel.getNotificationFilter(desc, "photo"));
+            switchOnfire.setChecked(viewModel.getNotificationFilter(desc, "onfire"));
+            switchOnline.setChecked(viewModel.getNotificationFilter(desc, "online"));
 
             switchMessages.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "chat", isChecked));
             switchVisits.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "visit", isChecked));
             switchPokes.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "poke", isChecked));
             switchFavorites.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "favorite", isChecked));
             switchPhotos.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "photo", isChecked));
+            switchOnfire.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "onfire", isChecked));
+            switchOnline.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setNotificationFilter(desc, "online", isChecked));
 
             headerLayout.setOnClickListener(v -> {
                 boolean isExpanded = expandContainer.getVisibility() == View.VISIBLE;

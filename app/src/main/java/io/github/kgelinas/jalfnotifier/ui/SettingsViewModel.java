@@ -70,6 +70,9 @@ public class SettingsViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> _blurNsfw = new MutableLiveData<>();
     public final LiveData<Boolean> blurNsfw = _blurNsfw;
 
+    private final MutableLiveData<Boolean> _disablePokes = new MutableLiveData<>();
+    public final LiveData<Boolean> disablePokes = _disablePokes;
+
     private final MutableLiveData<String> _geminiLanguage = new MutableLiveData<>();
     public final LiveData<String> geminiLanguage = _geminiLanguage;
 
@@ -243,6 +246,7 @@ public class SettingsViewModel extends AndroidViewModel {
         _useImperial.postValue(prefs.getBoolean(ApiConstants.KEY_USE_IMPERIAL, false));
         _sendReadReceipts.postValue(prefs.getBoolean(ApiConstants.KEY_SEND_READ_RECEIPTS, true));
         _blurNsfw.postValue(prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true));
+        _disablePokes.postValue(prefs.getBoolean(ApiConstants.KEY_DISABLE_POKES, false));
         _geminiLanguage.postValue(prefs.getString(ApiConstants.KEY_GEMINI_LANGUAGE, "Français"));
         _aiPromptTemplate.postValue(prefs.getString(ApiConstants.KEY_AI_PROMPT_TEMPLATE, ""));
         _aiReplyPromptTemplate.postValue(prefs.getString(ApiConstants.KEY_AI_REPLY_PROMPT_TEMPLATE, ""));
@@ -316,6 +320,9 @@ public class SettingsViewModel extends AndroidViewModel {
     public static boolean getNotificationFilter(SharedPreferences prefs, String sexDesc, String type) {
         String key = "notif_filter_" + sexDesc.toLowerCase(Locale.ROOT) + "_" + type.toLowerCase(Locale.ROOT);
         if (!prefs.contains(key)) {
+            if ("online".equalsIgnoreCase(type)) {
+                return true;
+            }
             if ("chat".equals(type)) {
                 Set<String> filtered = null;
                 try {
@@ -360,6 +367,10 @@ public class SettingsViewModel extends AndroidViewModel {
 
     public boolean getContactTypeCategoryFilter(String contactType, String type) {
         String key = "notif_filter_ct_" + contactType.toLowerCase(Locale.ROOT) + "_" + type.toLowerCase(Locale.ROOT);
+        if ("online".equalsIgnoreCase(type)) {
+            boolean defaultValue = "notified".equalsIgnoreCase(contactType);
+            return prefs.getBoolean(key, defaultValue);
+        }
         return prefs.getBoolean(key, true);
     }
 
@@ -382,6 +393,11 @@ public class SettingsViewModel extends AndroidViewModel {
     public void setBlurNsfw(boolean value) {
         _blurNsfw.setValue(value);
         prefs.edit().putBoolean(ApiConstants.KEY_BLUR_NSFW, value).apply();
+    }
+
+    public void setDisablePokes(boolean value) {
+        _disablePokes.setValue(value);
+        prefs.edit().putBoolean(ApiConstants.KEY_DISABLE_POKES, value).apply();
     }
 
     public void setGeminiLanguage(String value) {

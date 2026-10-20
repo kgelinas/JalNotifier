@@ -222,7 +222,7 @@ public class ContactsWidgetService extends RemoteViewsService {
 
                 JSONObject profile = cache.getProfile(otherUserId);
                 if (profile != null) {
-                    contact.name = profile.optString("name", profile.optString("pseudo", namesObj.optString(userLink, "User")));
+                    contact.name = profile.optString("name", namesObj.optString(userLink, "User"));
                     contact.isOnline = "1".equals(profile.optString("online", "0")) 
                             || profile.optBoolean("online", false) 
                             || profile.optBoolean("is_online", false);

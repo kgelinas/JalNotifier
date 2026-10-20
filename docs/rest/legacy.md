@@ -71,8 +71,11 @@ Returns the list of users who have recently viewed the authenticated user's prof
 
 ---
 
-## 4. Pokes (Clin d'oeil)
+## 4. Pokes (Clin d'oeil) *(Pending Deprecation)*
 **Endpoint**: `GET /ct/online/8`
+
+> [!WARNING]
+> **Pending Deprecation**: Pokes (`Clins d'oeil`) are scheduled to be officially replaced by the [Flirt conversation feature](conversations.md#3-flirt-categories--templates) (`/rest/flirt/categories` and `/rest/users/{userId}/conversations/flirts`).
 
 Returns a list of "Clins d'oeil" (pokes) received by the user.
 
@@ -97,8 +100,11 @@ Returns a list of profiles that the authenticated user has recently viewed/visit
 
 ---
 
-## 6. Pokes Sent (Clins d'oeil envoyés)
+## 6. Pokes Sent (Clins d'oeil envoyés) *(Pending Deprecation)*
 **Endpoint**: `GET /ct/online/10`
+
+> [!WARNING]
+> **Pending Deprecation**: Outgoing pokes are scheduled to be officially replaced by the [Flirt conversation feature](conversations.md#3-flirt-categories--templates).
 
 Returns a list of "Clins d'oeil" (pokes) sent by the authenticated user.
 

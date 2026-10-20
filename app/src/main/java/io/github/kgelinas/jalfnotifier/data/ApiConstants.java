@@ -52,6 +52,7 @@ public class ApiConstants {
         public static final String KEY_USE_IMPERIAL = "USE_IMPERIAL"; // true = show lbs/feet, false = kg/meters
         public static final String KEY_SEND_READ_RECEIPTS = "SEND_READ_RECEIPTS"; // true = send read_until: now
         public static final String KEY_BLUR_NSFW = "BLUR_NSFW"; // true = blur NSFW photos by default
+        public static final String KEY_DISABLE_POKES = "DISABLE_POKES"; // true = hide poke button on profile activity
         public static final String KEY_BIOMETRIC_LOGIN = "BIOMETRIC_LOGIN"; // true = allow auto-fill/login with
                                                                             // biometric
         public static final String KEY_BIOMETRIC_LOCK = "BIOMETRIC_LOCK"; // true = force biometric on app launch

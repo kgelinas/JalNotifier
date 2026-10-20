@@ -73,6 +73,105 @@
                     app:chipSpacingHorizontal="8dp" />
             </HorizontalScrollView>
 
+            <!-- Tone Selection Header -->
+            <TextView
+                android:id="@+id/txt_assistant_tone_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="@string/assistant_tone_selector_label"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold" />
+
+            <!-- Tone Choice Chips -->
+            <HorizontalScrollView
+                android:id="@+id/scroll_ai_tone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:clipToPadding="false"
+                android:layout_marginBottom="8dp">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/chip_group_ai_tone"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    app:chipSpacingHorizontal="8dp">
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_tone_default"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/assistant_tone_default"
+                        android:checked="true" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_tone_formal"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/assistant_tone_formal" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_tone_shorten"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/assistant_tone_shorten" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_tone_longer"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/assistant_tone_longer" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_tone_custom"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/assistant_tone_custom" />
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
+
+            <!-- Custom tone input (shown when chip_tone_custom is checked) -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layout_custom_steer"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.Dense"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:hint="@string/assistant_custom_steer_hint"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/edit_custom_steer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textCapSentences|textAutoCorrect"
+                    android:maxLines="2" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- AI Action: Refine Current Draft (shown if editMessage has text) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_action_refine_draft"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginBottom="8dp"
+                android:text="@string/assistant_refine_draft"
+                app:icon="@drawable/ic_edit_24"
+                app:iconSize="20dp"
+                app:iconGravity="textStart"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
             <!-- AI Action: Generate Intro -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_action_intro"
@@ -183,15 +282,36 @@
                 android:visibility="gone"
                 tools:visibility="visible">
 
-                <TextView
-                    android:id="@+id/txt_ai_suggestions_header"
+                <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:text="@string/assistant_ai_section_title"
-                    android:textAppearance="?attr/textAppearanceLabelLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textStyle="bold" />
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:id="@+id/txt_ai_suggestions_header"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true"
+                        android:text="@string/assistant_ai_section_title"
+                        android:textAppearance="?attr/textAppearanceLabelLarge"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textStyle="bold" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_clear_ai_suggestions"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true"
+                        android:minWidth="0dp"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:text="@string/assistant_clear_suggestions"
+                        android:textAppearance="?attr/textAppearanceLabelMedium"
+                        android:textColor="?attr/colorError" />
+                </RelativeLayout>
 
                 <!-- Accumulated AI options appended here -->
                 <LinearLayout

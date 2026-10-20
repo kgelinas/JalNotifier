@@ -165,6 +165,16 @@
                     android:contentDescription="Attach Photo" />
 
                 <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_flirt_picker"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    app:icon="@drawable/ic_fire_24"
+                    app:iconTint="?attr/colorOnSurfaceVariant"
+                    app:iconSize="24dp"
+                    android:contentDescription="@string/flirt_picker_title" />
+
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_gemini_generate"
                     style="@style/Widget.Material3.Button.IconButton"
                     android:layout_width="48dp"

@@ -61,8 +61,10 @@ Used for both incoming profile viewers (who visited you, `/ct/online/3`) and out
 | **Timestamp** | `p.date_show` | Parsed via `ApiParser.parseLookerDate`. |
 | **Avatar** | `img.picture_border` | Extracted for fast list loading. |
 
-### Pokes Received / Sent (`/ct/online/8`, `/ct/online/10`)
+### Pokes Received / Sent (`/ct/online/8`, `/ct/online/10`) *(Pending Deprecation)*
 **Method**: `ApiParser.parsePokeHtml`
+
+> **Note**: Pokes (`Clins d'oeil`) are scheduled to be officially replaced by the REST [Flirt conversation feature](rest/conversations.md#3-flirt-categories--templates).
 
 Used for both incoming pokes (received greetings, `/ct/online/8`) and outgoing pokes (sent greetings, `/ct/online/10`).
 

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView
+    <io.github.kgelinas.jalfnotifier.ui.ZoomableImageView
         android:id="@+id/img_fullscreen_item"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

@@ -74,6 +74,7 @@ public class SettingsActivity extends AppCompatActivity {
         viewModel.sendReadReceipts.observe(this, binding.switchReadReceipt::setChecked);
         viewModel.blurNsfw.observe(this, binding.switchBlurNsfw::setChecked);
         viewModel.remoteGeolocation.observe(this, binding.switchGeolocation::setChecked);
+        viewModel.disablePokes.observe(this, binding.switchDisablePokes::setChecked);
     }
 
     private void setupListeners() {
@@ -83,6 +84,7 @@ public class SettingsActivity extends AppCompatActivity {
                 .setOnCheckedChangeListener((btn, isChecked) -> viewModel.setSendReadReceipts(isChecked));
         binding.switchBlurNsfw.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setBlurNsfw(isChecked));
         binding.switchGeolocation.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setRemoteGeolocation(isChecked));
+        binding.switchDisablePokes.setOnCheckedChangeListener((btn, isChecked) -> viewModel.setDisablePokes(isChecked));
 
         binding.navNotifications
                 .setOnClickListener(v -> startActivity(new Intent(this, SettingsNotificationActivity.class)));

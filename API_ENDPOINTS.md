@@ -59,9 +59,21 @@ Fetch list of favourite users.
 
 ### GET `/rest/users/{userId}/conversations/{folder}?offset={n}&count=20`
 Fetch conversation threads.
-- `{folder}` can be `new`, `active`, or `archived`.
+- `{folder}` can be `new`, `active`, `archived`, or `flirts`.
 - **Detailed Schema**: [conversations.md](docs/rest/conversations.md#1-list-conversations)
 - **Used in**: `MainActivity` (chat list), `JalfNotificationWorker`
+
+### GET `/rest/flirt/categories`
+Fetch all available flirt message categories (replaces legacy Pokes).
+- **Detailed Schema**: [conversations.md](docs/rest/conversations.md#3-flirt-categories--templates)
+
+### GET `/rest/flirt/categories/{categoryId}`
+Fetch flirt message templates for a specific category.
+- **Detailed Schema**: [conversations.md](docs/rest/conversations.md#3-flirt-categories--templates)
+
+### POST `/rest/users/{userId}/conversations/{conversationId}` (Flirt message)
+Send a flirt template message in a conversation (`Content-Type: application/vnd.jalf.convo.newmessage.flirt+json`).
+- **Detailed Schema**: [conversations.md](docs/rest/conversations.md#4-send-flirt-message)
 
 ---
 
@@ -102,6 +114,8 @@ All sex categories with icons.
 | `notification_link` | `/rest/notifications/NOTIFICATIONID` | Mark notification as read/deleted |
 | `photo_link` | `/rest/photos/PHOTOID` | Full photo resource |
 | `sex_link` | `/rest/sexes/SEXID` | Sex category reference |
+| `flirt_category_link` | `/rest/flirt/categories/CATEGORYID` | Flirt category templates |
+| `flirt_link` | `/rest/flirt/FLIRTID` | Specific flirt message template |
 | `user_photos_albums_link` | `/rest/users/USERID/photos/albums` | User's photo albums |
 | `user_videos_albums_link` | `/rest/users/USERID/videos/albums` | User's video albums |
 

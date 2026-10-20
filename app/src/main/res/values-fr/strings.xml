@@ -2,6 +2,10 @@
     <string name="tab_actives">Actives</string>
     <string name="tab_new">Nouvelles</string>
     <string name="tab_archived">Archivées</string>
+    <string name="tab_flirts">Flirts</string>
+    <string name="flirt_picker_title">Envoyer un flirt</string>
+    <string name="flirt_category_hint">Catégorie</string>
+    <string name="error_failed_to_send_flirt">Échec de l\'envoi du flirt</string>
     <string name="app_locked">Application Verrouillée</string>
     <string name="auth_required_to_unlock">Authentification requise pour continuer</string>
     <string name="action_unlock">Déverrouiller</string>
@@ -13,6 +17,7 @@
     <string name="no_recent_activity">Aucune activité récente.</string>
     <string name="send_greeting">Envoyer une salutation</string>
     <string name="show_more_messages">Afficher plus de messages</string>
+    <string name="show_all_messages">Afficher tous les messages</string>
 
     <string name="app_name">JALNotifier</string>
     <string name="navigation_drawer_open">Ouvrir le tiroir de navigation</string>
@@ -282,6 +287,8 @@
     <string name="settings_read_receipts_desc">Envoyer un accusé de lecture quand vous ouvrez une conversation</string>
     <string name="settings_geolocation">Géolocalisation</string>
     <string name="settings_geolocation_desc">Activer la géolocalisation sur JALF (synchronise votre position)</string>
+    <string name="settings_disable_pokes">Désactiver le bouton Saluer (Pokes)</string>
+    <string name="settings_disable_pokes_desc">Masquer l\'action Saluer sur les profils (remplacée par les Flirts)</string>
     <string name="settings_general_title">Paramètres généraux</string>
     <string name="settings_category_title">Catégories</string>
     <string name="settings_nav_notifications">Notifications</string>
@@ -404,6 +411,17 @@
     <string name="assistant_model_selector_label">Modèle d\'IA</string>
     <string name="assistant_ai_section_title">Suggestions IA</string>
     <string name="assistant_cancel_generation">Annuler</string>
+    <string name="assistant_clear_suggestions">Effacer</string>
+    <string name="assistant_tone_selector_label">Ton &amp; Style</string>
+    <string name="assistant_tone_default">Naturel</string>
+    <string name="assistant_tone_formal">Formaliser</string>
+    <string name="assistant_tone_shorten">Raccourcir</string>
+    <string name="assistant_tone_longer">Allonger</string>
+    <string name="assistant_tone_custom">Personnalisé...</string>
+    <string name="assistant_custom_steer_hint">Ajouter une orientation (ex: mentionner la musique...)</string>
+    <string name="assistant_refine_draft">Améliorer le brouillon</string>
+    <string name="assistant_refine_draft_subtitle">Amélioration de : « %s »</string>
+
     <string name="content_description_assistant">Assistant &amp; Réponses rapides</string>
     <string name="error_fetching_profile_ai">Échec de la récupération du profil pour l\'IA</string>
     <string name="error_parsing_profile">Erreur lors de l\'analyse du profil</string>
@@ -460,6 +478,11 @@
     <string name="notif_type_pokes">Pokes &amp; Salutations</string>
     <string name="notif_type_favorites">Ajouté aux favoris</string>
     <string name="notif_type_photos">Photos &amp; Likes</string>
+    <string name="notif_type_onfire">En feu 🔥</string>
+    <string name="notif_type_online">En ligne</string>
+    <string name="user_onfire_title">Utilisateur en feu ! 🔥</string>
+    <string name="user_onfire_message">%1$s est en feu présentement !</string>
+    <string name="is_onfire">est en feu présentement !</string>
     <string name="settings_notification_by_contact_type">Notification par types de contact</string>
     <string name="filter_contact_type_others">Autres (Non-contacts)</string>
 
@@ -625,6 +648,15 @@ Message spécifique auquel répondre : "{specificMessage}"
     <string name="session_expired_toast">Session expirée. Veuillez vous reconnecter.</string>
     <string name="action_like_photo">Aimer cette photo</string>
     <string name="action_realize_fantasy">Réaliser le fantasme de cette photo</string>
+    <string name="action_open_in_browser">Ouvrir dans le navigateur intégré</string>
+    <!-- Directives pour le brouillon et le style de l'IA -->
+    <string name="ai_draft_refine_header">Brouillon de message actuel de l\'utilisateur à affiner, améliorer ou reformuler : "%1$s"\nTâche : Propose 2 ou 3 variantes améliorées de ce brouillon qui préservent l\'intention du message, adaptées au contexte de la discussion et au profil du destinataire.</string>
+    <string name="ai_style_formal">\nConsigne de style : Adopte un ton poli, soigné, courtois et plus formel.</string>
+    <string name="ai_style_shorten">\nConsigne de style : Rends le message très concis, percutant et direct, sans fioritures.</string>
+    <string name="ai_style_longer">\nConsigne de style : Développe davantage les propos, enrichis le message avec plus de détails, de convivialité et d\'expressivité.</string>
+    <string name="ai_style_custom">\nConsigne de style personnalisée de l\'utilisateur : %1$s</string>
+    <string name="show_more">Afficher plus</string>
+    <string name="loading">Chargement…</string>
 </resources>
 
 

@@ -94,6 +94,7 @@ public class SearchApiUtils {
         params.add(new Param("tab_id", "1"));
         params.add(new Param("hiddenSId", ""));
         if (s.speedMeetingDet) params.add(new Param("VIPSpeedMeeting", "1"));
+        if (s.webcamDet) params.add(new Param("VIPWebcam", "YES"));
         params.add(new Param("h_pos_y", "500"));
         params.add(new Param("h_pos_x", "500"));
         params.add(new Param("btnPager", "1"));

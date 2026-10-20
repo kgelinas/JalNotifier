@@ -30,6 +30,7 @@ public final class PreferenceKeys {
     public static final String KEY_USE_IMPERIAL = "USE_IMPERIAL";
     public static final String KEY_SEND_READ_RECEIPTS = "SEND_READ_RECEIPTS";
     public static final String KEY_BLUR_NSFW = "BLUR_NSFW";
+    public static final String KEY_DISABLE_POKES = "DISABLE_POKES";
     public static final String KEY_QUICK_RESPONSES = "QUICK_RESPONSES";
 
     // Online notifications

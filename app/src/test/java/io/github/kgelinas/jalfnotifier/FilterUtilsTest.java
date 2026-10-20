@@ -2,6 +2,10 @@ package io.github.kgelinas.jalfnotifier;
 
 import static org.junit.Assert.*;
 
+import io.github.kgelinas.jalfnotifier.data.*;
+import io.github.kgelinas.jalfnotifier.ui.*;
+import io.github.kgelinas.jalfnotifier.util.*;
+
 import org.junit.Test;
 
 import java.lang.reflect.Constructor;
