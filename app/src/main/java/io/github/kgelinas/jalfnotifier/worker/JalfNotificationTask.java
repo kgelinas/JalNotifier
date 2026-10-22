@@ -1153,9 +1153,68 @@ public class JalfNotificationTask {
         notificationManager.notify(uniqueNotifId, builder.build());
     }
 
+    public static int getTypingNotificationId(String convLink) {
+        if (convLink == null) return 0;
+        return ("typing_" + convLink).hashCode();
+    }
+
+    public static void cancelTypingNotification(Context context, String convLink) {
+        if (convLink == null || convLink.isEmpty() || context == null) return;
+        NotificationManager notificationManager = (NotificationManager) context
+                .getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager != null) {
+            notificationManager.cancel(getTypingNotificationId(convLink));
+        }
+    }
+
+    public static void showTypingNotification(Context context, String senderName, String convLink, String userLink) {
+        if (context == null || senderName == null || convLink == null) return;
+        NotificationManager notificationManager = (NotificationManager) context
+                .getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) return;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(context,
+                    Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    EVENT_CHANNEL_ID, context.getString(R.string.event_notifications), NotificationManager.IMPORTANCE_DEFAULT);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.putExtra(ApiConstants.EXTRA_CONVERSATION_LINK, convLink);
+        if (userLink != null) {
+            intent.putExtra(ApiConstants.EXTRA_USER_LINK, userLink);
+        }
+
+        int notifId = getTypingNotificationId(convLink);
+
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, notifId, intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, EVENT_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(senderName)
+                .setContentText(context.getString(R.string.typing_indicator_full, senderName))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setTimeoutAfter(15000)
+                .setAutoCancel(true);
+
+        notificationManager.notify(notifId, builder.build());
+    }
+
     public static void showChatNotification(Context context, String senderName, String messageText,
             String conversationLink,
             String otherUserId, String avatarUrl, String sexIconUrl) {
+        cancelTypingNotification(context, conversationLink);
         NotificationManager notificationManager = (NotificationManager) context
                 .getSystemService(Context.NOTIFICATION_SERVICE);
 

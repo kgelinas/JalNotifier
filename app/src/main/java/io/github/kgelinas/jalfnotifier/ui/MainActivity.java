@@ -271,9 +271,21 @@ public class MainActivity extends AppCompatActivity {
                 if (type == null)
                     return;
 
-                if (type.startsWith("convo_") || type.equals("message")
+                if ("convo_typing".equals(type)) {
+                    String data = intent.getStringExtra("data");
+                    if (data != null) {
+                        try {
+                            org.json.JSONObject json = new org.json.JSONObject(data);
+                            String convLink = json.optString("conversation_link", "");
+                            if (!convLink.isEmpty()) {
+                                setConversationTyping(convLink);
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                } else if (type.startsWith("convo_") || type.equals("message")
                         || type.equals("convo_all_unread_messages_count_changed")) {
                     Log.d(TAG, "Refreshing all chat counts due to " + type);
+                    clearConversationTyping(intent.getStringExtra("data"));
                     fetchAllUnreadCounts();
                 } else if (type.equals("user_stats_changed") || type.equals("looked") || type.equals("posted")) {
                     fetchEvents();
@@ -284,6 +296,78 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
+    private final Handler chatUiHandler = new Handler(Looper.getMainLooper());
+
+    private void setConversationTyping(String convLink) {
+        if (convLink == null || convLink.isEmpty()) return;
+        runOnUiThread(() -> {
+            boolean changed = false;
+            long expiry = System.currentTimeMillis() + 10000L;
+            for (List<ChatAdapter.ChatItem> list : java.util.Arrays.asList(chatItems, allActiveItems, allNewItems, allArchivedItems, allFlirtItems)) {
+                for (ChatAdapter.ChatItem item : list) {
+                    if (convLink.equals(item.conversationLink)) {
+                        item.isTyping = true;
+                        item.typingExpiryTime = expiry;
+                        changed = true;
+                    }
+                }
+            }
+            if (changed && chatAdapter != null) {
+                chatAdapter.notifyDataSetChanged();
+                chatUiHandler.postDelayed(() -> {
+                    boolean resetChanged = false;
+                    long now = System.currentTimeMillis();
+                    for (List<ChatAdapter.ChatItem> list : java.util.Arrays.asList(chatItems, allActiveItems, allNewItems, allArchivedItems, allFlirtItems)) {
+                        for (ChatAdapter.ChatItem item : list) {
+                            if (item.isTyping && now >= item.typingExpiryTime) {
+                                item.isTyping = false;
+                                resetChanged = true;
+                            }
+                        }
+                    }
+                    if (resetChanged && chatAdapter != null) {
+                        chatAdapter.notifyDataSetChanged();
+                    }
+                }, 10500L);
+            }
+        });
+    }
+
+    private void clearConversationTyping(String data) {
+        runOnUiThread(() -> {
+            String convLink = null;
+            if (data != null && !data.isEmpty()) {
+                try {
+                    org.json.JSONObject json = new org.json.JSONObject(data);
+                    convLink = json.optString("conversation_link", null);
+                    if (convLink == null || convLink.isEmpty()) {
+                        convLink = json.optString("link", null);
+                    }
+                } catch (Exception ignored) {}
+            }
+            boolean changed = false;
+            long now = System.currentTimeMillis();
+            for (List<ChatAdapter.ChatItem> list : java.util.Arrays.asList(chatItems, allActiveItems, allNewItems, allArchivedItems, allFlirtItems)) {
+                for (ChatAdapter.ChatItem item : list) {
+                    if (item.isTyping) {
+                        if (convLink != null) {
+                            if (convLink.equals(item.conversationLink)) {
+                                item.isTyping = false;
+                                changed = true;
+                            }
+                        } else if (now >= item.typingExpiryTime) {
+                            item.isTyping = false;
+                            changed = true;
+                        }
+                    }
+                }
+            }
+            if (changed && chatAdapter != null) {
+                chatAdapter.notifyDataSetChanged();
+            }
+        });
+    }
 
     // Unified Search Variables
     private com.google.android.material.materialswitch.MaterialSwitch switchAdvancedSearch;

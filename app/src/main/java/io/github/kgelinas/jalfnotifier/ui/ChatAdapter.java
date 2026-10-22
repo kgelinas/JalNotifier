@@ -81,6 +81,8 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         public boolean isPinned = false;
         public boolean isEphemeral = false;
         public int nsfwRank = 0;
+        public boolean isTyping = false;
+        public long typingExpiryTime = 0;
 
         public ChatItem(int type) {
             this.type = type;
@@ -158,12 +160,21 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         } else if (holder instanceof ChatViewHolder) {
             ChatViewHolder chatHolder = (ChatViewHolder) holder;
             chatHolder.nameText.setText(item.name);
-            chatHolder.messageText.setText(item.lastMessage);
             chatHolder.timeText.setText(getRelativeTime(chatHolder.itemView.getContext(), item.timeIso));
+
+            if (item.isTyping && System.currentTimeMillis() < item.typingExpiryTime) {
+                chatHolder.messageText.setText(chatHolder.itemView.getContext().getString(R.string.status_typing));
+                chatHolder.messageText.setTypeface(null, Typeface.ITALIC);
+                chatHolder.messageText.setTextColor(com.google.android.material.color.MaterialColors.getColor(chatHolder.messageText, com.google.android.material.R.attr.colorPrimary));
+            } else {
+                item.isTyping = false;
+                chatHolder.messageText.setText(item.lastMessage);
+                chatHolder.messageText.setTypeface(null, item.isUnread ? Typeface.BOLD : Typeface.NORMAL);
+                chatHolder.messageText.setTextColor(com.google.android.material.color.MaterialColors.getColor(chatHolder.messageText, android.R.attr.textColorSecondary));
+            }
 
             if (item.isUnread) {
                 chatHolder.nameText.setTypeface(null, Typeface.BOLD);
-                chatHolder.messageText.setTypeface(null, Typeface.BOLD);
                 chatHolder.unreadCountText.setVisibility(View.VISIBLE);
                 if (item.unreadCount > 0) {
                     chatHolder.unreadCountText.setText(String.valueOf(item.unreadCount));
@@ -172,7 +183,6 @@ public class ChatAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             } else {
                 chatHolder.nameText.setTypeface(null, Typeface.NORMAL);
-                chatHolder.messageText.setTypeface(null, Typeface.NORMAL);
                 chatHolder.unreadCountText.setVisibility(View.GONE);
             }
 

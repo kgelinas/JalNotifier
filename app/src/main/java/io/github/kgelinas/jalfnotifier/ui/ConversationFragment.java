@@ -459,6 +459,9 @@ public class ConversationFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        if (conversationLink != null && getContext() != null) {
+            JalfNotificationTask.cancelTypingNotification(requireContext(), conversationLink);
+        }
         if (messageAdapter != null && getContext() != null) {
             AppPrefs prefs = AppPrefs.getInstance(getContext());
             boolean blurNsfw = prefs.getBoolean(ApiConstants.KEY_BLUR_NSFW, true);

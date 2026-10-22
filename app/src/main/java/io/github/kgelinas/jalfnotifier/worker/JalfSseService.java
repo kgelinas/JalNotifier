@@ -276,9 +276,7 @@ public class JalfSseService extends Service {
                         }
 
                         String senderName = resolveName(json, source, userLink);
-                        String senderUserId = StringUtils.extractNumericId(userLink);
-                        JalfNotificationTask.showChatNotification(getApplicationContext(), senderName,
-                                getString(R.string.status_typing), convLink, senderUserId, "", "");
+                        JalfNotificationTask.showTypingNotification(getApplicationContext(), senderName, convLink, userLink);
 
                     } else if ("looked".equals(type) && !userLink.isEmpty()) {
                         Set<String> salutationSexes = prefs.getStringSet(ApiConstants.KEY_SALUTATION_SEXES, null);
