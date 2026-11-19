@@ -92,6 +92,8 @@ public class ConversationFragment extends Fragment {
     private String lastSpecificMessage;
     private int currentLlmIndex = 0;
     private String[] pendingAiOptions = null;
+    private String pendingAiError = null;
+    private boolean pendingAiErrorHasNext = false;
 
     private enum AiTone {
         DEFAULT,
@@ -124,6 +126,7 @@ public class ConversationFragment extends Fragment {
     private MessageAdapter.MessageItem targetedReplyItem = null;
     private boolean isAiGenerating = false;
     private String currentGeneratingStatus = null;
+    private volatile String currentStreamingPreview = "";
     private MaterialButton btnQueueMessage;
     private TextView txtTypingIndicator;
     private View imgOnlineIndicator;
@@ -212,6 +215,9 @@ public class ConversationFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 updateButtonStates();
+                if (s != null && s.length() > 0) {
+                    sendTypingIndicator();
+                }
             }
 
             @Override
@@ -471,6 +477,11 @@ public class ConversationFragment extends Fragment {
         if (pendingAiOptions != null) {
             onAiOptionsReceived(pendingAiOptions);
             pendingAiOptions = null;
+        } else if (pendingAiError != null) {
+            showAssistantError(pendingAiError, pendingAiErrorHasNext);
+            pendingAiError = null;
+        } else if (isAiGenerating || (activeAiCall != null && !activeAiCall.isCanceled())) {
+            setAiGeneratingState(true, currentGeneratingStatus);
         }
         updateAiButtonVisibility();
         IntentFilter filter = new IntentFilter("io.github.kgelinas.jalfnotifier.SSE_EVENT");
@@ -505,9 +516,6 @@ public class ConversationFragment extends Fragment {
         }
         if (activeAiCall == null || activeAiCall.isCanceled()) {
             setAiGeneratingState(false, null);
-        } else {
-            isAiGenerating = false;
-            currentGeneratingStatus = null;
         }
     }
 
@@ -721,6 +729,34 @@ public class ConversationFragment extends Fragment {
                                 item.photoUrl = content.optString("fullsize_uri",
                                         content.optString("thumbnail_uri", content.optString("image_uri", "")));
                                 item.nsfwRank = StringUtils.extractRankFromLink(content.optString("photo_rating_link", ""));
+
+                                if (item.text == null || item.text.isEmpty()) {
+                                    if (content.has("profile")) {
+                                        JSONObject prof = content.optJSONObject("profile");
+                                        String profName = prof != null ? prof.optString("username", "") : "";
+                                        item.text = "👤 " + (profName.isEmpty() ? "Profil partagé" : profName);
+                                        if (prof != null && prof.has("thumbnail_uriref")) {
+                                            item.photoUrl = prof.optString("thumbnail_uriref", "");
+                                        }
+                                    } else if (content.has("story")) {
+                                        JSONObject story = content.optJSONObject("story");
+                                        String storyTitle = story != null ? story.optString("story_title", "") : "";
+                                        item.text = "📖 " + (storyTitle.isEmpty() ? "Histoire partagée" : storyTitle);
+                                    } else if (content.has("video")) {
+                                        JSONObject video = content.optJSONObject("video");
+                                        String vidTitle = video != null ? video.optString("title", "") : "";
+                                        item.text = "🎬 " + (vidTitle.isEmpty() ? "Vidéo partagée" : vidTitle);
+                                        if (video != null && video.has("thumbnail_uri")) {
+                                            item.photoUrl = video.optString("thumbnail_uri", "");
+                                        }
+                                    } else if (content.has("photo")) {
+                                        JSONObject photo = content.optJSONObject("photo");
+                                        item.text = "📷 Photo partagée";
+                                        if (photo != null && photo.has("thumbnail_uri")) {
+                                            item.photoUrl = photo.optString("thumbnail_uri", "");
+                                        }
+                                    }
+                                }
                             }
                             item.isEphemeral = m.optJSONObject("ephemeral") != null;
 
@@ -967,6 +1003,7 @@ public class ConversationFragment extends Fragment {
     private void setAiGeneratingState(boolean generating, String status) {
         isAiGenerating = generating;
         if (generating) {
+            pendingAiError = null;
             acquireAiWakeLock();
             if (status != null) {
                 currentGeneratingStatus = status;
@@ -974,6 +1011,7 @@ public class ConversationFragment extends Fragment {
         } else {
             releaseAiWakeLock();
             currentGeneratingStatus = null;
+            currentStreamingPreview = "";
         }
         mainHandler.post(() -> {
             if (btnGeminiGenerate != null) {
@@ -989,6 +1027,8 @@ public class ConversationFragment extends Fragment {
             updateKeepScreenOnFlag(generating);
             if (assistantSheetView != null) {
                 View loadingLayout = assistantSheetView.findViewById(R.id.layout_assistant_loading);
+                com.google.android.material.progressindicator.LinearProgressIndicator progressBar =
+                        assistantSheetView.findViewById(R.id.progress_assistant_loading);
                 TextView txtStatus = assistantSheetView.findViewById(R.id.txt_assistant_loading_status);
                 TextView txtPreview = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
                 View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
@@ -999,9 +1039,31 @@ public class ConversationFragment extends Fragment {
                 if (loadingLayout != null) {
                     loadingLayout.setVisibility(generating ? View.VISIBLE : View.GONE);
                 }
-                if (txtPreview != null && generating && (txtPreview.getText() == null || txtPreview.getText().length() == 0)) {
-                    txtPreview.setText("");
-                    txtPreview.setVisibility(View.GONE);
+                if (progressBar != null) {
+                    if (generating) {
+                        // Force restart of Material indeterminate animation after background/resume
+                        progressBar.setVisibility(View.GONE);
+                        progressBar.setIndeterminate(true);
+                        progressBar.setVisibility(View.VISIBLE);
+                        progressBar.show();
+                    } else {
+                        progressBar.hide();
+                    }
+                }
+                if (txtPreview != null) {
+                    if (generating) {
+                        String preview = currentStreamingPreview;
+                        if (preview != null && !preview.isEmpty()) {
+                            txtPreview.setText(preview);
+                            txtPreview.setVisibility(View.VISIBLE);
+                        } else {
+                            txtPreview.setText("");
+                            txtPreview.setVisibility(View.GONE);
+                        }
+                    } else {
+                        txtPreview.setText("");
+                        txtPreview.setVisibility(View.GONE);
+                    }
                 }
                 if (cancelBtn != null) {
                     cancelBtn.setVisibility(generating ? View.VISIBLE : View.GONE);
@@ -1323,21 +1385,100 @@ public class ConversationFragment extends Fragment {
         View view = getLayoutInflater().inflate(R.layout.bottom_sheet_flirt_picker, null);
         dialog.setContentView(view);
 
-        AutoCompleteTextView spinnerCategories = view.findViewById(R.id.spinner_flirt_categories);
+        ViewGroup root = view.findViewById(R.id.root_flirt_picker);
+        MaterialButton btnBack = view.findViewById(R.id.btn_flirt_back);
+        TextView txtSheetTitle = view.findViewById(R.id.txt_flirt_sheet_title);
         TextView txtHeader = view.findViewById(R.id.txt_flirt_category_header);
+        View cardHeaderThumb = view.findViewById(R.id.card_flirt_header_thumb);
+        ImageView imgHeaderThumb = view.findViewById(R.id.img_flirt_header_thumb);
         View progress = view.findViewById(R.id.progress_flirts);
+        RecyclerView recyclerCategories = view.findViewById(R.id.recycler_flirt_categories);
+        View containerChoices = view.findViewById(R.id.container_flirt_choices);
         RecyclerView recyclerFlirts = view.findViewById(R.id.recycler_picker_flirts);
+        MaterialButton btnSendFlirt = view.findViewById(R.id.btn_send_flirt);
 
-        recyclerFlirts.setLayoutManager(new LinearLayoutManager(context()));
         List<FlirtTemplateItem> flirtItems = new ArrayList<>();
-        FlirtTemplateAdapter adapter = new FlirtTemplateAdapter(flirtItems, flirtLink -> {
-            dialog.dismiss();
-            sendFlirt(flirtLink);
+        FlirtTemplateAdapter choicesAdapter = new FlirtTemplateAdapter(flirtItems, flirtLink -> {
+            if (btnSendFlirt != null) {
+                btnSendFlirt.setEnabled(flirtLink != null && !flirtLink.isEmpty());
+            }
         });
-        recyclerFlirts.setAdapter(adapter);
+        recyclerFlirts.setLayoutManager(new LinearLayoutManager(context()));
+        recyclerFlirts.setAdapter(choicesAdapter);
+
+        if (btnSendFlirt != null) {
+            btnSendFlirt.setOnClickListener(v -> {
+                String selectedLink = choicesAdapter.getSelectedFlirtLink();
+                if (selectedLink != null && !selectedLink.isEmpty()) {
+                    dialog.dismiss();
+                    sendFlirt(selectedLink);
+                }
+            });
+        }
+
+        Runnable showCategoriesStep = () -> {
+            if (root != null) {
+                androidx.transition.TransitionManager.beginDelayedTransition(root);
+            }
+            if (containerChoices != null) containerChoices.setVisibility(View.GONE);
+            if (recyclerCategories != null) recyclerCategories.setVisibility(View.VISIBLE);
+            if (btnBack != null) btnBack.setVisibility(View.GONE);
+            if (txtSheetTitle != null) txtSheetTitle.setText(R.string.flirt_picker_title);
+            if (txtHeader != null) txtHeader.setVisibility(View.GONE);
+            if (cardHeaderThumb != null) cardHeaderThumb.setVisibility(View.GONE);
+            if (progress != null) progress.setVisibility(View.GONE);
+            choicesAdapter.clearSelection();
+            if (btnSendFlirt != null) btnSendFlirt.setEnabled(false);
+        };
+
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> showCategoriesStep.run());
+        }
+
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            if (keyCode == android.view.KeyEvent.KEYCODE_BACK
+                    && event.getAction() == android.view.KeyEvent.ACTION_UP
+                    && containerChoices != null
+                    && containerChoices.getVisibility() == View.VISIBLE) {
+                showCategoriesStep.run();
+                return true;
+            }
+            return false;
+        });
+
+        List<FlirtCategoryItem> categoryItems = new ArrayList<>();
+        FlirtCategoryAdapter categoryAdapter = new FlirtCategoryAdapter(categoryItems, category -> {
+            if (root != null) {
+                androidx.transition.TransitionManager.beginDelayedTransition(root);
+            }
+            if (recyclerCategories != null) recyclerCategories.setVisibility(View.GONE);
+            if (containerChoices != null) containerChoices.setVisibility(View.VISIBLE);
+            if (btnBack != null) btnBack.setVisibility(View.VISIBLE);
+            if (txtSheetTitle != null) txtSheetTitle.setText(category.title);
+            if (txtHeader != null) {
+                txtHeader.setText(category.header);
+                txtHeader.setVisibility(category.header.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+            if (cardHeaderThumb != null && imgHeaderThumb != null) {
+                if (category.imageUri != null && !category.imageUri.isEmpty()) {
+                    cardHeaderThumb.setVisibility(View.VISIBLE);
+                    Glide.with(context())
+                            .load(getAbsoluteUrl(category.imageUri))
+                            .centerCrop()
+                            .into(imgHeaderThumb);
+                } else {
+                    cardHeaderThumb.setVisibility(View.GONE);
+                }
+            }
+            choicesAdapter.clearSelection();
+            if (btnSendFlirt != null) btnSendFlirt.setEnabled(false);
+            fetchFlirtTemplates(category.link, progress, flirtItems, choicesAdapter);
+        });
+        recyclerCategories.setLayoutManager(new androidx.recyclerview.widget.GridLayoutManager(context(), 3));
+        recyclerCategories.setAdapter(categoryAdapter);
 
         dialog.show();
-        fetchFlirtCategories(spinnerCategories, txtHeader, progress, flirtItems, adapter);
+        fetchFlirtCategories(progress, categoryItems, categoryAdapter);
     }
 
     private String getMyDisplayName() {
@@ -1350,8 +1491,8 @@ public class ConversationFragment extends Fragment {
         return isFragmentSafe() ? SecurePrefs.get(context()).getString(ApiConstants.KEY_USERNAME, "") : "";
     }
 
-    private void fetchFlirtCategories(AutoCompleteTextView spinner, TextView txtHeader, View progress,
-            List<FlirtTemplateItem> flirtItems, FlirtTemplateAdapter adapter) {
+    private void fetchFlirtCategories(View progress,
+            List<FlirtCategoryItem> categoryItems, FlirtCategoryAdapter categoryAdapter) {
         progress.setVisibility(View.VISIBLE);
         String url = ApiConstants.BASE_URL + "/rest/flirt/categories";
         String lang = java.util.Locale.getDefault().getLanguage();
@@ -1382,40 +1523,24 @@ public class ConversationFragment extends Fragment {
                         JSONArray categories = root.optJSONArray("categories");
                         if (categories == null) categories = new JSONArray();
 
-                        List<String> catTitles = new ArrayList<>();
-                        List<String> catLinks = new ArrayList<>();
-                        List<String> catHeaders = new ArrayList<>();
-
+                        List<FlirtCategoryItem> parsed = new ArrayList<>();
                         for (int i = 0; i < categories.length(); i++) {
                             JSONObject c = categories.getJSONObject(i);
-                            catTitles.add(c.optString("title", defaultTitle));
-                            catLinks.add(c.optString("flirt_category_link", ""));
-                            catHeaders.add(c.optString("header", ""));
+                            String title = c.optString("title", defaultTitle);
+                            String link = c.optString("flirt_category_link", "");
+                            String header = c.optString("header", "");
+                            String imageUri = c.optString("category_image_uri", "");
+                            if (!link.isEmpty()) {
+                                parsed.add(new FlirtCategoryItem(link, title, header, imageUri));
+                            }
                         }
 
                         mainHandler.post(() -> {
                             if (!isFragmentSafe()) return;
                             progress.setVisibility(View.GONE);
-                            if (!catTitles.isEmpty()) {
-                                ArrayAdapter<String> spinAdapter = new ArrayAdapter<>(context(),
-                                        android.R.layout.simple_dropdown_item_1line, catTitles);
-                                spinner.setAdapter(spinAdapter);
-                                spinner.setOnItemClickListener((parent, v, position, id) -> {
-                                    String hdr = catHeaders.get(position);
-                                    if (txtHeader != null) {
-                                        txtHeader.setText(hdr);
-                                        txtHeader.setVisibility(hdr.isEmpty() ? View.GONE : View.VISIBLE);
-                                    }
-                                    fetchFlirtTemplates(catLinks.get(position), progress, flirtItems, adapter);
-                                });
-                                spinner.setText(catTitles.get(0), false);
-                                String firstHdr = catHeaders.get(0);
-                                if (txtHeader != null) {
-                                    txtHeader.setText(firstHdr);
-                                    txtHeader.setVisibility(firstHdr.isEmpty() ? View.GONE : View.VISIBLE);
-                                }
-                                fetchFlirtTemplates(catLinks.get(0), progress, flirtItems, adapter);
-                            }
+                            categoryItems.clear();
+                            categoryItems.addAll(parsed);
+                            categoryAdapter.notifyDataSetChanged();
                         });
                     } else {
                         mainHandler.post(() -> {
@@ -1557,6 +1682,82 @@ public class ConversationFragment extends Fragment {
         });
     }
 
+    private static class FlirtCategoryItem {
+        final String link;
+        final String title;
+        final String header;
+        final String imageUri;
+
+        FlirtCategoryItem(String link, String title, String header, String imageUri) {
+            this.link = link;
+            this.title = title;
+            this.header = header;
+            this.imageUri = imageUri;
+        }
+    }
+
+    private static class FlirtCategoryAdapter extends RecyclerView.Adapter<FlirtCategoryAdapter.CatVH> {
+        interface OnCategoryClickListener {
+            void onCategoryClick(FlirtCategoryItem category);
+        }
+
+        private final List<FlirtCategoryItem> items;
+        private final OnCategoryClickListener listener;
+
+        FlirtCategoryAdapter(List<FlirtCategoryItem> items, OnCategoryClickListener listener) {
+            this.items = items;
+            this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public CatVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_flirt_category, parent, false);
+            return new CatVH(v);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull CatVH holder, int position) {
+            FlirtCategoryItem item = items.get(position);
+            holder.title.setText(item.title);
+            if (item.imageUri != null && !item.imageUri.isEmpty()) {
+                String fullUrl = item.imageUri.startsWith("http")
+                        ? item.imageUri
+                        : ApiConstants.BASE_URL + item.imageUri;
+                Glide.with(holder.itemView.getContext())
+                        .load(fullUrl)
+                        .centerCrop()
+                        .placeholder(R.drawable.ic_poke_24)
+                        .error(R.drawable.ic_poke_24)
+                        .into(holder.image);
+            } else {
+                holder.image.setImageResource(R.drawable.ic_poke_24);
+            }
+            holder.itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onCategoryClick(item);
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        static class CatVH extends RecyclerView.ViewHolder {
+            final ImageView image;
+            final TextView title;
+
+            CatVH(@NonNull View itemView) {
+                super(itemView);
+                image = itemView.findViewById(R.id.img_flirt_category);
+                title = itemView.findViewById(R.id.txt_flirt_category_title);
+            }
+        }
+    }
+
     private static class FlirtTemplateItem {
         final String flirtLink;
         final String text;
@@ -1568,16 +1769,32 @@ public class ConversationFragment extends Fragment {
     }
 
     private static class FlirtTemplateAdapter extends RecyclerView.Adapter<FlirtTemplateAdapter.VH> {
-        interface OnFlirtClickListener {
-            void onFlirtClick(String flirtLink);
+        interface OnFlirtSelectListener {
+            void onFlirtSelected(String flirtLink);
         }
 
         private final List<FlirtTemplateItem> items;
-        private final OnFlirtClickListener listener;
+        private final OnFlirtSelectListener listener;
+        private int selectedPosition = RecyclerView.NO_POSITION;
 
-        FlirtTemplateAdapter(List<FlirtTemplateItem> items, OnFlirtClickListener listener) {
+        FlirtTemplateAdapter(List<FlirtTemplateItem> items, OnFlirtSelectListener listener) {
             this.items = items;
             this.listener = listener;
+        }
+
+        void clearSelection() {
+            int prev = selectedPosition;
+            selectedPosition = RecyclerView.NO_POSITION;
+            if (prev != RecyclerView.NO_POSITION) {
+                notifyItemChanged(prev);
+            }
+        }
+
+        String getSelectedFlirtLink() {
+            if (selectedPosition >= 0 && selectedPosition < items.size()) {
+                return items.get(selectedPosition).flirtLink;
+            }
+            return null;
         }
 
         @NonNull
@@ -1587,11 +1804,14 @@ public class ConversationFragment extends Fragment {
             com.google.android.material.card.MaterialCardView card = new com.google.android.material.card.MaterialCardView(ctx);
             RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            int marginV = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4, ctx.getResources().getDisplayMetrics()));
+            int marginV = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, ctx.getResources().getDisplayMetrics()));
             lp.setMargins(0, marginV, 0, marginV);
             card.setLayoutParams(lp);
             card.setClickable(true);
             card.setFocusable(true);
+            card.setCardElevation(0f);
+            float radius = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 14, ctx.getResources().getDisplayMetrics());
+            card.setRadius(radius);
 
             TextView tv = new TextView(ctx);
             int padH = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16, ctx.getResources().getDisplayMetrics()));
@@ -1605,9 +1825,49 @@ public class ConversationFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull VH holder, int position) {
             FlirtTemplateItem item = items.get(position);
+            boolean isSelected = position == selectedPosition;
             holder.tv.setText(item.text);
+
+            Context ctx = holder.card.getContext();
+            int strokeThin = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, ctx.getResources().getDisplayMetrics()));
+            int strokeThick = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2, ctx.getResources().getDisplayMetrics()));
+
+            if (isSelected) {
+                holder.card.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(
+                        holder.card, com.google.android.material.R.attr.colorSecondaryContainer));
+                holder.card.setStrokeWidth(strokeThick);
+                holder.card.setStrokeColor(com.google.android.material.color.MaterialColors.getColor(
+                        holder.card, com.google.android.material.R.attr.colorPrimary));
+                holder.tv.setTextColor(com.google.android.material.color.MaterialColors.getColor(
+                        holder.card, com.google.android.material.R.attr.colorOnSecondaryContainer));
+                holder.tv.setTypeface(null, android.graphics.Typeface.BOLD);
+            } else {
+                holder.card.setCardBackgroundColor(com.google.android.material.color.MaterialColors.getColor(
+                        holder.card, com.google.android.material.R.attr.colorSurfaceContainerHigh));
+                holder.card.setStrokeWidth(strokeThin);
+                holder.card.setStrokeColor(com.google.android.material.color.MaterialColors.getColor(
+                        holder.card, com.google.android.material.R.attr.colorOutlineVariant));
+                holder.tv.setTextColor(com.google.android.material.color.MaterialColors.getColor(
+                        holder.card, com.google.android.material.R.attr.colorOnSurface));
+                holder.tv.setTypeface(null, android.graphics.Typeface.NORMAL);
+            }
+
             holder.itemView.setOnClickListener(v -> {
-                if (listener != null) listener.onFlirtClick(item.flirtLink);
+                int currentPos = holder.getAdapterPosition();
+                if (currentPos == RecyclerView.NO_POSITION) return;
+                int prev = selectedPosition;
+                if (selectedPosition == currentPos) {
+                    selectedPosition = RecyclerView.NO_POSITION;
+                } else {
+                    selectedPosition = currentPos;
+                }
+                if (prev != RecyclerView.NO_POSITION) {
+                    notifyItemChanged(prev);
+                }
+                notifyItemChanged(currentPos);
+                if (listener != null) {
+                    listener.onFlirtSelected(getSelectedFlirtLink());
+                }
             });
         }
 
@@ -1617,10 +1877,12 @@ public class ConversationFragment extends Fragment {
         }
 
         static class VH extends RecyclerView.ViewHolder {
+            final com.google.android.material.card.MaterialCardView card;
             final TextView tv;
 
-            VH(@NonNull View itemView, TextView tv) {
-                super(itemView);
+            VH(@NonNull com.google.android.material.card.MaterialCardView card, TextView tv) {
+                super(card);
+                this.card = card;
                 this.tv = tv;
             }
         }
@@ -2166,6 +2428,7 @@ public class ConversationFragment extends Fragment {
                     .build();
 
             activeAiCall = streamingClient.newCall(request);
+            currentStreamingPreview = "";
 
             // Wire cancel button and reset streaming preview in the assistant sheet
             mainHandler.post(() -> {
@@ -2176,6 +2439,7 @@ public class ConversationFragment extends Fragment {
                         cancelBtn.setOnClickListener(v -> {
                             okhttp3.Call c = activeAiCall;
                             if (c != null) c.cancel();
+                            setAiGeneratingState(false, null);
                         });
                     }
                     TextView previewTxt = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
@@ -2190,15 +2454,6 @@ public class ConversationFragment extends Fragment {
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
                 activeAiCall = null;
                 releaseAiWakeLock();
-                // Hide streaming UI on failure/cancel
-                mainHandler.post(() -> {
-                    if (assistantSheetView != null) {
-                        View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
-                        if (cancelBtn != null) cancelBtn.setVisibility(View.GONE);
-                        TextView previewTxt = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
-                        if (previewTxt != null) previewTxt.setVisibility(View.GONE);
-                    }
-                });
                 boolean isCancel = call.isCanceled()
                         || (e instanceof okhttp3.internal.http2.StreamResetException)
                         || (e.getMessage() != null && e.getMessage().contains("CANCEL"))
@@ -2212,25 +2467,22 @@ public class ConversationFragment extends Fragment {
                 }
                 AppLogger.log(TAG, "AI API request failed", e);
                 mainHandler.post(() -> {
-                    if (!isAdded() || getContext() == null) return;
                     setAiGeneratingState(false, null);
-                    String errMsg = getString(R.string.gemini_error_api_failure) + " (" + e.getMessage() + ")";
-                    showAssistantError(errMsg, hasNextLlm);
+                    String baseErr = appContext != null
+                            ? appContext.getString(R.string.gemini_error_api_failure)
+                            : (isAdded() && getContext() != null ? getString(R.string.gemini_error_api_failure) : "API failure");
+                    String errMsg = baseErr + " (" + e.getMessage() + ")";
+                    if (isAdded() && isResumed() && getContext() != null) {
+                        showAssistantError(errMsg, hasNextLlm);
+                    } else {
+                        pendingAiError = errMsg;
+                        pendingAiErrorHasNext = hasNextLlm;
+                    }
                 });
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                // Always clean up streaming UI when done
-                mainHandler.post(() -> {
-                    if (assistantSheetView != null) {
-                        View cancelBtn = assistantSheetView.findViewById(R.id.btn_assistant_cancel);
-                        if (cancelBtn != null) cancelBtn.setVisibility(View.GONE);
-                        TextView previewTxt = assistantSheetView.findViewById(R.id.txt_assistant_streaming_preview);
-                        if (previewTxt != null) previewTxt.setVisibility(View.GONE);
-                    }
-                });
-
                 try (Response r = response) {
                     if (r.isSuccessful() && r.body() != null) {
                         StringBuilder accumulatedText = new StringBuilder();
@@ -2268,6 +2520,7 @@ public class ConversationFragment extends Fragment {
                                         if (!token.isEmpty()) {
                                             accumulatedText.append(token);
                                             final String preview = accumulatedText.toString();
+                                            currentStreamingPreview = preview;
                                             mainHandler.post(() -> {
                                                 if (!isAdded() || assistantSheetView == null) return;
                                                 TextView txtPreview = assistantSheetView
@@ -2316,7 +2569,37 @@ public class ConversationFragment extends Fragment {
                         final String finalAiText = processedAiText;
                         activeAiCall = null;
                         String[] options = parseAiOptions(finalAiText);
-                        String[] finalOptions = (options != null && options.length > 0) ? options : new String[]{finalAiText};
+                        String[] rawOptions = (options != null && options.length > 0) ? options : new String[]{finalAiText};
+
+                        if (appContext != null && !finalAiText.isEmpty()) {
+                            AppPrefs bgPrefsCheck = AppPrefs.getInstance(appContext);
+                            boolean nanoEnabled = bgPrefsCheck.getBoolean(ApiConstants.KEY_AI_NANO_REWRITE_ENABLED, false);
+                            Boolean nanoSupported = GeminiNanoRewriterHelper.getCachedSupportedState();
+                            if (nanoEnabled && !Boolean.FALSE.equals(nanoSupported)) {
+                                String nanoTone = bgPrefsCheck.getString(
+                                        ApiConstants.KEY_AI_NANO_DEFAULT_TONE,
+                                        GeminiNanoRewriterHelper.TONE_REPHRASE);
+                                if (selectedAiTone == AiTone.FORMAL) {
+                                    nanoTone = GeminiNanoRewriterHelper.TONE_PROFESSIONAL;
+                                } else if (selectedAiTone == AiTone.SHORTEN) {
+                                    nanoTone = GeminiNanoRewriterHelper.TONE_SHORTEN;
+                                } else if (selectedAiTone == AiTone.LONGER) {
+                                    nanoTone = GeminiNanoRewriterHelper.TONE_ELABORATE;
+                                }
+                                final String nanoStatusMsg = appContext.getString(R.string.nano_rewriting_status);
+                                currentGeneratingStatus = nanoStatusMsg;
+                                mainHandler.post(() -> {
+                                    if (assistantSheetView != null) {
+                                        TextView txtStatus = assistantSheetView.findViewById(R.id.txt_assistant_loading_status);
+                                        if (txtStatus != null) {
+                                            txtStatus.setText(nanoStatusMsg);
+                                        }
+                                    }
+                                });
+                                rawOptions = GeminiNanoRewriterHelper.rewriteOptionsBlocking(appContext, rawOptions, nanoTone);
+                            }
+                        }
+                        final String[] finalOptions = rawOptions;
 
                         // Persist to AppPrefs immediately using application context so it is never lost
                         if (appContext != null && savedPrefsKey != null && !finalAiText.isEmpty()) {
@@ -2345,13 +2628,20 @@ public class ConversationFragment extends Fragment {
                         }
 
                         mainHandler.post(() -> {
-                            if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);
                             if (finalAiText.isEmpty()) {
-                                showAssistantError(getString(R.string.gemini_error_blocked), hasNextLlm);
+                                String blockedErr = appContext != null
+                                        ? appContext.getString(R.string.gemini_error_blocked)
+                                        : (isAdded() && getContext() != null ? getString(R.string.gemini_error_blocked) : "Blocked");
+                                if (isAdded() && isResumed() && getContext() != null) {
+                                    showAssistantError(blockedErr, hasNextLlm);
+                                } else {
+                                    pendingAiError = blockedErr;
+                                    pendingAiErrorHasNext = hasNextLlm;
+                                }
                                 return;
                             }
-                            if (isResumed()) {
+                            if (isAdded() && isResumed() && getContext() != null) {
                                 onAiOptionsReceived(finalOptions);
                             } else {
                                 pendingAiOptions = finalOptions;
@@ -2389,7 +2679,9 @@ public class ConversationFragment extends Fragment {
                             }
                         } catch (Exception ignored) {}
 
-                        String finalError = getString(R.string.gemini_error_api_error) + " (Code: " + r.code() + ")";
+                        String finalError = (appContext != null
+                                ? appContext.getString(R.string.gemini_error_api_error)
+                                : "API Error") + " (Code: " + r.code() + ")";
                         if (!parsedErrorMsg.isEmpty()) {
                             finalError += "\n" + parsedErrorMsg;
                         }
@@ -2397,9 +2689,13 @@ public class ConversationFragment extends Fragment {
                         final String errorMsgToDisplay = finalError;
                         activeAiCall = null;
                         mainHandler.post(() -> {
-                            if (!isAdded() || getContext() == null) return;
                             setAiGeneratingState(false, null);
-                            showAssistantError(errorMsgToDisplay, hasNextLlm);
+                            if (isAdded() && isResumed() && getContext() != null) {
+                                showAssistantError(errorMsgToDisplay, hasNextLlm);
+                            } else {
+                                pendingAiError = errorMsgToDisplay;
+                                pendingAiErrorHasNext = hasNextLlm;
+                            }
                         });
                     }
                 } catch (Exception e) {
@@ -2416,9 +2712,16 @@ public class ConversationFragment extends Fragment {
                     }
                     AppLogger.log(TAG, "Exception during Gemini request", e);
                     mainHandler.post(() -> {
-                        if (!isAdded() || getContext() == null) return;
                         setAiGeneratingState(false, null);
-                        showAssistantError(getString(R.string.gemini_error_exception), hasNextLlm);
+                        String excErr = appContext != null
+                                ? appContext.getString(R.string.gemini_error_exception)
+                                : (isAdded() && getContext() != null ? getString(R.string.gemini_error_exception) : "Exception");
+                        if (isAdded() && isResumed() && getContext() != null) {
+                            showAssistantError(excErr, hasNextLlm);
+                        } else {
+                            pendingAiError = excErr;
+                            pendingAiErrorHasNext = hasNextLlm;
+                        }
                     });
                 } finally {
                     releaseAiWakeLock();
@@ -2885,6 +3188,7 @@ public class ConversationFragment extends Fragment {
         View cardView = getLayoutInflater().inflate(R.layout.item_assistant_card, parent, false);
         TextView txtBadge = cardView.findViewById(R.id.item_card_badge);
         TextView txtMessage = cardView.findViewById(R.id.item_card_text);
+        MaterialButton btnNanoTone = cardView.findViewById(R.id.btn_card_nano_tone);
 
         if (badgeText != null && !badgeText.isEmpty()) {
             txtBadge.setText(badgeText);
@@ -2895,15 +3199,37 @@ public class ConversationFragment extends Fragment {
 
         txtMessage.setText(messageText);
 
+        if (btnNanoTone != null) {
+            Boolean cachedSupport = GeminiNanoRewriterHelper.getCachedSupportedState();
+            if (Boolean.TRUE.equals(cachedSupport)) {
+                btnNanoTone.setVisibility(View.VISIBLE);
+                btnNanoTone.setOnClickListener(v -> showNanoTonePopupForCard(btnNanoTone, txtBadge, txtMessage));
+            } else if (Boolean.FALSE.equals(cachedSupport)) {
+                btnNanoTone.setVisibility(View.GONE);
+            } else {
+                btnNanoTone.setVisibility(View.GONE);
+                GeminiNanoRewriterHelper.checkIfSupported(requireContext(), (isSupported, status) -> {
+                    if (!isAdded() || getContext() == null) return;
+                    if (isSupported) {
+                        btnNanoTone.setVisibility(View.VISIBLE);
+                        btnNanoTone.setOnClickListener(v -> showNanoTonePopupForCard(btnNanoTone, txtBadge, txtMessage));
+                    } else {
+                        btnNanoTone.setVisibility(View.GONE);
+                    }
+                });
+            }
+        }
+
         cardView.setOnClickListener(v -> {
+            String currentCardText = txtMessage.getText() != null ? txtMessage.getText().toString() : messageText;
             if (assistantDialog != null && assistantDialog.isShowing()) {
                 assistantDialog.dismiss();
             }
             if (lastDraftToRefine != null && !lastDraftToRefine.isEmpty() && editMessage != null) {
-                editMessage.setText(messageText);
+                editMessage.setText(currentCardText);
                 lastDraftToRefine = null;
             } else {
-                appendOrSetEditMessage(messageText);
+                appendOrSetEditMessage(currentCardText);
             }
             if (editMessage != null) {
                 editMessage.requestFocus();
@@ -2914,6 +3240,86 @@ public class ConversationFragment extends Fragment {
         });
 
         parent.addView(cardView);
+    }
+
+    private void showNanoTonePopupForCard(MaterialButton anchorBtn, TextView txtBadge, TextView txtMessage) {
+        if (getContext() == null || txtMessage == null) return;
+        android.widget.PopupMenu popup = new android.widget.PopupMenu(requireContext(), anchorBtn);
+        final String[] toneKeys = new String[] {
+            GeminiNanoRewriterHelper.TONE_REPHRASE,
+            GeminiNanoRewriterHelper.TONE_FRIENDLY,
+            GeminiNanoRewriterHelper.TONE_EMOJIFY,
+            GeminiNanoRewriterHelper.TONE_SHORTEN,
+            GeminiNanoRewriterHelper.TONE_ELABORATE,
+            GeminiNanoRewriterHelper.TONE_PROFESSIONAL
+        };
+        final String[] toneLabels = new String[] {
+            getString(R.string.nano_tone_rephrase),
+            getString(R.string.nano_tone_friendly),
+            getString(R.string.nano_tone_emojify),
+            getString(R.string.nano_tone_shorten),
+            getString(R.string.nano_tone_elaborate),
+            getString(R.string.nano_tone_professional)
+        };
+        for (int i = 0; i < toneLabels.length; i++) {
+            popup.getMenu().add(0, i, i, "✨ " + toneLabels[i]);
+        }
+        popup.setOnMenuItemClickListener(item -> {
+            int idx = item.getItemId();
+            if (idx < 0 || idx >= toneKeys.length) return false;
+            String selectedToneKey = toneKeys[idx];
+            String selectedToneLabel = toneLabels[idx];
+            String originalText = txtMessage.getText() != null ? txtMessage.getText().toString().trim() : "";
+            if (originalText.isEmpty()) return true;
+
+            anchorBtn.setEnabled(false);
+            anchorBtn.setAlpha(0.4f);
+            if (txtBadge != null) {
+                txtBadge.setText(R.string.nano_rewriting_card);
+                txtBadge.setVisibility(View.VISIBLE);
+            }
+
+            GeminiNanoRewriterHelper.rewriteSingleAsync(requireContext(), originalText, selectedToneKey,
+                    new GeminiNanoRewriterHelper.RewriteSingleCallback() {
+                        @Override
+                        public void onSuccess(@NonNull String rewrittenText, @NonNull List<String> allVariants) {
+                            if (!isAdded() || getContext() == null) return;
+                            anchorBtn.setEnabled(true);
+                            anchorBtn.setAlpha(1.0f);
+                            txtMessage.setText(rewrittenText);
+                            if (txtBadge != null) {
+                                txtBadge.setText("✨ Nano · " + selectedToneLabel);
+                                txtBadge.setVisibility(View.VISIBLE);
+                            }
+                            synchronized (ConversationFragment.this) {
+                                int pos = accumulatedAiSuggestions.indexOf(originalText);
+                                if (pos >= 0) {
+                                    accumulatedAiSuggestions.set(pos, rewrittenText);
+                                } else if (!accumulatedAiSuggestions.contains(rewrittenText)) {
+                                    accumulatedAiSuggestions.add(rewrittenText);
+                                }
+                                saveAiSuggestions();
+                            }
+                        }
+
+                        @Override
+                        public void onError(@NonNull String errorMessage) {
+                            if (!isAdded() || getContext() == null) return;
+                            anchorBtn.setEnabled(true);
+                            anchorBtn.setAlpha(1.0f);
+                            if (txtBadge != null) {
+                                txtBadge.setVisibility(View.GONE);
+                            }
+                            Toast.makeText(
+                                    requireContext(),
+                                    getString(R.string.nano_rewrite_failed, errorMessage),
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    });
+            return true;
+        });
+        popup.show();
     }
 
     private void populateQuickResponses(LinearLayout layoutList, TextView txtEmpty) {
@@ -3122,7 +3528,7 @@ public class ConversationFragment extends Fragment {
 
         Request request = new Request.Builder()
                 .url(getAbsoluteUrl(conversationLink))
-                .post(body)
+                .patch(body)
                 .addHeader("Cookie", fullCookie)
                 .addHeader("x-csrftoken", suid)
                 .addHeader("User-Agent", ApiConstants.USER_AGENT)
@@ -3140,6 +3546,50 @@ public class ConversationFragment extends Fragment {
                 try (Response r = response) {
                     AppLogger.log("ConversationFragment", "Read receipt status: " + r.code());
                 }
+            }
+        });
+    }
+
+    private long lastTypingSentTime = 0;
+
+    private void sendTypingIndicator() {
+        if (conversationLink == null || conversationLink.isEmpty() || fullCookie == null || suid == null)
+            return;
+
+        Context ctx = getContext();
+        if (ctx != null) {
+            AppPrefs prefs = AppPrefs.getInstance(ctx);
+            if (!prefs.getBoolean(ApiConstants.KEY_SEND_TYPING_INDICATOR, true)) {
+                return;
+            }
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastTypingSentTime < 10000L) {
+            return;
+        }
+        lastTypingSentTime = now;
+
+        RequestBody body = RequestBody.create("{\"is_typing\":1}",
+                MediaType.parse("application/vnd.jalf.convo.typing+json; charset=utf-8"));
+
+        Request request = new Request.Builder()
+                .url(getAbsoluteUrl(conversationLink))
+                .post(body)
+                .addHeader("Cookie", fullCookie)
+                .addHeader("x-csrftoken", suid)
+                .addHeader("User-Agent", ApiConstants.USER_AGENT)
+                .build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                AppLogger.log(TAG, "Failed to send typing indicator", e);
+            }
+
+            @Override
+            public void onResponse(@NonNull Call call, @NonNull Response response) {
+                response.close();
             }
         });
     }

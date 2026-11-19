@@ -211,14 +211,13 @@
                         </LinearLayout>
                     </LinearLayout>
 
-                    <!-- Fantasies (moved here, toggled) -->
+                    <!-- Fantasies (Supported in both Simple & Advanced) -->
                     <LinearLayout
                         android:id="@+id/layout_fantasies_unified"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginBottom="12dp"
-                        android:visibility="gone">
+                        android:layout_marginBottom="12dp">
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
@@ -259,14 +258,13 @@
                             android:layout_marginTop="4dp" />
                     </LinearLayout>
 
-                    <!-- Relational Configuration (moved here, toggled) -->
+                    <!-- Relational Configuration (Supported in both Simple & Advanced) -->
                     <LinearLayout
                         android:id="@+id/layout_relational_config_unified"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginBottom="12dp"
-                        android:visibility="gone">
+                        android:layout_marginBottom="12dp">
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -294,6 +292,38 @@
                             android:layout_height="wrap_content"
                             app:chipSpacingVertical="4dp" />
                     </LinearLayout>
+
+                    <!-- Age (Supported in both Simple & Advanced) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="4dp">
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/age"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:textStyle="bold" />
+                        <TextView
+                            android:id="@+id/tv_age_range_value_unified"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceBodyMedium"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorPrimary"
+                            android:text="18 - 99" />
+                    </LinearLayout>
+                    <com.google.android.material.slider.RangeSlider
+                        android:id="@+id/slider_age_unified"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:valueFrom="18"
+                        android:valueTo="99"
+                        android:stepSize="1.0"
+                        android:layout_marginBottom="12dp" />
 
                     <!-- Username (Simple only but keeping in unified, always visible) -->
                     <com.google.android.material.textfield.TextInputLayout
@@ -361,38 +391,6 @@
                             android:text="@string/physical_criteria"
                             android:textAppearance="?attr/textAppearanceTitleMedium"
                             android:textStyle="bold"
-                            android:layout_marginBottom="12dp" />
-
-                        <!-- Age -->
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginBottom="4dp">
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:text="@string/age"
-                                android:textAppearance="?attr/textAppearanceTitleSmall"
-                                android:textStyle="bold" />
-                            <TextView
-                                android:id="@+id/tv_age_range_value_unified"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textAppearance="?attr/textAppearanceBodyMedium"
-                                android:textStyle="bold"
-                                android:textColor="?attr/colorPrimary"
-                                android:text="18 - 99" />
-                        </LinearLayout>
-                        <com.google.android.material.slider.RangeSlider
-                            android:id="@+id/slider_age_unified"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:valueFrom="18"
-                            android:valueTo="99"
-                            android:stepSize="1.0"
                             android:layout_marginBottom="12dp" />
 
                         <!-- Weight -->

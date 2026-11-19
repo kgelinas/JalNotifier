@@ -114,3 +114,58 @@ Returns a list of "Clins d'oeil" (pokes) sent by the authenticated user.
 | **Parser** | `ApiParser.parsePokeHtml` |
 | **Description** | Outgoing pokes counterpart to `/ct/online/8` (Pokes received). |
 
+---
+
+## 7. Member Search (Simple & Detailed)
+**Form Discovery Endpoints**:
+- Simple Search form: `GET /ct/search/0`
+- Detailed Search form: `GET /ct/search_det/1`
+- Location cascade (optional AJAX): `POST /ct/UIControls/CountrySelector`
+
+**Execution Endpoint**:
+- Page 1: `POST /ct/searchResults/profile` (`application/x-www-form-urlencoded; charset=ISO-8859-1`)
+- Page 2+: `GET /ct/searchResults/profile?InitiateSearch=0&page={n}&orderBy={1|2|3}&tab_id={0|1}` (uses server-side session state from the Page 1 `POST`)
+
+**Builder / Parser**: `SearchApiUtils.buildSimpleSearchRequest` / `SearchApiUtils.buildDetailedSearchRequest` -> `ApiParser.parseSearchResults`
+
+### Mode Flags
+| Parameter | Simple Search (`/ct/search/0`) | Detailed Search (`/ct/search_det/1`) |
+| :--- | :--- | :--- |
+| `InitiateSearch` | `1` on Page 1, `0` on Page 2+ | `1` on Page 1, `0` on Page 2+ |
+| `search_detl_flg` | `0` | `1` |
+| `tab_id` | `0` | `1` |
+| `Referer` | `/ct/search/0` | `/ct/search_det/1` |
+| `btnPager` / `pager_on` | `1` / `1` | `1` / `1` |
+
+### Form Parameter Reference
+> [!IMPORTANT]
+> Simple Search (`search_detl_flg=0`) and Detailed Search (`search_detl_flg=1`) are backed by separate server handlers. Several filters only exist on Simple Search (`Pseudonyme`, `VIPEnLigne`, `VIPPhotos`, `my_region`, `VIPCertified`, `geolocationOption`, `VIPOnlyGOLD`, `VIPOnlyVIP`, `VIPVideo`), while multi-value checkboxes, multi-location (`Location`), physical sliders (`VIPPoidsD`/`F`, `VIPGrandeurD`/`F`), availability (`VIPDisponible`), smoking (`VIPFumeur`), zodiac (`VIPSigne`), `VIPWebcam`, and `VIPSpeedMeeting` belong to Detailed Search.
+
+| Parameter | Simple (`search_detl_flg=0`) | Detailed (`search_detl_flg=1`) | Notes |
+| :--- | :--- | :--- | :--- |
+| `seek` | Single value (`1,2,4,8,16,32,64`) | Multiple repeated keys | Sought gender/sex. |
+| `wanted` | Single value (`1,2,4,8,16,32,64`) | Multiple repeated keys | Gender/sex the member desires to meet. |
+| `orient` | Single value (`1,2,3,4,7`; plus `5`,`6` when `seek=4`) | Multiple repeated keys (`1,2,3,4,7`) | Sexual orientation. |
+| `status` | Single value (`1`..`7`) | Multiple repeated keys | Relational configuration / civil status. |
+| `relCher` | Single value (`1,3,5`..`20`) | Multiple repeated keys | Goal on JALF. |
+| `VIPFantasme` | Comma-separated fantasy IDs | Comma-separated fantasy IDs | Populated from `#fant_list` / `.fantasy-card--selected[data-fantasyid]`. |
+| `VIPAgeD` / `VIPAgeF` | `18`..`99` | `18`..`99` | Age range. |
+| `orderBy` | `1` (Last visit), `2` (Registration), `3` (Same fantasies) | `1`, `2`, `3` | Sort order. |
+| `Pseudonyme` | String (username substring) | Not in web form *(enforced client-side in app)* | **Must be `Pseudonyme`**, not `pseudo`. |
+| `VIPEnLigne` | `1` | Not in web form *(enforced client-side in app)* | Online only. **Must be `VIPEnLigne`**, not `online`. |
+| `VIPPhotos` | `1` | Not in web form *(enforced client-side in app)* | Profiles with photos. **Must be `VIPPhotos`**, not `a_photo`. |
+| `my_region` | `1` | Not in web form | Restrict to authenticated user's own region. **Must be `my_region`**, not `maRegion`. |
+| `cboPays`, `cboProvince`, `cboRegion` | Required for single-location filter (`0` = all) | Sent alongside `Location` | Simple Search reads `cboPays`/`cboProvince`/`cboRegion` + `hidCboProvince`/`hidCboRegion` (not `Location`). |
+| `hidCboProvince`, `hidCboRegion` | Mirrors `cboProvince` / `cboRegion` | Mirrors `cboProvince` / `cboRegion` | Populated by `init_search()` before form submission. |
+| `Location`, `multRegions` | Not in web form | Required for multi-location | `Location` joins `country[,province[,region]]` entries with `-` (e.g. `100,9,16-100,8`). |
+| `VIPPoidsD` / `VIPPoidsF` | N/A | `1`..`35` (default `1`..`35`) | Weight range IDs (from `/rest/weights`). |
+| `VIPGrandeurD` / `VIPGrandeurF` | N/A | `1`..`37` (default `1`..`37`) | Height range IDs (from `/rest/heights`). |
+| `VIPDisponible` | N/A | Multiple repeated keys (`1`..`11`) | Availability schedule. |
+| `VIPFumeur` | N/A | Multiple repeated keys (`1`..`4`) | Smoking preference. |
+| `VIPSigne` | N/A | Multiple repeated keys (`1`..`12`) | Zodiac sign. |
+| `VIPOrigine` | N/A | Single ID (from `/rest/ethnic-groups`) | Ethnicity (also forwarded on Page 2+ query string). |
+| `VIPWebcam` | N/A | `YES` | Members with a webcam. |
+| `VIPSpeedMeeting` | N/A | `1` | "Désire baiser aujourd'hui" / speed meeting. |
+| `VIPCertified`, `geolocationOption`, `VIPOnlyGOLD`, `VIPOnlyVIP`, `VIPVideo` | `1` (available in `/ct/search/0`) | N/A | Additional Simple Search checkboxes on the web form. |
+
+

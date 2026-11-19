@@ -94,6 +94,12 @@ public class SettingsViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> _aiEncodeBase64 = new MutableLiveData<>();
     public final LiveData<Boolean> aiEncodeBase64 = _aiEncodeBase64;
 
+    private final MutableLiveData<Boolean> _aiNanoRewriteEnabled = new MutableLiveData<>();
+    public final LiveData<Boolean> aiNanoRewriteEnabled = _aiNanoRewriteEnabled;
+
+    private final MutableLiveData<String> _aiNanoDefaultTone = new MutableLiveData<>();
+    public final LiveData<String> aiNanoDefaultTone = _aiNanoDefaultTone;
+
     private final MutableLiveData<String> _aiProvider = new MutableLiveData<>();
     public final LiveData<String> aiProvider = _aiProvider;
 
@@ -165,6 +171,16 @@ public class SettingsViewModel extends AndroidViewModel {
     public void setAiEncodeBase64(boolean encode) {
         prefs.edit().putBoolean(ApiConstants.KEY_AI_ENCODE_BASE64, encode).apply();
         _aiEncodeBase64.postValue(encode);
+    }
+
+    public void setAiNanoRewriteEnabled(boolean enabled) {
+        prefs.edit().putBoolean(ApiConstants.KEY_AI_NANO_REWRITE_ENABLED, enabled).apply();
+        _aiNanoRewriteEnabled.postValue(enabled);
+    }
+
+    public void setAiNanoDefaultTone(String toneKey) {
+        prefs.edit().putString(ApiConstants.KEY_AI_NANO_DEFAULT_TONE, toneKey).apply();
+        _aiNanoDefaultTone.postValue(toneKey);
     }
 
     public void setGoogleAccount(String email) {
@@ -253,6 +269,8 @@ public class SettingsViewModel extends AndroidViewModel {
         _aiIncludePicture.postValue(prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_PICTURE, false));
         _aiIncludeAllPictures.postValue(prefs.getBoolean(ApiConstants.KEY_AI_INCLUDE_ALL_PICTURES, false));
         _aiEncodeBase64.postValue(prefs.getBoolean(ApiConstants.KEY_AI_ENCODE_BASE64, false));
+        _aiNanoRewriteEnabled.postValue(prefs.getBoolean(ApiConstants.KEY_AI_NANO_REWRITE_ENABLED, false));
+        _aiNanoDefaultTone.postValue(prefs.getString(ApiConstants.KEY_AI_NANO_DEFAULT_TONE, GeminiNanoRewriterHelper.TONE_REPHRASE));
         
         loadAiConfigs();
         

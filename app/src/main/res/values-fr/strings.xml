@@ -657,6 +657,27 @@ Message spécifique auquel répondre : "{specificMessage}"
     <string name="ai_style_custom">\nConsigne de style personnalisée de l\'utilisateur : %1$s</string>
     <string name="show_more">Afficher plus</string>
     <string name="loading">Chargement…</string>
+
+    <!-- Gemini Nano On-Device Toning -->
+    <string name="settings_intelligence_nano_section">Gemini Nano (Ton sur l\'appareil)</string>
+    <string name="settings_intelligence_nano_enable">Affiner automatiquement les réponses avec Gemini Nano</string>
+    <string name="settings_intelligence_nano_enable_desc">Passe les intros et réponses générées par le LLM externe dans le moteur local Gemini Nano de Google (moteur Gboard) pour affiner le style et le ton.</string>
+    <string name="settings_intelligence_nano_default_tone">Ton Gemini Nano par défaut</string>
+    <string name="settings_intelligence_nano_check_status">Vérifier / Télécharger Gemini Nano</string>
+    <string name="nano_status_available">Gemini Nano : Prêt sur l\'appareil ✓</string>
+    <string name="nano_status_downloadable">Gemini Nano : Téléchargeable (Appuyez ci-dessous)</string>
+    <string name="nano_status_downloading">Gemini Nano : Téléchargement du modèle…</string>
+    <string name="nano_status_unavailable">Gemini Nano : Non disponible sur cet appareil</string>
+    <string name="nano_tone_rephrase">Reformuler</string>
+    <string name="nano_tone_friendly">Amical</string>
+    <string name="nano_tone_emojify">Émojis</string>
+    <string name="nano_tone_shorten">Raccourcir</string>
+    <string name="nano_tone_elaborate">Développer</string>
+    <string name="nano_tone_professional">Formel</string>
+    <string name="nano_menu_title">Ton Gemini Nano</string>
+    <string name="nano_rewriting_status">Affinage du ton avec Gemini Nano…</string>
+    <string name="nano_rewriting_card">Gemini Nano…</string>
+    <string name="nano_rewrite_failed">Gemini Nano n\'a pas pu reformuler ce texte (%1$s)</string>
 </resources>
 
 

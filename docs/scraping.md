@@ -73,10 +73,12 @@ Used for both incoming pokes (received greetings, `/ct/online/8`) and outgoing p
 | **UserId** | `div.one_user div[id]` (regex: `user_(\d+)`) | Uses the wrapper ID. |
 | **Type** | `img[src*=pokes]` | Extracts poke icon ID to determine greeting type. |
 
-### Search Results (`/ct/recherche`)
+### Search Results (`/ct/searchResults/profile`)
+**Endpoints**: Forms discovered via `/ct/search/0` (Simple) and `/ct/search_det/1` (Detailed); executed via `POST /ct/searchResults/profile` (Page 1) and `GET /ct/searchResults/profile?InitiateSearch=0&page={n}&orderBy={1|2|3}&tab_id={0|1}` (Page 2+). See [Legacy HTML Endpoints — Member Search](rest/legacy.md#7-member-search-simple--detailed) for the complete form field specification.
+
 **Method**: `ApiParser.parseSearchResults`
 
-Parses large user cards into `SearchItem` objects including city, age, and online status.
+Parses large user cards into `SearchItem` objects including city, age, and online status. When combining Simple-only filters (`VIPEnLigne`, `VIPPhotos`, `Pseudonyme`) with Detailed Search (`search_detl_flg=1`), `MainActivity.performSearchUnified` also applies client-side filtering with automatic page advancement (up to 5 consecutive empty pages) in case the Detailed Search backend ignores those parameters.
 
 ---
 

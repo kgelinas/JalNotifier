@@ -73,7 +73,7 @@ public class MarkAsReadReceiver extends BroadcastReceiver {
         String url = conversationLink.startsWith("http") ? conversationLink : ApiConstants.BASE_URL + conversationLink;
         Request request = new Request.Builder()
                 .url(url)
-                .post(body)
+                .patch(body)
                 .addHeader("Cookie", cookie)
                 .addHeader("x-csrftoken", suid)
                 .addHeader("User-Agent", ApiConstants.USER_AGENT)

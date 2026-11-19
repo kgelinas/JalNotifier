@@ -58,6 +58,7 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
         setupSlotDropdown();
         setupLanguageDropdown();
         setupProviderDropdown();
+        setupNanoSettings();
         setupObservers();
 
         binding.editAiEndpoint.addTextChangedListener(new TextWatcher() {
@@ -270,6 +271,99 @@ public class SettingsIntelligenceActivity extends AppCompatActivity {
                 binding.editAiEndpoint.setText(endpoint);
                 viewModel.setAiEndpoint(endpoint);
                 viewModel.fetchAvailableModels();
+            }
+        });
+    }
+
+    private void setupNanoSettings() {
+        final String[] toneKeys = new String[] {
+            GeminiNanoRewriterHelper.TONE_REPHRASE,
+            GeminiNanoRewriterHelper.TONE_FRIENDLY,
+            GeminiNanoRewriterHelper.TONE_EMOJIFY,
+            GeminiNanoRewriterHelper.TONE_SHORTEN,
+            GeminiNanoRewriterHelper.TONE_ELABORATE,
+            GeminiNanoRewriterHelper.TONE_PROFESSIONAL
+        };
+        final String[] toneLabels = new String[] {
+            getString(R.string.nano_tone_rephrase),
+            getString(R.string.nano_tone_friendly),
+            getString(R.string.nano_tone_emojify),
+            getString(R.string.nano_tone_shorten),
+            getString(R.string.nano_tone_elaborate),
+            getString(R.string.nano_tone_professional)
+        };
+
+        ArrayAdapter<String> nanoToneAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_dropdown_item_1line, toneLabels);
+        binding.editNanoDefaultTone.setAdapter(nanoToneAdapter);
+
+        binding.editNanoDefaultTone.setOnItemClickListener((parent, view, position, id) -> {
+            if (position >= 0 && position < toneKeys.length) {
+                viewModel.setAiNanoDefaultTone(toneKeys[position]);
+            }
+        });
+
+        binding.switchNanoRewriteEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            viewModel.setAiNanoRewriteEnabled(isChecked);
+            if (isChecked) {
+                refreshNanoFeatureStatus(true);
+            }
+        });
+
+        binding.btnCheckNanoStatus.setOnClickListener(v -> refreshNanoFeatureStatus(true));
+
+        viewModel.aiNanoRewriteEnabled.observe(this, enabled -> {
+            if (enabled != null && enabled != binding.switchNanoRewriteEnabled.isChecked()) {
+                binding.switchNanoRewriteEnabled.setChecked(enabled);
+            }
+        });
+
+        viewModel.aiNanoDefaultTone.observe(this, toneKey -> {
+            if (toneKey != null) {
+                for (int i = 0; i < toneKeys.length; i++) {
+                    if (toneKeys[i].equalsIgnoreCase(toneKey)) {
+                        if (!toneLabels[i].equals(binding.editNanoDefaultTone.getText().toString())) {
+                            binding.editNanoDefaultTone.setText(toneLabels[i], false);
+                        }
+                        break;
+                    }
+                }
+            }
+        });
+
+        GeminiNanoRewriterHelper.checkIfSupported(this, (isSupported, status) -> {
+            if (isFinishing() || isDestroyed()) return;
+            binding.txtNanoSectionHeader.setVisibility(isSupported ? View.VISIBLE : View.GONE);
+            binding.cardNanoSection.setVisibility(isSupported ? View.VISIBLE : View.GONE);
+            if (!isSupported) {
+                viewModel.setAiNanoRewriteEnabled(false);
+            } else {
+                refreshNanoFeatureStatus(false);
+            }
+        });
+    }
+
+    private void refreshNanoFeatureStatus(boolean downloadIfNeeded) {
+        if (binding.txtNanoFeatureStatus == null) return;
+        binding.txtNanoFeatureStatus.setText(R.string.loading);
+        GeminiNanoRewriterHelper.checkOrPrepareStatus(this, downloadIfNeeded, (status, msg) -> {
+            if (isFinishing() || isDestroyed()) return;
+            if (status == com.google.mlkit.genai.common.FeatureStatus.AVAILABLE) {
+                binding.txtNanoSectionHeader.setVisibility(View.VISIBLE);
+                binding.cardNanoSection.setVisibility(View.VISIBLE);
+                binding.txtNanoFeatureStatus.setText(R.string.nano_status_available);
+            } else if (status == com.google.mlkit.genai.common.FeatureStatus.DOWNLOADABLE) {
+                binding.txtNanoSectionHeader.setVisibility(View.VISIBLE);
+                binding.cardNanoSection.setVisibility(View.VISIBLE);
+                binding.txtNanoFeatureStatus.setText(R.string.nano_status_downloadable);
+            } else if (status == com.google.mlkit.genai.common.FeatureStatus.DOWNLOADING) {
+                binding.txtNanoSectionHeader.setVisibility(View.VISIBLE);
+                binding.cardNanoSection.setVisibility(View.VISIBLE);
+                binding.txtNanoFeatureStatus.setText(R.string.nano_status_downloading);
+            } else {
+                binding.txtNanoSectionHeader.setVisibility(View.GONE);
+                binding.cardNanoSection.setVisibility(View.GONE);
+                viewModel.setAiNanoRewriteEnabled(false);
             }
         });
     }

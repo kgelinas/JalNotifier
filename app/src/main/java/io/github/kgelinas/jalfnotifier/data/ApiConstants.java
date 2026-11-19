@@ -51,6 +51,7 @@ public class ApiConstants {
         public static final String KEY_QUICK_RESPONSES = "QUICK_RESPONSES";
         public static final String KEY_USE_IMPERIAL = "USE_IMPERIAL"; // true = show lbs/feet, false = kg/meters
         public static final String KEY_SEND_READ_RECEIPTS = "SEND_READ_RECEIPTS"; // true = send read_until: now
+        public static final String KEY_SEND_TYPING_INDICATOR = "SEND_TYPING_INDICATOR"; // true = broadcast is_typing: 1
         public static final String KEY_BLUR_NSFW = "BLUR_NSFW"; // true = blur NSFW photos by default
         public static final String KEY_DISABLE_POKES = "DISABLE_POKES"; // true = hide poke button on profile activity
         public static final String KEY_BIOMETRIC_LOGIN = "BIOMETRIC_LOGIN"; // true = allow auto-fill/login with
@@ -78,6 +79,8 @@ public class ApiConstants {
         public static final String KEY_AI_INCLUDE_ALL_PICTURES = "AI_INCLUDE_ALL_PICTURES";
         public static final String KEY_AI_ENCODE_BASE64 = "AI_ENCODE_BASE64";
         public static final String KEY_AI_UNLOCKED = "AI_UNLOCKED";
+        public static final String KEY_AI_NANO_REWRITE_ENABLED = "AI_NANO_REWRITE_ENABLED";
+        public static final String KEY_AI_NANO_DEFAULT_TONE = "AI_NANO_DEFAULT_TONE";
         public static final String KEY_CACHED_EVENTS = "CACHED_EVENTS";
         public static final String KEY_CACHED_PROFILES = "CACHED_PROFILES";
         public static final String KEY_PENDING_AUTO_MESSAGES = "PENDING_AUTO_MESSAGES";

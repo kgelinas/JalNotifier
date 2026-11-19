@@ -35,6 +35,12 @@ public class SearchApiUtilsTest {
         assertEquals("1", getFormValue(body, "InitiateSearch"));
         assertEquals("1", getFormValue(body, "seek"));
         assertEquals("2", getFormValue(body, "wanted"));
+        assertEquals("pseudo", getFormValue(body, "Pseudonyme"));
+        assertEquals("1", getFormValue(body, "VIPEnLigne"));
+        assertEquals("1", getFormValue(body, "VIPPhotos"));
+        assertEquals("CA", getFormValue(body, "cboPays"));
+        assertEquals("QC", getFormValue(body, "cboProvince"));
+        assertEquals("QC", getFormValue(body, "hidCboProvince"));
         assertEquals("20", getFormValue(body, "VIPAgeD"));
         assertEquals("30", getFormValue(body, "VIPAgeF"));
     }

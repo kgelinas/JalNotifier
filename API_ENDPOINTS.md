@@ -86,6 +86,19 @@ User activity feed (views, pokes, etc.)
 
 ---
 
+## Member Search (Legacy HTML Forms)
+
+### GET `/ct/search/0` & GET `/ct/search_det/1`
+Fetch search form options (sexes, orientations, relational statuses, goals, availability, smoker, zodiac, fantasies).
+- **Used in**: `MainActivity` (`fetchUnifiedSearchDropdowns`, `fetchDetailedSearchOptionsUnified`)
+
+### POST `/ct/searchResults/profile` (Page 1) & GET `/ct/searchResults/profile` (Page 2+)
+Execute Simple (`search_detl_flg=0`, `tab_id=0`) or Detailed (`search_detl_flg=1`, `tab_id=1`) member search.
+- **Detailed Parameter Table**: [legacy.md](docs/rest/legacy.md#7-member-search-simple--detailed)
+- **Used in**: `SearchApiUtils`, `MainActivity` (`performSearchUnified`)
+
+---
+
 ## Reference Data (Metadata)
 
 ### GET `/rest/sexes`

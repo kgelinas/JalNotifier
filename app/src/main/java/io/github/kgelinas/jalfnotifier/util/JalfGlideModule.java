@@ -7,6 +7,7 @@ import io.github.kgelinas.jalfnotifier.util.*;
 
 
 import android.content.Context;
+import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
 
@@ -45,6 +46,8 @@ public class JalfGlideModule extends AppGlideModule {
                 .build();
 
         registry.replace(GlideUrl.class, InputStream.class, new OkHttpUrlLoader.Factory(client));
+        registry.prepend(Registry.BUCKET_BITMAP, InputStream.class, Bitmap.class,
+                new SvgBitmapDecoder(glide.getBitmapPool()));
     }
 
     @Override

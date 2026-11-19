@@ -405,6 +405,9 @@ public class MainActivity extends AppCompatActivity {
     private ChipGroup cgSavedSearchesUnified;
     private View tvSavedSearchesTitleUnified;
     private View scrollSavedSearchesUnified;
+    private boolean isResettingSearch = false;
+    private boolean isPopulatingSavedSearches = false;
+    private boolean isLoadingSavedSearch = false;
 
     private boolean isLocatingUnified = false;
     
@@ -4725,6 +4728,21 @@ public class MainActivity extends AppCompatActivity {
 
         // Bind saved searches
         cgSavedSearchesUnified = root.findViewById(R.id.cg_saved_searches_unified);
+        if (cgSavedSearchesUnified != null) {
+            cgSavedSearchesUnified.setOnCheckedStateChangeListener((group, checkedIds) -> {
+                if (isResettingSearch || isPopulatingSavedSearches || isLoadingSavedSearch) return;
+                if (checkedIds == null || checkedIds.isEmpty()) {
+                    resetUnifiedSearchToDefault();
+                } else {
+                    int checkedId = checkedIds.get(0);
+                    Chip chip = group.findViewById(checkedId);
+                    if (chip != null && chip.getTag() instanceof SearchSettingsManager.NamedSearch) {
+                        SearchSettingsManager.NamedSearch ns = (SearchSettingsManager.NamedSearch) chip.getTag();
+                        loadSavedSearchUnified(ns);
+                    }
+                }
+            });
+        }
         tvSavedSearchesTitleUnified = root.findViewById(R.id.tv_saved_searches_title_unified);
         scrollSavedSearchesUnified = root.findViewById(R.id.scroll_saved_searches_unified);
         btnResetSearchUnified = root.findViewById(R.id.btn_reset_search_unified);
@@ -4736,14 +4754,16 @@ public class MainActivity extends AppCompatActivity {
             switchAdvancedSearch.setOnCheckedChangeListener((buttonView, isChecked) -> {
                 if (containerAdvancedFields != null) containerAdvancedFields.setVisibility(isChecked ? View.VISIBLE : View.GONE);
                 if (containerMultiLocation != null) containerMultiLocation.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-                if (layoutFantasiesUnified != null) layoutFantasiesUnified.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-                if (layoutRelationalConfigUnified != null) layoutRelationalConfigUnified.setVisibility(isChecked ? View.VISIBLE : View.GONE);
+                if (layoutFantasiesUnified != null) layoutFantasiesUnified.setVisibility(View.VISIBLE);
+                if (layoutRelationalConfigUnified != null) layoutRelationalConfigUnified.setVisibility(View.VISIBLE);
                 if (layoutAvailabilityUnified != null) layoutAvailabilityUnified.setVisibility(isChecked ? View.VISIBLE : View.GONE);
                 
-                // Toggle multi-selection support
+                // Toggle multi-selection support (Simple Search uses <select>, Advanced uses checkboxes)
                 if (cgSeekUnified != null) cgSeekUnified.setSingleSelection(!isChecked);
                 if (cgWantedUnified != null) cgWantedUnified.setSingleSelection(!isChecked);
                 if (cgOrientUnified != null) cgOrientUnified.setSingleSelection(!isChecked);
+                if (cgStatusUnified != null) cgStatusUnified.setSingleSelection(!isChecked);
+                if (cgRelCherUnified != null) cgRelCherUnified.setSingleSelection(!isChecked);
                 
                 SearchSettingsManager.saveAdvancedToggleState(this, isChecked);
             });
@@ -4751,13 +4771,15 @@ public class MainActivity extends AppCompatActivity {
             switchAdvancedSearch.setChecked(isAdvanced);
             if (containerAdvancedFields != null) containerAdvancedFields.setVisibility(isAdvanced ? View.VISIBLE : View.GONE);
             if (containerMultiLocation != null) containerMultiLocation.setVisibility(isAdvanced ? View.VISIBLE : View.GONE);
-            if (layoutFantasiesUnified != null) layoutFantasiesUnified.setVisibility(isAdvanced ? View.VISIBLE : View.GONE);
-            if (layoutRelationalConfigUnified != null) layoutRelationalConfigUnified.setVisibility(isAdvanced ? View.VISIBLE : View.GONE);
+            if (layoutFantasiesUnified != null) layoutFantasiesUnified.setVisibility(View.VISIBLE);
+            if (layoutRelationalConfigUnified != null) layoutRelationalConfigUnified.setVisibility(View.VISIBLE);
             if (layoutAvailabilityUnified != null) layoutAvailabilityUnified.setVisibility(isAdvanced ? View.VISIBLE : View.GONE);
             
             if (cgSeekUnified != null) cgSeekUnified.setSingleSelection(!isAdvanced);
             if (cgWantedUnified != null) cgWantedUnified.setSingleSelection(!isAdvanced);
             if (cgOrientUnified != null) cgOrientUnified.setSingleSelection(!isAdvanced);
+            if (cgStatusUnified != null) cgStatusUnified.setSingleSelection(!isAdvanced);
+            if (cgRelCherUnified != null) cgRelCherUnified.setSingleSelection(!isAdvanced);
         }
 
         // Initialize adapters and fetch data
@@ -4797,69 +4819,79 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void resetUnifiedSearchToDefault() {
-        // Uncheck all ChipGroups
-        restoreChips(cgSeekUnified, null);
-        restoreChips(cgWantedUnified, null);
-        restoreChips(cgOrientUnified, null);
-        restoreChips(cgStatusUnified, null);
-        restoreChips(cgRelCherUnified, null);
-        restoreChips(cgAvailUnified, null);
-        restoreChips(cgSmokerUnified, null);
-        restoreChips(cgZodiacUnified, null);
-        if (cgEthnicUnified != null) {
-            cgEthnicUnified.setTag(null);
-            restoreChips(cgEthnicUnified, null);
-        }
-
-        // Reset text field
-        if (etPseudoUnified != null) etPseudoUnified.setText("");
-
-        // Reset age slider
-        if (sliderAgeUnified != null) {
-            sliderAgeUnified.setValues(18f, 99f);
-            if (tvAgeRangeValueUnified != null) {
-                tvAgeRangeValueUnified.setText("18 - 99");
+        if (isResettingSearch) return;
+        isResettingSearch = true;
+        try {
+            if (cgSavedSearchesUnified != null) {
+                cgSavedSearchesUnified.clearCheck();
             }
-        }
 
-        // Reset checkboxes
-        if (chkOnlineUnified != null) chkOnlineUnified.setChecked(false);
-        if (chkExcludeChattedUnified != null) chkExcludeChattedUnified.setChecked(false);
-        if (chkPhotoUnified != null) chkPhotoUnified.setChecked(false);
-        if (chkWebcamUnified != null) chkWebcamUnified.setChecked(false);
-        if (chkSpeedMeetingUnified != null) chkSpeedMeetingUnified.setChecked(false);
-        if (chkMyRegionUnified != null) chkMyRegionUnified.setChecked(false);
+            // Uncheck all ChipGroups
+            restoreChips(cgSeekUnified, null);
+            restoreChips(cgWantedUnified, null);
+            restoreChips(cgOrientUnified, null);
+            restoreChips(cgStatusUnified, null);
+            restoreChips(cgRelCherUnified, null);
+            restoreChips(cgAvailUnified, null);
+            restoreChips(cgSmokerUnified, null);
+            restoreChips(cgZodiacUnified, null);
+            if (cgEthnicUnified != null) {
+                cgEthnicUnified.setTag(null);
+                restoreChips(cgEthnicUnified, null);
+            }
 
-        // Reset order by
-        if (rgOrderByUnified != null) {
-            rgOrderByUnified.check(R.id.rb_visit_unified);
-        }
+            // Reset text field
+            if (etPseudoUnified != null) etPseudoUnified.setText("");
 
-        // Reset location selection
-        selectedCountryUnified = null;
-        selectedProvinceUnified = null;
-        selectedRegionUnified = null;
-        if (spinnerCountryUnified != null) spinnerCountryUnified.setText("", false);
-        if (spinnerProvinceUnified != null) spinnerProvinceUnified.setText("", false);
-        if (spinnerRegionUnified != null) spinnerRegionUnified.setText("", false);
-        if (tilProvinceUnified != null) tilProvinceUnified.setVisibility(View.GONE);
-        if (tilRegionUnified != null) tilRegionUnified.setVisibility(View.GONE);
+            // Reset age slider
+            if (sliderAgeUnified != null) {
+                sliderAgeUnified.setValues(18f, 99f);
+                if (tvAgeRangeValueUnified != null) {
+                    tvAgeRangeValueUnified.setText("18 - 99");
+                }
+            }
 
-        // Reset multi locations
-        selectedLocationsUnified.clear();
-        if (cgSelectedLocationsUnified != null) {
-            cgSelectedLocationsUnified.removeAllViews();
-        }
+            // Reset checkboxes
+            if (chkOnlineUnified != null) chkOnlineUnified.setChecked(false);
+            if (chkExcludeChattedUnified != null) chkExcludeChattedUnified.setChecked(false);
+            if (chkPhotoUnified != null) chkPhotoUnified.setChecked(false);
+            if (chkWebcamUnified != null) chkWebcamUnified.setChecked(false);
+            if (chkSpeedMeetingUnified != null) chkSpeedMeetingUnified.setChecked(false);
+            if (chkMyRegionUnified != null) chkMyRegionUnified.setChecked(false);
 
-        // Reset fantasies
-        clearFantasiesUnified();
+            // Reset order by
+            if (rgOrderByUnified != null) {
+                rgOrderByUnified.check(R.id.rb_visit_unified);
+            }
 
-        // Reset advanced sliders
-        if (sliderWeightUnified != null) {
-            sliderWeightUnified.setValues(sliderWeightUnified.getValueFrom(), sliderWeightUnified.getValueTo());
-        }
-        if (sliderHeightUnified != null) {
-            sliderHeightUnified.setValues(sliderHeightUnified.getValueFrom(), sliderHeightUnified.getValueTo());
+            // Reset location selection
+            selectedCountryUnified = null;
+            selectedProvinceUnified = null;
+            selectedRegionUnified = null;
+            if (spinnerCountryUnified != null) spinnerCountryUnified.setText("", false);
+            if (spinnerProvinceUnified != null) spinnerProvinceUnified.setText("", false);
+            if (spinnerRegionUnified != null) spinnerRegionUnified.setText("", false);
+            if (tilProvinceUnified != null) tilProvinceUnified.setVisibility(View.GONE);
+            if (tilRegionUnified != null) tilRegionUnified.setVisibility(View.GONE);
+
+            // Reset multi locations
+            selectedLocationsUnified.clear();
+            if (cgSelectedLocationsUnified != null) {
+                cgSelectedLocationsUnified.removeAllViews();
+            }
+
+            // Reset fantasies
+            clearFantasiesUnified();
+
+            // Reset advanced sliders
+            if (sliderWeightUnified != null) {
+                sliderWeightUnified.setValues(sliderWeightUnified.getValueFrom(), sliderWeightUnified.getValueTo());
+            }
+            if (sliderHeightUnified != null) {
+                sliderHeightUnified.setValues(sliderHeightUnified.getValueFrom(), sliderHeightUnified.getValueTo());
+            }
+        } finally {
+            isResettingSearch = false;
         }
         
         Toast.makeText(this, R.string.search_reset_success, Toast.LENGTH_SHORT).show();
@@ -5128,12 +5160,27 @@ public class MainActivity extends AppCompatActivity {
                     if (selectedRegionUnified != null) sb.append(",").append(selectedRegionUnified.id);
                 }
                 location = sb.toString();
+            } else if (!selectedLocationsUnified.isEmpty()) {
+                SelectedLocation firstLoc = selectedLocationsUnified.get(0);
+                location = firstLoc.getFullId();
+            }
+
+            List<String> statusTags = getSelectedChipTags(cgStatusUnified);
+            List<String> relCherTags = getSelectedChipTags(cgRelCherUnified);
+            String statusSimple = !statusTags.isEmpty() ? statusTags.get(0) : "";
+            String relCherSimple = !relCherTags.isEmpty() ? relCherTags.get(0) : "";
+
+            StringBuilder fantasiesSb = new StringBuilder();
+            for (int i = 0; i < selectedFantasyIdsUnified.size(); i++) {
+                if (i > 0) fantasiesSb.append(",");
+                fantasiesSb.append(selectedFantasyIdsUnified.get(i));
             }
 
             request = SearchApiUtils.buildSimpleSearchRequest(
                     seek, wanted, orient, pseudo, ageMin, ageMax,
-                    online, hasPhoto, myRegion, speedMeeting,
-                    location, orderBy, page, fullCookie, suid);
+                    online, hasPhoto, myRegion, speedMeeting, hasWebcam,
+                    location, statusSimple, relCherSimple, fantasiesSb.toString(),
+                    orderBy, page, fullCookie, suid);
         }
 
         client.newCall(request).enqueue(new Callback() {
@@ -5173,6 +5220,30 @@ public class MainActivity extends AppCompatActivity {
                     final boolean rawHasResults = !rawItems.isEmpty();
                     List<SearchAdapter.SearchItem> newItems = new ArrayList<>(rawItems);
 
+                    // Client-side enforcement for filters that JALF's Detailed Search endpoint (/ct/search_det/1)
+                    // may ignore when combined with Advanced Search (e.g. En ligne, Avec photo, Pseudonyme)
+                    if (isAdvanced && (online || hasPhoto || !pseudo.isEmpty())) {
+                        String lowerPseudo = pseudo.toLowerCase();
+                        java.util.Iterator<SearchAdapter.SearchItem> advIter = newItems.iterator();
+                        while (advIter.hasNext()) {
+                            SearchAdapter.SearchItem item = advIter.next();
+                            if (online && !item.isOnline) {
+                                advIter.remove();
+                                continue;
+                            }
+                            if (hasPhoto && (item.avatarUrl == null || item.avatarUrl.isEmpty()
+                                    || item.avatarUrl.contains("no_photo") || item.avatarUrl.contains("nophoto")
+                                    || item.avatarUrl.contains("sans_photo"))) {
+                                advIter.remove();
+                                continue;
+                            }
+                            if (!lowerPseudo.isEmpty() && (item.name == null
+                                    || !item.name.toLowerCase().contains(lowerPseudo))) {
+                                advIter.remove();
+                            }
+                        }
+                    }
+
                     if (excludeChatted) {
                         android.content.SharedPreferences convoPrefs = getSharedPreferences("ConversationLinks", MODE_PRIVATE);
                         java.util.Map<String, ?> chattedMap = convoPrefs.getAll();
@@ -5187,7 +5258,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
 
-                    // If server returned results on this page, but all were filtered out by excludeChatted,
+                    // If server returned results on this page, but all were filtered out by client-side filters,
                     // automatically advance to the next page (up to 5 consecutive pages)
                     if (rawHasResults && newItems.isEmpty() && emptyPageStreak < 5) {
                         currentSearchPageUnified = page + 1;
@@ -5332,10 +5403,13 @@ public class MainActivity extends AppCompatActivity {
             s.regionValueSimple = selectedRegionUnified.id;
         }
 
+        // Shared fields (used in both Simple and Advanced Search)
+        s.statusDet = getSelectedChipTags(cgStatusUnified);
+        s.relCherDet = getSelectedChipTags(cgRelCherUnified);
+        s.fantasyIdsDet = new ArrayList<>(selectedFantasyIdsUnified);
+
         // Advanced fields
         if (s.isAdvancedSearch) {
-            s.statusDet = getSelectedChipTags(cgStatusUnified);
-            s.relCherDet = getSelectedChipTags(cgRelCherUnified);
             s.availDet = getSelectedChipTags(cgAvailUnified);
             s.smokerDet = getSelectedChipTags(cgSmokerUnified);
             s.zodiacDet = getSelectedChipTags(cgZodiacUnified);
@@ -5356,25 +5430,34 @@ public class MainActivity extends AppCompatActivity {
                 if (!tags.isEmpty()) selectedEthnic = tags.get(0);
             }
             s.ethnicDet = selectedEthnic;
-            // Multiple locations
+            // Multiple locations (also include currently selected dropdown location if not already in the chip list)
             s.selectedLocationsDet.clear();
-            if (selectedLocationsUnified.isEmpty() && selectedCountryUnified != null) {
+            for (SelectedLocation sl : selectedLocationsUnified) {
                 SearchSettingsManager.SavedSettings.SavedLocation l = new SearchSettingsManager.SavedSettings.SavedLocation();
-                l.countryLabel = selectedCountryUnified.name; l.countryValue = selectedCountryUnified.id; l.countryLink = selectedCountryUnified.link;
-                if (selectedProvinceUnified != null) { l.provinceLabel = selectedProvinceUnified.name; l.provinceValue = selectedProvinceUnified.id; l.provinceLink = selectedProvinceUnified.link; }
-                if (selectedRegionUnified != null) { l.regionLabel = selectedRegionUnified.name; l.regionValue = selectedRegionUnified.id; l.regionLink = selectedRegionUnified.link; }
+                l.countryLabel = sl.country.name; l.countryValue = sl.country.id; l.countryLink = sl.country.link;
+                if (sl.province != null) { l.provinceLabel = sl.province.name; l.provinceValue = sl.province.id; l.provinceLink = sl.province.link; }
+                if (sl.region != null) { l.regionLabel = sl.region.name; l.regionValue = sl.region.id; l.regionLink = sl.region.link; }
                 s.selectedLocationsDet.add(l);
-            } else {
-                for (SelectedLocation sl : selectedLocationsUnified) {
+            }
+            if (selectedCountryUnified != null) {
+                SelectedLocation currentDropdownLoc = new SelectedLocation(
+                        selectedCountryUnified, selectedProvinceUnified, selectedRegionUnified);
+                String currentFullId = currentDropdownLoc.getFullId();
+                boolean alreadyAdded = false;
+                for (SelectedLocation existing : selectedLocationsUnified) {
+                    if (existing.getFullId().equals(currentFullId)) {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+                if (!alreadyAdded) {
                     SearchSettingsManager.SavedSettings.SavedLocation l = new SearchSettingsManager.SavedSettings.SavedLocation();
-                    l.countryLabel = sl.country.name; l.countryValue = sl.country.id; l.countryLink = sl.country.link;
-                    if (sl.province != null) { l.provinceLabel = sl.province.name; l.provinceValue = sl.province.id; l.provinceLink = sl.province.link; }
-                    if (sl.region != null) { l.regionLabel = sl.region.name; l.regionValue = sl.region.id; l.regionLink = sl.region.link; }
+                    l.countryLabel = selectedCountryUnified.name; l.countryValue = selectedCountryUnified.id; l.countryLink = selectedCountryUnified.link;
+                    if (selectedProvinceUnified != null) { l.provinceLabel = selectedProvinceUnified.name; l.provinceValue = selectedProvinceUnified.id; l.provinceLink = selectedProvinceUnified.link; }
+                    if (selectedRegionUnified != null) { l.regionLabel = selectedRegionUnified.name; l.regionValue = selectedRegionUnified.id; l.regionLink = selectedRegionUnified.link; }
                     s.selectedLocationsDet.add(l);
                 }
             }
-            
-            s.fantasyIdsDet = new ArrayList<>(selectedFantasyIdsUnified);
         }
 
         return s;
@@ -5382,18 +5465,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void populateSavedSearchChipsUnified() {
         if (cgSavedSearchesUnified == null) return;
-        List<SearchSettingsManager.NamedSearch> saved = SearchSettingsManager.loadNamedSearches(this, false);
-        cgSavedSearchesUnified.removeAllViews();
+        isPopulatingSavedSearches = true;
+        try {
+            List<SearchSettingsManager.NamedSearch> saved = SearchSettingsManager.loadNamedSearches(this, false);
+            cgSavedSearchesUnified.removeAllViews();
 
-        if (saved.isEmpty()) {
-            if (tvSavedSearchesTitleUnified != null) tvSavedSearchesTitleUnified.setVisibility(View.GONE);
-            if (scrollSavedSearchesUnified != null) scrollSavedSearchesUnified.setVisibility(View.GONE);
-        } else {
-            if (tvSavedSearchesTitleUnified != null) tvSavedSearchesTitleUnified.setVisibility(View.VISIBLE);
-            if (scrollSavedSearchesUnified != null) scrollSavedSearchesUnified.setVisibility(View.VISIBLE);
-            for (SearchSettingsManager.NamedSearch ns : saved) {
-                addSavedSearchChip(cgSavedSearchesUnified, ns, false);
+            if (saved.isEmpty()) {
+                if (tvSavedSearchesTitleUnified != null) tvSavedSearchesTitleUnified.setVisibility(View.GONE);
+                if (scrollSavedSearchesUnified != null) scrollSavedSearchesUnified.setVisibility(View.GONE);
+            } else {
+                if (tvSavedSearchesTitleUnified != null) tvSavedSearchesTitleUnified.setVisibility(View.VISIBLE);
+                if (scrollSavedSearchesUnified != null) scrollSavedSearchesUnified.setVisibility(View.VISIBLE);
+                for (SearchSettingsManager.NamedSearch ns : saved) {
+                    addSavedSearchChip(cgSavedSearchesUnified, ns, false);
+                }
             }
+        } finally {
+            isPopulatingSavedSearches = false;
         }
     }
 
@@ -5465,10 +5553,14 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Shared fields (restored in both Simple and Advanced Search)
+        restoreChips(cgStatusUnified, s.statusDet);
+        restoreChips(cgRelCherUnified, s.relCherDet);
+        selectedFantasyIdsUnified = new ArrayList<>(s.fantasyIdsDet);
+        updateFantasySummaryUnified();
+
         // Advanced fields
         if (s.isAdvancedSearch) {
-            restoreChips(cgStatusUnified, s.statusDet);
-            restoreChips(cgRelCherUnified, s.relCherDet);
             restoreChips(cgAvailUnified, s.availDet);
             restoreChips(cgSmokerUnified, s.smokerDet);
             restoreChips(cgZodiacUnified, s.zodiacDet);
@@ -5502,9 +5594,6 @@ public class MainActivity extends AppCompatActivity {
                 selectedLocationsUnified.add(sloc);
                 addLocationChipUnified(sloc);
             }
-
-            selectedFantasyIdsUnified = new ArrayList<>(s.fantasyIdsDet);
-            updateFantasySummaryUnified();
         }
     }
 
@@ -6812,15 +6901,11 @@ public class MainActivity extends AppCompatActivity {
     private void addSavedSearchChip(ChipGroup cg, SearchSettingsManager.NamedSearch ns, boolean selected) {
         if (cg == null || ns == null) return;
         Chip chip = new Chip(this);
+        chip.setId(View.generateViewId());
         chip.setText(ns.name);
         chip.setCheckable(true);
         chip.setChecked(selected);
         chip.setTag(ns);
-        chip.setOnCheckedChangeListener((v, isChecked) -> {
-            if (isChecked) {
-                loadSavedSearchUnified(ns);
-            }
-        });
         chip.setOnLongClickListener(v -> {
             showSavedSearchOptionsUnified(ns);
             return true;
@@ -6829,9 +6914,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadSavedSearchUnified(SearchSettingsManager.NamedSearch ns) {
-        if (ns == null || ns.settings == null) return;
-        applySavedSettingsToUnified(ns.settings);
-        Toast.makeText(this, getString(R.string.search_loaded, ns.name), Toast.LENGTH_SHORT).show();
+        if (ns == null || ns.settings == null || isLoadingSavedSearch) return;
+        isLoadingSavedSearch = true;
+        try {
+            applySavedSettingsToUnified(ns.settings);
+            if (cgSavedSearchesUnified != null) {
+                for (int i = 0; i < cgSavedSearchesUnified.getChildCount(); i++) {
+                    View child = cgSavedSearchesUnified.getChildAt(i);
+                    if (child instanceof Chip && ns.equals(child.getTag())) {
+                        if (!((Chip) child).isChecked()) {
+                            ((Chip) child).setChecked(true);
+                        }
+                        break;
+                    }
+                }
+            }
+            Toast.makeText(this, getString(R.string.search_loaded, ns.name), Toast.LENGTH_SHORT).show();
+        } finally {
+            isLoadingSavedSearch = false;
+        }
     }
 
     private void showSavedSearchOptionsUnified(SearchSettingsManager.NamedSearch ns) {

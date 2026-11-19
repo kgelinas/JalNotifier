@@ -276,6 +276,15 @@ public class SearchSettingsManager {
         json.put("seekSimple", settings.seekSimple);
         json.put("wantedSimple", settings.wantedSimple);
         json.put("orientSimple", settings.orientSimple);
+        json.put("countryLabelSimple", settings.countryLabelSimple);
+        json.put("countryLinkSimple", settings.countryLinkSimple);
+        json.put("countryValueSimple", settings.countryValueSimple);
+        json.put("provinceLabelSimple", settings.provinceLabelSimple);
+        json.put("provinceLinkSimple", settings.provinceLinkSimple);
+        json.put("provinceValueSimple", settings.provinceValueSimple);
+        json.put("regionLabelSimple", settings.regionLabelSimple);
+        json.put("regionLinkSimple", settings.regionLinkSimple);
+        json.put("regionValueSimple", settings.regionValueSimple);
         return json;
     }
 
@@ -338,6 +347,15 @@ public class SearchSettingsManager {
         settings.seekSimple = json.optString("seekSimple", !settings.seekDet.isEmpty() ? settings.seekDet.get(0) : "");
         settings.wantedSimple = json.optString("wantedSimple", !settings.wantedDet.isEmpty() ? settings.wantedDet.get(0) : "");
         settings.orientSimple = json.optString("orientSimple", !settings.orientDet.isEmpty() ? settings.orientDet.get(0) : "");
+        settings.countryLabelSimple = json.optString("countryLabelSimple", "");
+        settings.countryLinkSimple = json.optString("countryLinkSimple", "");
+        settings.countryValueSimple = json.optString("countryValueSimple", "");
+        settings.provinceLabelSimple = json.optString("provinceLabelSimple", "");
+        settings.provinceLinkSimple = json.optString("provinceLinkSimple", "");
+        settings.provinceValueSimple = json.optString("provinceValueSimple", "");
+        settings.regionLabelSimple = json.optString("regionLabelSimple", "");
+        settings.regionLinkSimple = json.optString("regionLinkSimple", "");
+        settings.regionValueSimple = json.optString("regionValueSimple", "");
         return settings;
     }
 

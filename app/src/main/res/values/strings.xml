@@ -658,4 +658,25 @@ Write EXACTLY TWO different short reply options in English that are natural and 
     <string name="ai_style_custom">\nCustom style directive from user: %1$s</string>
     <string name="show_more">Show more</string>
     <string name="loading">Loading…</string>
+
+    <!-- Gemini Nano On-Device Toning -->
+    <string name="settings_intelligence_nano_section">Gemini Nano (On-Device Toning)</string>
+    <string name="settings_intelligence_nano_enable">Auto-tone LLM replies with Gemini Nano</string>
+    <string name="settings_intelligence_nano_enable_desc">Passes generated intros and replies from the external LLM through Google\'s on-device Gemini Nano rewriter (Gboard engine) for a second pass of natural phrasing and tone.</string>
+    <string name="settings_intelligence_nano_default_tone">Default Gemini Nano Tone</string>
+    <string name="settings_intelligence_nano_check_status">Check / Download Gemini Nano</string>
+    <string name="nano_status_available">Gemini Nano: Ready on device ✓</string>
+    <string name="nano_status_downloadable">Gemini Nano: Downloadable (Tap button below)</string>
+    <string name="nano_status_downloading">Gemini Nano: Downloading model…</string>
+    <string name="nano_status_unavailable">Gemini Nano: Unavailable on this device</string>
+    <string name="nano_tone_rephrase">Rephrase</string>
+    <string name="nano_tone_friendly">Friendly</string>
+    <string name="nano_tone_emojify">Emojify</string>
+    <string name="nano_tone_shorten">Shorten</string>
+    <string name="nano_tone_elaborate">Elaborate</string>
+    <string name="nano_tone_professional">Formal</string>
+    <string name="nano_menu_title">Gemini Nano Tone</string>
+    <string name="nano_rewriting_status">Refining tone with Gemini Nano…</string>
+    <string name="nano_rewriting_card">Gemini Nano…</string>
+    <string name="nano_rewrite_failed">Gemini Nano could not rewrite this text (%1$s)</string>
 </resources>
